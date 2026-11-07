@@ -60,6 +60,7 @@ openapi.json is the contract for a separate mobile repo, so an API change is a b
   tradeoffs), a new dependency, or a missing/unclear contract. Fix bugs, test failures and mechanical
   review findings without asking.
 - Never log or commit secrets, tokens, PII or seeds. Read config from the environment or keyring.
+  Invented test credentials must start with "fake-" (the only value .gitleaks.toml allowlists).
 - Read the package's contract instead of its source when you are not editing it. Update the contract
   in the same change if you alter a public interface.
 - Identifiers that are persisted or referenced elsewhere (DB columns, API paths under /v1, settings

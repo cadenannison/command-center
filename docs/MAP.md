@@ -6,7 +6,7 @@ Readable copy of the boundaries enforced in `pyproject.toml` (`[tool.importlinte
 ## Dependency table (a layer may import only what its row lists)
 | Layer (`src/command_center/...`) | May import | Role |
 |---|---|---|
-| `core` | nothing in the app | pure: schema, ports (Protocols in `core/ports.py`), urgency scoring, redaction, window math |
+| `core` | nothing in the app | pure: schema, ports (Protocols in `core/ports.py`), errors, urgency scoring, redaction, window math, URL check (`urlcheck`) |
 | `services` | core | application logic against ports |
 | `adapters` | core | Canvas, CalDAV (Apple), iCal feed, Gmail, weather, summary providers, keyring store, queue impls, menu-bar |
 | `storage` | core | SQLite (default) and Postgres persistence |

@@ -7,3 +7,4 @@
 /pyproject.toml @cadenannison
 /uv.lock @cadenannison
 /.test-floor @cadenannison
+/.gitleaks.toml @cadenannison

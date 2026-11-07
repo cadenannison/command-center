@@ -1,0 +1,11 @@
+title = "command-center gitleaks config"
+
+[extend]
+useDefault = true
+
+# Test credentials must start with "fake-" (see AGENTS.md). Matched against the secret itself,
+# not the whole line, so a real key cannot hide behind a "fake-" elsewhere on the line.
+[[allowlists]]
+description = "invented test credentials"
+regexTarget = "secret"
+regexes = ['''^fake-''']
