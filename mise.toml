@@ -1,0 +1,78 @@
+# Command contract + tool versions. Task names are fixed across repos; see AGENTS.md.
+# Versions verified to exist on 2026-11-07 (see docs/decisions/tooling-versions.md).
+
+[tools]
+python = "3.13.18"
+uv = "0.13.7"
+node = "26.13.0"        # only so the pyright PyPI wrapper finds a Node instead of downloading one
+gitleaks = "8.30.1"
+
+[env]
+UV_PYTHON_DOWNLOADS = "never"   # use the mise-managed Python, never a second copy
+UV_PYTHON = "3.13"
+VIRTUAL_ENV = "{{config_root}}/.venv"   # shadow any shell-level venv (conda etc.)
+
+[tasks.setup]
+description = "Install git hooks and dependencies"
+run = "bash scripts/install-git-hooks.sh && uv sync --frozen --all-extras"
+
+[tasks.fmt]
+description = "Format"
+run = "uv run ruff format"
+[tasks."fmt:check"]
+description = "Verify formatting"
+run = "uv run ruff format --check"
+
+[tasks.lint]
+description = "Static analysis (includes banned-API purity rules)"
+run = "uv run ruff check"
+
+[tasks.typecheck]
+description = "Type check (pyright, not ty: Pydantic/FastAPI)"
+run = "uv run pyright"
+
+[tasks.arch]
+description = "Import-boundary check (import-linter, contracts in pyproject.toml)"
+run = "uv run lint-imports"
+
+[tasks.test]
+description = "Unit + integration tests with the coverage floor"
+run = "uv run pytest"
+
+[tasks."test:count"]
+description = "Print the number of tests (last line, digits only)"
+run = "uv run pytest --collect-only -q --no-cov -p no:cacheprovider 2>/dev/null | grep -Eo '^[0-9]+ tests? collected' | grep -Eo '^[0-9]+' | tail -1"
+
+[tasks."gen:build"]
+description = "Regenerate docs/generated/ from the code"
+run = "uv run python scripts/gen_docs.py"
+[tasks."gen:check"]
+description = "Verify docs/generated/ is current and AGENTS.md is sound"
+run = "uv run python scripts/gen_docs.py --check && bash scripts/check-agents-md.sh"
+
+[tasks.audit]
+description = "Dependency vulnerability audit"
+run = "uv run pip-audit --local --skip-editable"
+
+[tasks.secrets]
+description = "Secret scan of git history"
+run = "gitleaks git --redact"
+[tasks."secrets:staged"]
+description = "Secret scan of staged changes"
+run = "gitleaks git --pre-commit --staged --redact"
+
+[tasks.fix]
+description = "Autofix format and lint"
+run = "uv run ruff format && uv run ruff check --fix"
+
+[tasks.mutate]
+description = "Mutation testing scoped to core (run on a schedule by hand; no CI workflow yet)"
+run = "uv run mutmut run"
+
+[tasks."check:fast"]
+description = "fmt:check + lint + typecheck + arch (the Stop hook runs this)"
+depends = ["fmt:check", "lint", "typecheck", "arch"]
+
+[tasks.check]
+description = "Every non-mutating gate (pre-push and CI run this)"
+depends = ["fmt:check", "lint", "typecheck", "arch", "gen:check", "test", "audit", "secrets"]

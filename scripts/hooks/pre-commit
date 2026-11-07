@@ -1,0 +1,11 @@
+#!/bin/bash
+# Gate for the HUMAN's commits; Claude is denied from committing.
+set -e
+[ -z "$(git diff --cached --name-only)" ] && exit 0
+bad=$(git diff --cached --name-only --diff-filter=ACM | grep -E '(^|/)\.env(\..+)?$|\.(pem|key)$|id_rsa' | grep -Ev '\.example$' || true)
+if [ -n "$bad" ]; then
+  echo "Refusing to commit files that look like credentials:"; echo "$bad"; exit 1
+fi
+mise run fmt:check || { echo "Formatting failed. Run: mise run fix"; exit 1; }
+mise run lint
+mise run secrets:staged

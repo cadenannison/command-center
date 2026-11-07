@@ -1,0 +1,5 @@
+#!/bin/bash
+# Mirrors CI so broken pushes are caught locally.
+set -e
+mise run check
+bash scripts/test-floor.sh

@@ -1,0 +1,225 @@
+[project]
+name = "command-center"
+version = "0.1.0"
+description = "Personal productivity dashboard: calendars, Canvas, email and weather in day/week/month views."
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+  "fastapi>=0.162.2",
+  "uvicorn>=0.54.0",
+  "httpx>=0.28.1",
+  "pydantic>=2.14.3",
+  "pydantic-settings>=2.16.2",
+  "sqlalchemy>=2.1.8",
+  "jinja2>=3.1.6",
+  "python-multipart>=0.0.33",
+  "keyring>=25.7.0",
+  "caldav>=3.7.0",
+  "icalendar>=7.3.0",
+  "google-auth-oauthlib>=1.5.0",
+  "google-api-python-client>=2.201.0",
+  "google-genai>=3.0.0",
+  "qrcode>=8.2",
+]
+
+[project.optional-dependencies]
+distributed = ["redis>=8.1.0", "psycopg[binary]>=3.3.8"]
+desktop = ["rumps>=0.4.0; sys_platform == 'darwin'"]
+
+[project.scripts]
+command-center = "command_center.app:main"
+
+[dependency-groups]
+dev = [
+  "pytest>=9.2.0",
+  "pytest-cov>=7.1.0",
+  "pytest-asyncio>=1.4.1",
+  "respx>=0.23.1",
+  "hypothesis>=6.170.15",
+  "ruff>=0.17.4",
+  "pyright>=1.1.414",
+  "import-linter>=2.16",
+  "pip-audit>=2.10.1",
+  "mutmut>=3.8.1",
+]
+
+[build-system]
+requires = ["uv_build>=0.13.7,<0.14"]
+build-backend = "uv_build"
+
+# ---------------------------------------------------------------- ruff
+[tool.ruff]
+target-version = "py313"
+src = ["src", "tests"]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = ["D", "CPY", "COM812", "ISC001"]   # docstring + copyright-header rules; the two formatter-conflict rules
+
+# Purity: the clock and randomness are banned everywhere, then re-allowed only where concrete
+# infrastructure is built. core and services must take Clock / Rng / IdSource as parameters.
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"datetime.datetime.now".msg = "Pass a Clock in (command_center.core.ports.Clock)."
+"datetime.datetime.utcnow".msg = "Pass a Clock in (command_center.core.ports.Clock)."
+"datetime.datetime.today".msg = "Pass a Clock in (command_center.core.ports.Clock)."
+"datetime.date.today".msg = "Pass a Clock in (command_center.core.ports.Clock)."
+"time.time".msg = "Pass a Clock in (command_center.core.ports.Clock)."
+"random.random".msg = "Pass an Rng in (command_center.core.ports.Rng)."
+"random.randint".msg = "Pass an Rng in (command_center.core.ports.Rng)."
+"random.choice".msg = "Pass an Rng in (command_center.core.ports.Rng)."
+"random.shuffle".msg = "Pass an Rng in (command_center.core.ports.Rng)."
+"uuid.uuid4".msg = "Pass an IdSource in (command_center.core.ports.IdSource)."
+
+[tool.ruff.lint.per-file-ignores]
+# Where concrete infrastructure lives, the clock/randomness may be touched.
+"src/command_center/adapters/**" = ["TID251"]
+"src/command_center/storage/**" = ["TID251"]
+"src/command_center/app.py" = ["TID251"]
+"src/command_center/workers/__main__.py" = ["TID251"]
+"src/command_center/desktop/main.py" = ["TID251"]
+"tests/**" = ["S101", "TID251", "INP001", "PLR2004", "TC001", "TC002", "TC003"]
+"scripts/**" = ["T201", "INP001"]
+
+# ---------------------------------------------------------------- pyright
+[tool.pyright]
+include = ["src", "tests", "scripts"]
+pythonVersion = "3.13"
+typeCheckingMode = "strict"
+
+# ---------------------------------------------------------------- pytest / coverage
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = "--cov=src --cov-fail-under=80"   # a floor that catches deleted tests; behaviour is the real bar
+
+[tool.coverage.run]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+exclude_also = ["if __name__ == .__main__.:"]
+
+# ---------------------------------------------------------------- mutation testing (core only; run by hand)
+[tool.mutmut]
+paths_to_mutate = ["src/command_center/core/"]
+tests_dir = ["tests/"]
+
+# ---------------------------------------------------------------- import-linter (mirrors docs/MAP.md)
+# Keep this file and docs/MAP.md in sync: this is the enforcing copy, MAP.md the readable one.
+[tool.importlinter]
+root_package = "command_center"
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+name = "core is pure: imports nothing in the app and no infrastructure libraries"
+type = "forbidden"
+source_modules = ["command_center.core"]
+forbidden_modules = [
+  "command_center.services", "command_center.adapters", "command_center.storage",
+  "command_center.api", "command_center.web", "command_center.workers",
+  "command_center.desktop", "command_center.pairing", "command_center.app",
+  "httpx", "sqlalchemy", "fastapi", "keyring",
+]
+
+[[tool.importlinter.contracts]]
+name = "services import core only"
+type = "forbidden"
+source_modules = ["command_center.services"]
+forbidden_modules = [
+  "command_center.adapters", "command_center.storage", "command_center.api",
+  "command_center.web", "command_center.workers", "command_center.desktop",
+  "command_center.pairing", "command_center.app",
+]
+
+[[tool.importlinter.contracts]]
+name = "adapters and storage import core only"
+type = "forbidden"
+source_modules = ["command_center.adapters", "command_center.storage"]
+forbidden_modules = [
+  "command_center.services", "command_center.api", "command_center.web",
+  "command_center.workers", "command_center.desktop", "command_center.pairing",
+  "command_center.app",
+]
+
+[[tool.importlinter.contracts]]
+name = "adapters and storage do not import each other"
+type = "forbidden"
+source_modules = ["command_center.adapters"]
+forbidden_modules = ["command_center.storage"]
+
+[[tool.importlinter.contracts]]
+name = "storage does not import adapters"
+type = "forbidden"
+source_modules = ["command_center.storage"]
+forbidden_modules = ["command_center.adapters"]
+
+# Only composition roots build concrete infrastructure. workers/__main__.py and desktop/main.py
+# are roots, so their imports of adapters/storage are the only ones ignored.
+[[tool.importlinter.contracts]]
+name = "api, web, desktop, workers, pairing never import adapters or storage (except composition roots)"
+type = "forbidden"
+source_modules = [
+  "command_center.api", "command_center.web", "command_center.desktop",
+  "command_center.workers", "command_center.pairing",
+]
+forbidden_modules = ["command_center.adapters", "command_center.storage"]
+unmatched_ignore_imports_alerting = "none"   # the named adapter/root files are not built yet
+ignore_imports = [
+  "command_center.workers.__main__ -> command_center.adapters.*",
+  "command_center.workers.__main__ -> command_center.storage.*",
+  "command_center.desktop.main -> command_center.adapters.*",
+  "command_center.desktop.main -> command_center.storage.*",
+]
+
+# Vendor SDKs: each is imported in exactly one adapter file. The ignore list names that file.
+[[tool.importlinter.contracts]]
+name = "caldav only in adapters/caldav_apple.py"
+type = "forbidden"
+source_modules = ["command_center"]
+forbidden_modules = ["caldav"]
+unmatched_ignore_imports_alerting = "none"   # the named adapter/root files are not built yet
+ignore_imports = ["command_center.adapters.caldav_apple -> caldav"]
+
+[[tool.importlinter.contracts]]
+name = "Google auth/API client only in adapters/gmail.py"
+type = "forbidden"
+source_modules = ["command_center"]
+forbidden_modules = ["googleapiclient", "google_auth_oauthlib"]
+unmatched_ignore_imports_alerting = "none"   # the named adapter/root files are not built yet
+ignore_imports = [
+  "command_center.adapters.gmail -> googleapiclient",
+  "command_center.adapters.gmail -> google_auth_oauthlib",
+]
+
+[[tool.importlinter.contracts]]
+name = "google-genai only in adapters/summary_gemini.py"
+type = "forbidden"
+source_modules = ["command_center"]
+forbidden_modules = ["google"]
+unmatched_ignore_imports_alerting = "none"   # the named adapter/root files are not built yet
+ignore_imports = ["command_center.adapters.summary_gemini -> google"]
+
+[[tool.importlinter.contracts]]
+name = "keyring only in adapters/keyring_store.py"
+type = "forbidden"
+source_modules = ["command_center"]
+forbidden_modules = ["keyring"]
+unmatched_ignore_imports_alerting = "none"   # the named adapter/root files are not built yet
+ignore_imports = ["command_center.adapters.keyring_store -> keyring"]
+
+[[tool.importlinter.contracts]]
+name = "redis only in adapters/queue_redis.py"
+type = "forbidden"
+source_modules = ["command_center"]
+forbidden_modules = ["redis"]
+unmatched_ignore_imports_alerting = "none"   # the named adapter/root files are not built yet
+ignore_imports = ["command_center.adapters.queue_redis -> redis"]
+
+[[tool.importlinter.contracts]]
+name = "rumps only in adapters/menubar_rumps.py"
+type = "forbidden"
+source_modules = ["command_center"]
+forbidden_modules = ["rumps"]
+unmatched_ignore_imports_alerting = "none"   # the named adapter/root files are not built yet
+ignore_imports = ["command_center.adapters.menubar_rumps -> rumps"]

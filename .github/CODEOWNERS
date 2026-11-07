@@ -1,0 +1,9 @@
+* @cadenannison
+# Guardrails: changes here weaken enforcement, so they always need the owner.
+/AGENTS.md @cadenannison
+/.claude/ @cadenannison
+/scripts/hooks/ @cadenannison
+/.github/ @cadenannison
+/pyproject.toml @cadenannison
+/uv.lock @cadenannison
+/.test-floor @cadenannison

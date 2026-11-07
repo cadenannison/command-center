@@ -218,3 +218,19 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# --- Repo bootstrap additions ---
+.env.*
+!.env.example
+coverage/
+.DS_Store
+
+# Claude Code local-only files
+.claude/settings.local.json
+.claude/allow-test-edits
+.claude/worktrees/
+CLAUDE.local.md
+
+# Mutation testing output
+mutants/
+.mutmut-cache/

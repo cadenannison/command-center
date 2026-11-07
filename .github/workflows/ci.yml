@@ -1,0 +1,85 @@
+name: CI
+on:
+  push: { branches: [main] }
+  pull_request:
+  merge_group:                      # required if you use a merge queue, or required checks never report
+  schedule:
+    - cron: "17 6 * * 1"            # weekly: new advisories surface in the audit job without blocking PRs
+permissions: {}
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  UV_FROZEN: "1"                    # never re-resolve in CI: uv.lock is the source of truth
+
+jobs:
+  check:
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions: { contents: read }
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
+      - uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
+      - run: uv sync --all-extras
+      - run: mise run fmt:check
+      - run: mise run lint
+      - run: mise run typecheck
+      - run: mise run arch
+      - run: mise run gen:check
+      - run: mise run test
+      - run: bash scripts/test-floor.sh
+
+  secrets:
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions: { contents: read }
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false, fetch-depth: 0 }   # full history for the scan
+      - uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
+      - run: mise run secrets
+
+  # Advisories are a separate job and not part of the gate: a newly published CVE must not block
+  # an unrelated PR. The weekly schedule makes it fail visibly instead.
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions: { contents: read }
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
+      - uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
+      - run: uv sync --all-extras
+      - run: mise run audit
+
+  dependency-review:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions: { contents: read }
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
+      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with: { fail-on-severity: high }
+
+  # The single required status check: mark only "gate" as required in branch protection.
+  gate:
+    if: always() && github.event_name != 'schedule'
+    needs: [check, secrets, dependency-review]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: All required jobs passed
+        env:
+          RESULTS: ${{ toJSON(needs.*.result) }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          echo "needs results: $RESULTS"
+          if echo "$RESULTS" | grep -Eq 'failure|cancelled'; then exit 1; fi
+          # dependency-review only runs on pull requests; a skip is fine elsewhere, not on a PR
+          if [ "$EVENT" = "pull_request" ] && echo "$RESULTS" | grep -q 'skipped'; then exit 1; fi
