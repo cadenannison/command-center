@@ -136,7 +136,7 @@ def create_event_store(database_url: str) -> SqliteEventStore:
     url = make_url(database_url)
     if url.get_backend_name() == "sqlite" and url.database not in (None, "", ":memory:"):
         Path(str(url.database)).parent.mkdir(parents=True, exist_ok=True)
-    engine = create_engine(url)
+    engine = create_engine(url, hide_parameters=True)  # error text must not carry event content
     _Base.metadata.create_all(engine)
     return SqliteEventStore(engine)
 

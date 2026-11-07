@@ -8,7 +8,10 @@ import keyring
 import keyring.errors
 from pydantic import TypeAdapter, ValidationError
 
+from command_center.core.errors import SecretStoreError
 from command_center.core.schema import SecretStatus, secret_status
+
+__all__ = ["SERVICE", "KeyringSecretStore", "SecretStoreError"]  # the error moved to core (0024)
 
 SERVICE = "command-center"
 _BLOB = TypeAdapter(dict[str, str])
@@ -16,10 +19,6 @@ _BLOB = TypeAdapter(dict[str, str])
 # threads setting different keys of one source would otherwise lose an update. It does not
 # protect against a second process (decision 0012).
 _WRITE_LOCK = threading.Lock()
-
-
-class SecretStoreError(Exception):
-    """The OS keychain could not be used; the message says why and never contains a secret."""
 
 
 class KeyringSecretStore:

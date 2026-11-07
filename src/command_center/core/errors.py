@@ -15,3 +15,7 @@ class TransientError(SourceError):
 
 class FatalError(SourceError):
     """Permanent failure (malformed data, unsupported request); retrying will not help."""
+
+
+class SecretStoreError(Exception):
+    """The secret store (OS keychain) cannot be used. The message says why, never a secret value."""

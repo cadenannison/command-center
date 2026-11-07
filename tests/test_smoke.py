@@ -28,7 +28,7 @@ def test_layer_package_imports(layer: str) -> None:
 
 
 def test_health_endpoint_reports_ok() -> None:
-    response = TestClient(create_app()).get("/v1/health")
+    response = TestClient(create_app(), base_url="http://localhost").get("/v1/health")
 
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}

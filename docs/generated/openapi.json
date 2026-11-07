@@ -1,10 +1,492 @@
 {
+  "components": {
+    "schemas": {
+      "ConnectRequest": {
+        "additionalProperties": false,
+        "description": "Credentials for one source. Write-only: no response model has a field for them.",
+        "properties": {
+          "credentials": {
+            "maxProperties": 32,
+            "minProperties": 1,
+            "patternProperties": {
+              "^[A-Za-z0-9_.-]{1,64}$": {
+                "maxLength": 8192,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "title": "Credentials",
+            "type": "object"
+          }
+        },
+        "required": [
+          "credentials"
+        ],
+        "title": "ConnectRequest",
+        "type": "object"
+      },
+      "ConnectResult": {
+        "description": "Outcome of connecting a source.\n\nWhen `ok` is false nothing was stored, except if the secret store failed part-way through\nwriting the keys: then the keys written before the failure stay stored.",
+        "properties": {
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "sync": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SyncState"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "source",
+          "ok",
+          "message"
+        ],
+        "title": "ConnectResult",
+        "type": "object"
+      },
+      "ErrorBody": {
+        "description": "A plain error.",
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          }
+        },
+        "required": [
+          "detail"
+        ],
+        "title": "ErrorBody",
+        "type": "object"
+      },
+      "Event": {
+        "description": "One normalised item (calendar event, assignment, email, weather). Immutable.",
+        "properties": {
+          "due": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due"
+          },
+          "end": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End"
+          },
+          "fetched_at": {
+            "format": "date-time",
+            "title": "Fetched At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "event",
+              "assignment",
+              "email",
+              "weather"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "link": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Link"
+          },
+          "raw": {
+            "additionalProperties": true,
+            "title": "Raw",
+            "type": "object"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "start": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "urgency": {
+            "default": 0,
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Urgency",
+            "type": "integer"
+          },
+          "user_id": {
+            "default": "local",
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "source",
+          "kind",
+          "title",
+          "fetched_at"
+        ],
+        "title": "Event",
+        "type": "object"
+      },
+      "SecretStatus": {
+        "description": "What the settings API may reveal about a secret: whether it is set and its last 4 chars.\n\n`last4` is None for an unset secret and for any value shorter than 8 characters, where four\ncharacters would give away too much of the value.",
+        "properties": {
+          "last4": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last4"
+          },
+          "set": {
+            "title": "Set",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "set"
+        ],
+        "title": "SecretStatus",
+        "type": "object"
+      },
+      "SourceSettings": {
+        "description": "What the settings API may reveal about one source: per-key status plus its sync state.",
+        "properties": {
+          "keys": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/SecretStatus"
+            },
+            "title": "Keys",
+            "type": "object"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "sync": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SyncState"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "source",
+          "keys"
+        ],
+        "title": "SourceSettings",
+        "type": "object"
+      },
+      "SyncState": {
+        "description": "The last sync result of one source.",
+        "properties": {
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "syncing",
+              "ok",
+              "reconnect",
+              "error"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "status",
+          "message",
+          "at"
+        ],
+        "title": "SyncState",
+        "type": "object"
+      },
+      "ValidationErrorBody": {
+        "description": "Body of a 422 for a malformed request.",
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationIssue"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "required": [
+          "detail"
+        ],
+        "title": "ValidationErrorBody",
+        "type": "object"
+      },
+      "ValidationIssue": {
+        "description": "One request field that failed validation; never echoes the submitted value.",
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Loc",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Msg",
+            "type": "string"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationIssue",
+        "type": "object"
+      }
+    }
+  },
   "info": {
     "title": "Command Center",
     "version": "0.1.0"
   },
   "openapi": "3.1.0",
   "paths": {
+    "/v1/agenda/{period}": {
+      "get": {
+        "description": "Events in the day, Monday-based week or month containing `date`, in the user's timezone.",
+        "operationId": "agenda_v1_agenda__period__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "period",
+            "required": true,
+            "schema": {
+              "enum": [
+                "day",
+                "week",
+                "month"
+              ],
+              "title": "Period",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "date",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Event"
+                  },
+                  "title": "Response Agenda V1 Agenda  Period  Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "summary": "Agenda for a day, week or month",
+        "tags": [
+          "agenda"
+        ]
+      }
+    },
+    "/v1/attention": {
+      "get": {
+        "description": "Urgent items (urgency 70+) and owed or overdue email, most urgent first.",
+        "operationId": "attention_v1_attention_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Event"
+                  },
+                  "title": "Response Attention V1 Attention Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Items needing attention",
+        "tags": [
+          "agenda"
+        ]
+      }
+    },
+    "/v1/events": {
+      "get": {
+        "description": "Events overlapping [from, to), scored now. Both bounds carry a timezone (use Z or %2B).",
+        "operationId": "list_events_v1_events_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "from",
+            "required": true,
+            "schema": {
+              "format": "date-time",
+              "title": "From",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": true,
+            "schema": {
+              "format": "date-time",
+              "title": "To",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Event"
+                  },
+                  "title": "Response List Events V1 Events Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "summary": "Events in a time window",
+        "tags": [
+          "agenda"
+        ]
+      }
+    },
     "/v1/health": {
       "get": {
         "description": "Report that the server is up.",
@@ -28,6 +510,172 @@
         "summary": "Liveness check",
         "tags": [
           "health"
+        ]
+      }
+    },
+    "/v1/settings": {
+      "get": {
+        "description": "Per source and per key: whether it is set and its last 4 characters; plus the sync state.",
+        "operationId": "get_settings_v1_settings_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SourceSettings"
+                  },
+                  "title": "Response Get Settings V1 Settings Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Status of every source",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/v1/settings/{source}": {
+      "delete": {
+        "description": "Delete every stored key of the source.",
+        "operationId": "delete_settings_v1_settings__source__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source",
+            "required": true,
+            "schema": {
+              "title": "Source",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceSettings"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "summary": "Disconnect a source",
+        "tags": [
+          "settings"
+        ]
+      },
+      "put": {
+        "description": "Validate and store the credentials; the sync runs after the response (state \"syncing\").",
+        "operationId": "put_settings_v1_settings__source__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source",
+            "required": true,
+            "schema": {
+              "title": "Source",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "summary": "Connect a source",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/v1/sync": {
+      "post": {
+        "description": "Sync all sources and return each one's new state; a failing source does not raise.",
+        "operationId": "sync_all_v1_sync_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SyncState"
+                  },
+                  "title": "Response Sync All V1 Sync Post",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Sync every source now",
+        "tags": [
+          "sync"
         ]
       }
     }
