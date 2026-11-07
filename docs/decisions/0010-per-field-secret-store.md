@@ -1,6 +1,6 @@
 # 0010. SecretStore is keyed per field
 
-Status: accepted
+Status: accepted. The adapter clause of the Consequences is superseded by 0012 (one blob per source); the interface below is unchanged.
 
 Context: A source can need several secrets (CalDAV username plus app password, an OAuth client id, secret and refresh token). One string per source forced callers to pack them into JSON, which hides which field is set and breaks "last 4 characters" status.
 Decision: `SecretStore` stores one value per (user, source, key): `set(source, key, value)`, `get(source) -> Mapping[str, str]`, `status(source) -> Mapping[str, SecretStatus]`, `delete(source)` removes every key of the source. `SecretStatus.last4` is None for values shorter than 8 characters.

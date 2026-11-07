@@ -74,3 +74,30 @@ repo owner's instruction, anchoring each rule to the project root:
 | `Read(./**/target/**)` | none needed | this rule was never in this repo's settings.json (Rust-only entry, omitted at bootstrap); if added later, use `Read(./target/**)` |
 
 Trade-off: a nested `dist/` or `node_modules/` (for example `web/dist/`) is no longer hidden from agents' reads.
+
+### Added: `UV_CACHE_DIR` in `.claude/settings.json` (2026-11-07)
+Not a kit setting. The Bash sandbox cannot write outside the repo and `$TMPDIR`, and uv's default cache is
+`~/.cache/uv`, so every `uv run` (and so every `mise run` task) failed before running anything:
+`error: Could not acquire lock ... Operation not permitted (os error 1) at path "~/.cache/uv/..."`. Until now
+each agent run worked around it by exporting `UV_CACHE_DIR` by hand, which is easy to forget and hides the
+problem from the next person.
+
+| Change | Value |
+|---|---|
+| `.claude/settings.json` `env.UV_CACHE_DIR` | `.uv-cache` (repo-local, inside the sandbox's writable area) |
+| `.gitignore` | `.uv-cache/` |
+
+Verified with no manual override: with the setting, `mise run check` exits 0 (all eight tasks, 464 tests); the
+same `mise run lint` with `UV_CACHE_DIR` removed from the environment fails with the error above. The setting
+is what fixes it.
+
+Trade-offs:
+- The path is relative, so it resolves against the directory uv runs in. `mise` tasks and a `claude` launched from
+  the repo root (CLAUDE.md) both run there; a command run from a subdirectory would create a second `.uv-cache`
+  there. An absolute path would fix that but would put a machine-specific path in a checked-in file.
+- The cache is separate from the user's global uv cache, so packages are fetched again once (pypi.org and
+  files.pythonhosted.org are in the sandbox allowlist). It is safe to delete.
+- Other tools still try their own caches. `pip-audit` logs a non-fatal "Failed to write to cache directory"
+  warning for `~/Library/Caches/pip-audit`; `mise run audit` still passes. Not changed here.
+- This applies to sessions launched with this settings file. A shell outside Claude Code is unaffected and uses
+  uv's default cache as before.

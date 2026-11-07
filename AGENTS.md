@@ -59,6 +59,10 @@ openapi.json is the contract for a separate mobile repo, so an API change is a b
 - Stop and ask ONLY for: a genuine design ambiguity (name the question, give a recommendation and
   tradeoffs), a new dependency, or a missing/unclear contract. Fix bugs, test failures and mechanical
   review findings without asking.
+- Record every judgement call, deviation from a task card, or choice between real alternatives as a
+  new numbered file in docs/decisions/: the decision, the alternative not taken, why, where it lives
+  in code, and when to revisit it. To change a decision, write a new record that supersedes the old
+  one. An old record may be edited in place only on its Status line and its Sources line.
 - Never log or commit secrets, tokens, PII or seeds. Read config from the environment or keyring.
   Invented test credentials must start with "fake-" (the only value .gitleaks.toml allowlists).
 - Read the package's contract instead of its source when you are not editing it. Update the contract

@@ -231,6 +231,9 @@ coverage/
 .claude/worktrees/
 CLAUDE.local.md
 
+# uv cache, repo-local so the sandbox can write it (see docs/decisions/tooling-versions.md)
+.uv-cache/
+
 # Mutation testing output
 mutants/
 .mutmut-cache/

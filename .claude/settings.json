@@ -2,7 +2,8 @@
   "model": "sonnet",
   "env": {
     "CLAUDE_CODE_AUTO_COMPACT_WINDOW": "250000",
-    "CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH": "1"
+    "CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH": "1",
+    "UV_CACHE_DIR": ".uv-cache"
   },
   "permissions": {
     "deny": [

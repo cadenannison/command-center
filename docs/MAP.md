@@ -36,7 +36,12 @@ two files for that rule.
 | redis | `adapters/queue_redis.py` |
 | rumps | `adapters/menubar_rumps.py` |
 
-These files do not exist yet; the contracts already name them.
+`keyring_store.py` exists; the other files do not exist yet and the contracts already name them.
+Other built adapters: `net_guard.py` (DNS-time SSRF check), `system_clock.py` (the real `Clock`).
+
+## Settings
+`src/command_center/config.py` (`Settings`, env prefix `CC_`) is imported by composition roots only; no
+layer reads the environment itself. Enforced by review only: no import-linter contract covers it yet. Storage's `sqlite.py` takes the database URL as a parameter.
 
 ## Where things live
 - Rules for agents: `AGENTS.md`; Claude-only: `CLAUDE.md`, `.claude/`
