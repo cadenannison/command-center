@@ -57,5 +57,5 @@ async def put_settings(
     responses={**NOT_FOUND, **INVALID_REQUEST},
 )
 async def delete_settings(source: str, container: ContainerDep) -> SourceSettings:
-    """Delete every stored key of the source."""
+    """Delete every stored key and every stored event of the source."""
     return await container.settings.disconnect(source)

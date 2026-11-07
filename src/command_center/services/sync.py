@@ -24,7 +24,7 @@ type Sleep = Callable[[float], Awaitable[None]]
 
 
 class SyncService:
-    """Fetches from source adapters over the sync window and upserts the result."""
+    """Fetches from source adapters over the sync window and replaces the source's events."""
 
     def __init__(
         self,
@@ -60,6 +60,14 @@ class SyncService:
         self._forgotten[source] = self._forgotten.get(source, 0) + 1
         self._states.pop(source, None)
 
+    async def purge(self, source: str) -> None:
+        """Forget source's sync result and delete its stored events (after a disconnect).
+
+        Forgetting comes first, so a sync still running deletes what it writes late (0029).
+        """
+        self.forget(source)
+        await asyncio.to_thread(self._events.delete_source, source)
+
     def error_state(self, source: str, message: str) -> SyncState:
         """An error state for source, to report without replacing its last sync result."""
         return SyncState(source=source, status="error", message=message, at=self._clock.now())
@@ -93,14 +101,24 @@ class SyncService:
             except Exception:
                 # A bug must not leave the source "syncing" forever.
                 self._remember(source, "error", UNEXPECTED_MESSAGE)
-                self._discard_if_forgotten(source, forgotten)
+                try:
+                    await self._discard_if_forgotten(source, forgotten)
+                except Exception:
+                    # The sync's own failure is the one the caller needs to see.
+                    logger.exception(
+                        "cleanup of %s after a failed sync also failed",
+                        source,
+                        extra={"source": source},
+                    )
                 raise
-            self._discard_if_forgotten(source, forgotten)
+            await self._discard_if_forgotten(source, forgotten)
             return state
 
-    def _discard_if_forgotten(self, source: str, forgotten_before: int) -> None:
+    async def _discard_if_forgotten(self, source: str, forgotten_before: int) -> None:
         if self._forgotten.get(source, 0) != forgotten_before:
             self._states.pop(source, None)
+            # The disconnect may have deleted the events before this sync wrote them (0029).
+            await asyncio.to_thread(self._events.delete_source, source)
 
     async def sync_all(self) -> list[SyncState]:
         """Sync every source concurrently; one source's failure does not affect the others."""
@@ -131,7 +149,8 @@ class SyncService:
         except FatalError as exc:
             logger.warning("sync of %s failed: %s", source, describe(exc), extra={"source": source})
             return self._remember(source, "error", f"Sync failed: {describe(exc)}")
-        written = await asyncio.to_thread(self._events.upsert, fetched)
+        # Only a fully fetched result gets here: replace deletes whatever it does not contain.
+        written = await asyncio.to_thread(self._events.replace, source, window, fetched)
         return self._remember(source, "ok", f"Synced {written} items")
 
     async def _fetch_with_retry(

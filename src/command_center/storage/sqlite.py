@@ -3,6 +3,7 @@
 from collections.abc import Collection, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any, cast
 
 from sqlalchemy import (
     JSON,
@@ -14,11 +15,13 @@ from sqlalchemy import (
     TypeDecorator,
     and_,
     create_engine,
+    delete,
     or_,
     select,
 )
-from sqlalchemy.engine import make_url
+from sqlalchemy.engine import CursorResult, make_url
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
+from sqlalchemy.sql.elements import ColumnElement
 
 from command_center.core.schema import Event, EventKind
 from command_center.core.windows import TimeWindow
@@ -100,6 +103,41 @@ class SqliteEventStore:
                 session.merge(_to_row(event))
         return len(distinct)
 
+    def replace(
+        self,
+        source: str,
+        window: TimeWindow,
+        events: Sequence[Event],
+        *,
+        user_id: str = "local",
+    ) -> int:
+        for event in events:
+            if event.user_id != user_id:
+                msg = f"Event {event.id} has user_id {event.user_id!r}, expected {user_id!r}"
+                raise ValueError(msg)
+            if event.source != source:
+                msg = f"Event {event.id} has source {event.source!r}, expected {source!r}"
+                raise ValueError(msg)
+        distinct = {event.id: event for event in events}
+        stale = delete(_EventRow).where(
+            _EventRow.user_id == user_id,
+            _EventRow.source == source,
+            _matches_window(window),
+        )
+        # One transaction: a failure while writing rolls the delete back too.
+        with self._sessions.begin() as session:
+            session.execute(stale)
+            for event in distinct.values():
+                session.merge(_to_row(event))
+        return len(distinct)
+
+    def delete_source(self, source: str, *, user_id: str = "local") -> int:
+        statement = delete(_EventRow).where(
+            _EventRow.user_id == user_id, _EventRow.source == source
+        )
+        with self._sessions.begin() as session:
+            return cast("CursorResult[Any]", session.execute(statement)).rowcount
+
     def query(
         self,
         window: TimeWindow,
@@ -107,28 +145,29 @@ class SqliteEventStore:
         *,
         user_id: str = "local",
     ) -> list[Event]:
-        window_start = window.start.astimezone(UTC)
-        window_end = window.end.astimezone(UTC)
-        is_span = and_(_EventRow.end.is_not(None), _EventRow.end > _EventRow.anchor)
-        spans_window = and_(is_span, _EventRow.anchor < window_end, _EventRow.end > window_start)
-        point_in_window = and_(
-            or_(_EventRow.end.is_(None), _EventRow.end <= _EventRow.anchor),
-            _EventRow.anchor >= window_start,
-            _EventRow.anchor < window_end,
-        )
         statement = (
             select(_EventRow)
-            .where(
-                _EventRow.user_id == user_id,
-                _EventRow.anchor.is_not(None),
-                or_(spans_window, point_in_window),
-            )
+            .where(_EventRow.user_id == user_id, _matches_window(window))
             .order_by(_EventRow.anchor, _EventRow.id)
         )
         if kinds is not None:
             statement = statement.where(_EventRow.kind.in_(list(kinds)))
         with self._sessions() as session:
             return [_to_event(row) for row in session.scalars(statement)]
+
+
+def _matches_window(window: TimeWindow) -> ColumnElement[bool]:
+    """The one rule for "an event is in window", shared by query and replace (core.md)."""
+    window_start = window.start.astimezone(UTC)
+    window_end = window.end.astimezone(UTC)
+    is_span = and_(_EventRow.end.is_not(None), _EventRow.end > _EventRow.anchor)
+    spans_window = and_(is_span, _EventRow.anchor < window_end, _EventRow.end > window_start)
+    point_in_window = and_(
+        or_(_EventRow.end.is_(None), _EventRow.end <= _EventRow.anchor),
+        _EventRow.anchor >= window_start,
+        _EventRow.anchor < window_end,
+    )
+    return and_(_EventRow.anchor.is_not(None), or_(spans_window, point_in_window))
 
 
 def create_event_store(database_url: str) -> SqliteEventStore:

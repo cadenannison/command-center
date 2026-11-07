@@ -68,6 +68,44 @@ class InMemoryEventStore:
             self._events[(user_id, event_key)] = event
         return len(written)
 
+    def replace(
+        self,
+        source: str,
+        window: TimeWindow,
+        events: Sequence[Event],
+        *,
+        user_id: str = "local",
+    ) -> int:
+        for event in events:
+            if event.user_id != user_id:
+                msg = f"Event {event.id} has user_id {event.user_id!r}, expected {user_id!r}"
+                raise ValueError(msg)
+            if event.source != source:
+                msg = f"Event {event.id} has source {event.source!r}, expected {source!r}"
+                raise ValueError(msg)
+        stale = [
+            key
+            for key, event in self._events.items()
+            if key[0] == user_id
+            and event.source == source
+            and _anchor(event) is not None
+            and _overlaps(event, window)
+        ]
+        for key in stale:
+            del self._events[key]
+        # Through upsert, so subclasses that observe upsert calls also see a replace.
+        return self.upsert(events, user_id=user_id)
+
+    def delete_source(self, source: str, *, user_id: str = "local") -> int:
+        doomed = [
+            key
+            for key, event in self._events.items()
+            if key[0] == user_id and event.source == source
+        ]
+        for key in doomed:
+            del self._events[key]
+        return len(doomed)
+
     def query(
         self,
         window: TimeWindow,

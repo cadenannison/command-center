@@ -1,6 +1,6 @@
 # 0026. A disconnect wins over a sync that is already running
 
-Status: accepted
+Status: accepted. The clause that events a running sync already fetched stay stored is superseded by 0029.
 
 Context: With the sync running in the background (0025), `DELETE /v1/settings/{source}` can arrive while a sync is fetching. `disconnect` forgets the sync state but does not take the per-source lock, so the finishing sync wrote its result back and `GET /v1/settings` showed `keys: {}` with a sync result for a source the user had just disconnected.
 Decision: `SyncService.forget` counts how often each source was forgotten. A sync notes the count after it marks `syncing`; when it finishes (or fails) and the count has changed, it drops the state it just wrote. The sync's own return value is unchanged. Events a running sync already fetched are still stored (stored events of a disconnected source stay by design, see `services.md`). A sync that only starts after the disconnect finds no credentials and reports `reconnect`, "Not connected": that is true and is not suppressed.

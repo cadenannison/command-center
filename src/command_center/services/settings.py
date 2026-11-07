@@ -58,7 +58,7 @@ class SettingsService:
         return ConnectResult(source=source, ok=True, message=result.message, sync=state)
 
     async def disconnect(self, source: str) -> SourceSettings:
-        """Delete every stored key of source and forget its sync state."""
+        """Delete every stored key and stored event of source and forget its sync state."""
         if source not in self._adapters:
             raise UnknownSourceError(source)
         try:
@@ -66,7 +66,7 @@ class SettingsService:
         except SecretStoreError:
             state = self._sync.record_error(source, STORE_UNAVAILABLE_MESSAGE)
             return SourceSettings(source=source, keys={}, sync=state)
-        self._sync.forget(source)
+        await self._sync.purge(source)
         return SourceSettings(source=source, keys={}, sync=None)
 
     async def _source_settings(self, source: str) -> SourceSettings:

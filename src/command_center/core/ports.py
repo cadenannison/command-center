@@ -85,3 +85,26 @@ class EventStore(Protocol):
     ) -> list[Event]:
         """Return events in window (optionally only these kinds), ordered by time then id."""
         ...
+
+    def replace(
+        self,
+        source: str,
+        window: TimeWindow,
+        events: Sequence[Event],
+        *,
+        user_id: str = "local",
+    ) -> int:
+        """Atomically swap a source's events in window for events; call only after a full fetch.
+
+        In one transaction, delete the user's events of source that match window under the
+        same rules as query (undated events never match, so are never deleted), then upsert
+        events. On failure the old events remain; stored events outside window are kept.
+        Every stored event of source in window missing from events is deleted, so never pass
+        a partial result. An event whose user_id or source differs is a ValueError and nothing
+        changes. Returns the number of distinct events written.
+        """
+        ...
+
+    def delete_source(self, source: str, *, user_id: str = "local") -> int:
+        """Delete every event of source for the user, dated or undated; returns the count."""
+        ...

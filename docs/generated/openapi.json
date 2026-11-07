@@ -541,7 +541,7 @@
     },
     "/v1/settings/{source}": {
       "delete": {
-        "description": "Delete every stored key of the source.",
+        "description": "Delete every stored key and every stored event of the source.",
         "operationId": "delete_settings_v1_settings__source__delete",
         "parameters": [
           {
