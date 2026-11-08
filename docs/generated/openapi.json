@@ -59,6 +59,40 @@
         "title": "ConnectResult",
         "type": "object"
       },
+      "DailySummary": {
+        "additionalProperties": false,
+        "description": "A day's briefing. Plain str / list[str] fields: also the provider's output schema.",
+        "properties": {
+          "headline": {
+            "maxLength": 300,
+            "title": "Headline",
+            "type": "string"
+          },
+          "heads_up": {
+            "items": {
+              "maxLength": 300,
+              "type": "string"
+            },
+            "maxItems": 10,
+            "title": "Heads Up",
+            "type": "array"
+          },
+          "priorities": {
+            "items": {
+              "maxLength": 300,
+              "type": "string"
+            },
+            "maxItems": 10,
+            "title": "Priorities",
+            "type": "array"
+          }
+        },
+        "required": [
+          "headline"
+        ],
+        "title": "DailySummary",
+        "type": "object"
+      },
       "ErrorBody": {
         "description": "A plain error.",
         "properties": {
@@ -244,6 +278,29 @@
           "keys"
         ],
         "title": "SourceSettings",
+        "type": "object"
+      },
+      "SummaryResult": {
+        "description": "A summary and where it came from.\n\n`provider` is the provider's name for a fresh or cached summary, `\"stored\"` when an earlier\nday's summary stands in after a provider failure, and `\"template\"` for the built-in fallback.\n`cached` is true when the summary came from the store rather than from a provider call.",
+        "properties": {
+          "cached": {
+            "title": "Cached",
+            "type": "boolean"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/DailySummary"
+          }
+        },
+        "required": [
+          "summary",
+          "provider",
+          "cached"
+        ],
+        "title": "SummaryResult",
         "type": "object"
       },
       "SyncState": {
@@ -650,6 +707,60 @@
         "summary": "Connect a source",
         "tags": [
           "settings"
+        ]
+      }
+    },
+    "/v1/summary": {
+      "get": {
+        "description": "The summary for `date`, with the `provider` it came from and whether it was `cached`.\n\n404 when summaries are off (the default). A provider failure never fails the request: the\nlast stored summary (`provider` \"stored\") or a built-in one (`provider` \"template\") is returned.",
+        "operationId": "get_summary_v1_summary_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "date",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SummaryResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "summary": "The day's AI summary",
+        "tags": [
+          "summary"
         ]
       }
     },

@@ -1,15 +1,16 @@
 # Contract: services
 
-Application logic. Depends on core ports only; never an adapter, storage or framework. Every store call (`EventStore`, `SecretStore`) runs through `asyncio.to_thread` (decision 0016). Decisions: 0019-0026, 0028, 0029, 0034, 0035.
+Application logic. Depends on core ports only; never an adapter, storage or framework. Every store call (`EventStore`, `SecretStore`) runs through `asyncio.to_thread` (decision 0016). Decisions: 0019-0026, 0028, 0029, 0034, 0035, 0052, 0053.
 
 ## Public exports (module: names)
 - `sync`: `SyncService`, `MAX_RETRIES`, `STORE_UNAVAILABLE_MESSAGE`, `UNEXPECTED_MESSAGE`.
 - `agenda`: `AgendaService`, `ATTENTION_URGENCY`.
 - `settings`: `SettingsService`.
 - `models`: `SyncState`, `SourceSettings`, `ConnectResult`, `SyncStatus`.
-- `errors`: `UnknownSourceError`, `describe`.
+- `errors`: `UnknownSourceError`, `describe` (bounded, for log lines), `error_text` (uncut, the input of a display message), `safe_message`.
 - `horizon`: `horizon_window`.
 - `summary`: `SummaryService`, `SummaryResult`, `PROVIDER_STORED`, `PROVIDER_TEMPLATE`.
+- `scheduler`: `SyncScheduler`.
 - `container`: `Container(sync, agenda, settings, summary=None)`, the set the api serves; `summary` is `None` while summaries are off.
 
 ## Behaviour
@@ -25,7 +26,7 @@ Application logic. Depends on core ports only; never an adapter, storage or fram
   - `FatalError`: `error` with the reason; not retried.
   - `core.errors.SecretStoreError`: `error`, message exactly `secret store unavailable`.
 - Each retry and give-up is logged with the source, attempt, delay and reason in the message text (and as `extra` fields).
-- Messages carry the adapter's own error text (truncated to 200 characters); adapters must keep credentials out of it (`docs/contracts/adapters.md` rule 6).
+- Every message kept in a `SyncState` (from a sync, `record_error` or `error_state`) goes through `core.redact.redact`, then `trim(…, 200)`, before it is stored or returned: email addresses become `[email]`, digit runs of 6+ digits become `[number]`, and the whole message, prefix included, is at most 200 characters (decision 0052). Adapters must still keep credentials out of their error text (`docs/contracts/adapters.md` rule 6); redaction is the second line, not the first. `ConnectResult.message` gets the same treatment (see `SettingsService.connect`). The shared helper is `errors.safe_message`.
 - Syncs of one source are serialised. `state(source)`, `forget(source)`, `record_error(source, message)`, `sources()`.
 - Any other exception (a bug, a database failure) propagates, but first sets the state `error` "Sync failed unexpectedly" so the source is never left `syncing`.
 - `forget(source)` while a sync of that source runs: the running sync finishes but does not remember its result, so a disconnect is not undone (decision 0026). That sync also calls `events.delete_source(source)` after its write, so its events do not outlive the disconnect (decision 0029).
@@ -38,7 +39,7 @@ Application logic. Depends on core ports only; never an adapter, storage or fram
 - `attention()`: events in the horizon window around today whose rescored urgency is 70 or more, or that are emails with status `owed` or `overdue`; ordered by urgency descending, then time. An assignment overdue by more than 14 days is outside the horizon and is not listed.
 
 ### SettingsService(adapters, secrets, sync)
-- `connect(source, creds) -> ConnectResult`: `adapter.validate(creds)`. If `ok`, stores each field of `{**creds, **updated_creds}` with `secrets.set` (keys not mentioned stay), then marks the source `syncing` and returns that state. It does not sync: the caller runs `SyncService.sync(source)` afterwards (decision 0025). If not `ok`, or `validate` raises `AuthExpired`/`TransientError`/`FatalError`, returns `ok=false` with a message and stores nothing. A store failure returns `ok=false`, message `secret store unavailable`, and an error state; keys written before the failure stay stored (there is no per-key rollback). Unknown source: `UnknownSourceError`.
+- `connect(source, creds) -> ConnectResult`: loads the stored credentials and overlays the submitted fields whose value is not blank (`value.strip()` non-empty); a blank or whitespace-only field keeps the stored value, and clearing a field means disconnect then reconnect (decision 0052). `adapter.validate(merged)` sees that merged set, stored keys included. If `ok`, stores each key of `{**merged, **updated_creds}` whose value differs from the stored one with `secrets.set`, then marks the source `syncing` and returns that state. It does not sync: the caller runs `SyncService.sync(source)` afterwards (decision 0025). If not `ok`, or `validate` raises `AuthExpired`/`TransientError`/`FatalError`, returns `ok=false` with a message and stores nothing. Every message that comes from the adapter or wraps its error text (accepted, rejected, `Could not validate credentials: …`) goes through `errors.safe_message` (redact, then 200 characters, prefix included) before it is returned (decision 0052). A store failure, on the read or on a write, returns `ok=false`, message `secret store unavailable`, and an error state; a read failure validates and stores nothing, a write failure leaves the keys written before it stored (there is no per-key rollback). Unknown source: `UnknownSourceError`.
 - `status() -> list[SourceSettings]`: per registered source, per key `{set, last4}` (core `SecretStatus`) plus its `SyncState` or None. Never a value. If the store is unavailable the entry has no keys and an error state, which is reported but does not replace the remembered sync result.
 - `disconnect(source) -> SourceSettings`: deletes every key, then `SyncService.purge(source)`: forgets the sync state and deletes every stored event of the source, dated or not (decision 0029). If the secret store is unavailable it returns the error state and neither forgets nor deletes. Unknown source: `UnknownSourceError`.
 
@@ -49,10 +50,14 @@ Opt-in (decision 0004): the composition root builds it only when `Settings.summa
 - One lock serialises requests, so concurrent requests for a new day make one provider call. Store calls run through `asyncio.to_thread`. There is no expiry: a summary built before the day's first sync stands until the next day. Decisions: 0034, 0035, 0040.
 - `for_day(day) -> str | None`: the summary as text (`headline`, then `Priorities: a; b`, then `Heads up: c`), the method the web page calls on `container.summary`.
 
+### SyncScheduler(sync, interval_minutes, *, sleep=asyncio.sleep)
+- `start()` creates one asyncio task on the running loop (a second call does nothing); `stop()` cancels it and waits. `run()` is `sync_all`, then a wait of `interval_minutes`, forever.
+- A round that raises is logged at WARNING with the exception class only (never its message, which may carry a credential) and the loop carries on. Cancellation is the only way it ends.
+- `api.create_app(..., sync_interval_minutes=N)` starts it in the lifespan and stops it at shutdown; `app.py` passes `Settings.sync_interval_minutes`. The summary is not scheduled: `SummaryService.get` builds it on the first request for a day (decision 0053).
+
 ### Secret store errors
 Services catch `core.errors.SecretStoreError` (decision 0024) and report only the fixed text `secret store unavailable`; the error's own message is never copied into a state, result or log line.
 
 ## Not built yet
-- Wiring `SummaryService` in the composition roots when `summary_enabled` (decision 0037).
-- Scheduled sync (`Settings.sync_interval_minutes` is not used yet; workers will call `sync_all`).
+- Scheduled sync by workers in distributed mode (the in-process `SyncScheduler` serves the single-process app).
 - Pairing: issues and checks short-lived tokens.

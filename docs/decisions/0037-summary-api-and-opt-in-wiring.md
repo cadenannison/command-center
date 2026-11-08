@@ -1,6 +1,6 @@
 # 0037. The summary route answers 404 while summaries are off; the response nests the summary
 
-Status: accepted
+Status: accepted; the router is now mounted and the service built in app.py (0053)
 
 Context: The card asks for `GET /v1/summary?date=` returning the summary plus `{provider, cached}`, a `router` that is not mounted, and no edits to `app.py`. Opt-in must hold by default (decision 0004).
 Decision: `Container` gains `summary: SummaryService | None = None`. `None` means summaries are off: no provider was built and the route answers 404 `Summaries are off`. The composition root builds the service only when `Settings.summary_enabled` is true. The response is `{"summary": {headline, priorities, heads_up}, "provider": str, "cached": bool}`; `date` is required, as for the agenda routes. A provider failure is still 200 (`provider` `stored` or `template`). `SummaryService.for_day(day) -> str | None` is a plain-text view for the web page, which already reads `container.summary` through that method.

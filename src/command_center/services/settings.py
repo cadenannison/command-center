@@ -5,7 +5,7 @@ from collections.abc import Mapping
 
 from command_center.core.errors import AuthExpired, FatalError, SecretStoreError, TransientError
 from command_center.core.ports import SecretStore, SourceAdapter
-from command_center.services.errors import UnknownSourceError, describe
+from command_center.services.errors import UnknownSourceError, error_text, safe_message
 from command_center.services.models import ConnectResult, SourceSettings
 from command_center.services.sync import STORE_UNAVAILABLE_MESSAGE, SyncService
 
@@ -28,7 +28,10 @@ class SettingsService:
         return [await self._source_settings(source) for source in self._adapters]
 
     async def connect(self, source: str, creds: Mapping[str, str]) -> ConnectResult:
-        """Validate creds and store them (merged key by key); the caller then runs the sync.
+        """Validate the stored credentials overlaid by creds, store them; the caller then syncs.
+
+        Submitted fields that are blank or only whitespace keep the stored value, so a field
+        is cleared by disconnecting and reconnecting. The adapter validates the merged set.
 
         A successful result carries the source's state as "syncing". Running the sync is the
         caller's job (`SyncService.sync`), so connecting never waits for a slow source.
@@ -39,23 +42,33 @@ class SettingsService:
         if adapter is None:
             raise UnknownSourceError(source)
         try:
-            result = await adapter.validate(creds)
+            stored = dict(await asyncio.to_thread(self._secrets.get, source))
+        except SecretStoreError:
+            return self._store_unavailable(source)
+        merged = {**stored, **{key: value for key, value in creds.items() if value.strip()}}
+        try:
+            result = await adapter.validate(merged)
         except AuthExpired:
             return ConnectResult(source=source, ok=False, message="Credentials were rejected")
         except (TransientError, FatalError) as exc:
-            message = f"Could not validate credentials: {describe(exc)}"
-            return ConnectResult(source=source, ok=False, message=message)
+            message = f"Could not validate credentials: {error_text(exc)}"
+            return ConnectResult(source=source, ok=False, message=safe_message(message))
         if not result.ok:
-            return ConnectResult(source=source, ok=False, message=result.message)
-        merged = {**creds, **(result.updated_creds or {})}
+            return ConnectResult(source=source, ok=False, message=safe_message(result.message))
+        final = {**merged, **(result.updated_creds or {})}
         try:
-            for key, value in merged.items():
-                await asyncio.to_thread(self._secrets.set, source, key, value)
+            for key, value in final.items():
+                if stored.get(key) != value:
+                    await asyncio.to_thread(self._secrets.set, source, key, value)
         except SecretStoreError:
-            state = self._sync.record_error(source, STORE_UNAVAILABLE_MESSAGE)
-            return ConnectResult(source=source, ok=False, message=state.message, sync=state)
+            return self._store_unavailable(source)
         state = self._sync.mark_syncing(source)
-        return ConnectResult(source=source, ok=True, message=result.message, sync=state)
+        message = safe_message(result.message)
+        return ConnectResult(source=source, ok=True, message=message, sync=state)
+
+    def _store_unavailable(self, source: str) -> ConnectResult:
+        state = self._sync.record_error(source, STORE_UNAVAILABLE_MESSAGE)
+        return ConnectResult(source=source, ok=False, message=state.message, sync=state)
 
     async def disconnect(self, source: str) -> SourceSettings:
         """Delete every stored key and stored event of source and forget its sync state."""

@@ -237,7 +237,10 @@ def test_a_blank_field_keeps_the_stored_value(rig: WebRig) -> None:
         "base_url": BASE_URL,
         "token": "fake-canvas-token-NEWW5678",
     }
-    assert rig.adapters["canvas"].validations[-1] == {"token": "fake-canvas-token-NEWW5678"}
+    assert rig.adapters["canvas"].validations[-1] == {
+        "base_url": BASE_URL,
+        "token": "fake-canvas-token-NEWW5678",
+    }
 
 
 def test_surrounding_whitespace_is_trimmed(rig: WebRig) -> None:
@@ -259,14 +262,14 @@ def test_a_blank_submit_on_an_unconfigured_source_does_not_reach_the_service(rig
     assert rig.adapters["canvas"].validations == []
 
 
-def test_a_blank_submit_on_a_configured_source_is_passed_on_so_the_adapter_decides(
+def test_a_blank_submit_on_a_configured_source_validates_the_stored_credentials(
     rig: WebRig,
 ) -> None:
     connect_canvas(rig)
 
     put(rig, "canvas", token="")
 
-    assert rig.adapters["canvas"].validations[-1] == {}
+    assert rig.adapters["canvas"].validations[-1] == {"base_url": BASE_URL, "token": CRED}
 
 
 def test_a_value_over_the_limit_is_refused_without_saving(rig: WebRig) -> None:

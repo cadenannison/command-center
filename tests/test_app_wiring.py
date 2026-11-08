@@ -9,6 +9,8 @@ from command_center.api import create_app as create_api_app
 from command_center.app import build_container, create_app
 from command_center.config import Settings
 
+SOURCES = ["canvas", "apple_calendar", "learningsuite", "gmail", "weather"]
+
 
 @pytest.fixture
 def settings(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Settings:
@@ -20,7 +22,7 @@ def settings(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Settings:
 def test_build_container_wires_real_storage_with_no_sources_registered(settings: Settings) -> None:
     container = build_container(settings)
 
-    assert container.sync.sources() == []
+    assert container.sync.sources() == SOURCES
 
 
 def test_the_real_container_serves_an_empty_agenda_and_settings(settings: Settings) -> None:
@@ -28,8 +30,8 @@ def test_the_real_container_serves_an_empty_agenda_and_settings(settings: Settin
 
     with TestClient(app, base_url="http://localhost") as client:
         assert client.get("/v1/agenda/day", params={"date": "2026-11-07"}).json() == []
-        assert client.get("/v1/settings").json() == []
-        assert client.post("/v1/sync").json() == []
+        assert [item["source"] for item in client.get("/v1/settings").json()] == SOURCES
+        assert [state["source"] for state in client.post("/v1/sync").json()] == SOURCES
 
 
 def test_the_production_app_builds_nothing_until_it_starts(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -4,6 +4,7 @@ from collections.abc import Collection, Mapping, Sequence
 from datetime import date, datetime
 from typing import Protocol
 
+from command_center.core.jobs import DeadLetter, Job
 from command_center.core.schema import Event, EventKind, SecretStatus, ValidationResult
 from command_center.core.summary import DailySummary
 from command_center.core.windows import TimeWindow
@@ -137,4 +138,35 @@ class SummaryStore(Protocol):
 
     def latest_before(self, day: date, *, user_id: str = "local") -> DailySummary | None:
         """Return the summary of the user's latest stored day strictly before day, or None."""
+        ...
+
+
+class JobQueue(Protocol):
+    """At-least-once queue of Jobs, shared by the scheduler and the workers."""
+
+    async def publish(self, job: Job) -> None:
+        """Add job to the queue."""
+        ...
+
+    async def consume(self, group: str, consumer: str, block_ms: int) -> Job | None:
+        """Take the next ready job, waiting up to block_ms (0 = do not wait); None if none.
+
+        A job that is not acked is redelivered after the visibility timeout with attempt + 1.
+        """
+        ...
+
+    async def ack(self, job: Job) -> None:
+        """Mark job done; a job that is not in flight is a no-op."""
+        ...
+
+    async def fail(self, job: Job, reason: str) -> None:
+        """Requeue job as attempt + 1 after RetryPolicy.delay, or dead-letter it when exhausted.
+
+        Dead-lettering applies when RetryPolicy.exhausted(job.attempt); a job that is not in
+        flight is a no-op.
+        """
+        ...
+
+    async def list_dead_letters(self) -> list[DeadLetter]:
+        """Return the jobs that gave up, with reason and time."""
         ...

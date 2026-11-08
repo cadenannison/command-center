@@ -7,10 +7,10 @@ Readable copy of the boundaries enforced in `pyproject.toml` (`[tool.importlinte
 | Layer (`src/command_center/...`) | May import | Role |
 |---|---|---|
 | `core` | nothing in the app | pure: schema, ports (Protocols in `core/ports.py`), errors, urgency scoring, redaction, window math, URL check (`urlcheck`) |
-| `services` | core | application logic against ports: sync, agenda, settings, the `Container` the api serves |
+| `services` | core | application logic against ports: sync, the sync scheduler, agenda, settings, summary, the `Container` the api serves |
 | `adapters` | core | Canvas, CalDAV (Apple), iCal feed, Gmail, weather, summary providers, keyring store, queue impls, menu-bar |
 | `storage` | core | SQLite (default) and Postgres persistence |
-| `api` | services, core | REST under `/v1` (`api.create_app(container)`); `docs/generated/openapi.json` is the contract |
+| `api` | services, core, and `web` (only `api/factory.py`, to mount the pages) | REST under `/v1` (`api.create_app(container)`); `docs/generated/openapi.json` is the contract |
 | `web` | services, core | Jinja2 + HTMX views |
 | `workers` | services, core | background sources: in-process by default, one per source in distributed mode |
 | `desktop` | services, core | macOS menu-bar launcher |
@@ -19,7 +19,7 @@ Readable copy of the boundaries enforced in `pyproject.toml` (`[tool.importlinte
 `core` also may not import httpx, sqlalchemy, fastapi or keyring. No layer imports `app`.
 
 ## Composition roots (the only files that build concrete infrastructure)
-- `src/command_center/app.py` (API process): `build_container()`, the production `create_app()`, and `main()`
+- `src/command_center/app.py` (API process): `build_adapters()`, `build_container()` (registers the five sources; builds the summary only when `summary_enabled`), `build_app(settings)`, the production `create_app()`, and `main()`
 - `src/command_center/workers/__main__.py` (worker processes)
 - `src/command_center/desktop/main.py` (menu-bar app)
 
@@ -36,8 +36,8 @@ two files for that rule.
 | redis | `adapters/queue_redis.py` |
 | rumps | `adapters/menubar_rumps.py` |
 
-`keyring_store.py`, `caldav_apple.py`, `summary_gemini.py`, `gmail.py` and `weather.py` exist; the other files do not exist yet and the contracts already name them.
-Other built adapters: `net_guard.py` (DNS-time SSRF check), `system_clock.py` (the real `Clock`), `ical_feed.py` (LearningSuite feeds), `ical_events.py` (iCalendar parsing shared by `ical_feed.py` and `caldav_apple.py`), `summary_ollama.py` (the local summary provider).
+`keyring_store.py`, `caldav_apple.py`, `summary_gemini.py`, `gmail.py`, `weather.py` and `queue_redis.py` exist; `menubar_rumps.py` does not exist yet and the contracts already name it.
+Other built adapters: `net_guard.py` (DNS-time SSRF check), `system_clock.py` (the real `Clock`), `ical_feed.py` (LearningSuite feeds), `ical_events.py` (iCalendar parsing shared by `ical_feed.py` and `caldav_apple.py`), `summary_ollama.py` (the local summary provider), `inprocess_queue.py` (the default `JobQueue`) and `json_log.py` (JSON log formatter).
 
 `adapters/gmail.py` also imports google-auth (`google.oauth2`, `google.auth`), which shares the `google`
 namespace with google-genai, so the google-genai contract lists `adapters.gmail -> google` as an ignored

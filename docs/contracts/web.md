@@ -1,11 +1,11 @@
 # Contract: web
 
-Jinja2 + HTMX pages over the services. Imports services and core only. Decisions: 0008, 0038, 0039.
+Jinja2 + HTMX pages over the services. Imports services and core only. Decisions: 0008, 0038, 0039, 0054.
 
 ## Public API
 - `command_center.web.create_router(container=None, *, csrf_token=None) -> APIRouter`. Mount it at `/`. It is hidden from OpenAPI. Without `container` it uses `request.app.state.container`.
 - Mount it only on an app that has the API's `TrustedHostMiddleware` (`api.factory`): the CSRF token sits in the page, and the Host check is what stops a DNS-rebinding page from reading it. The router does not check the Host itself.
-- The page expects `/static/vendor/htmx.min.js` to be served by whoever mounts it (not in this repo yet). Nothing else is loaded from outside.
+- The page expects `/static/vendor/htmx.min.js`. The file is vendored at `web/static/vendor/htmx.min.js` (htmx 2.0.11, decision 0054) and `api.create_app` serves `web/static` at `/static`. Nothing else is loaded from outside.
 
 ## Routes
 | Path | Method | What |

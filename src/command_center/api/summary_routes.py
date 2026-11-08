@@ -1,4 +1,4 @@
-"""The opt-in daily summary. Not mounted by `create_app` yet; see decision 0037."""
+"""The opt-in daily summary, always mounted; 404 while summaries are off (decisions 0037, 0053)."""
 
 from datetime import date
 from typing import Annotated

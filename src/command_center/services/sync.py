@@ -9,7 +9,7 @@ from command_center.core.errors import AuthExpired, FatalError, SecretStoreError
 from command_center.core.ports import Clock, EventStore, SecretStore, SourceAdapter
 from command_center.core.schema import Event
 from command_center.core.windows import TimeWindow
-from command_center.services.errors import UnknownSourceError, describe
+from command_center.services.errors import UnknownSourceError, describe, error_text, safe_message
 from command_center.services.horizon import horizon_window
 from command_center.services.models import SyncState, SyncStatus
 
@@ -70,7 +70,9 @@ class SyncService:
 
     def error_state(self, source: str, message: str) -> SyncState:
         """An error state for source, to report without replacing its last sync result."""
-        return SyncState(source=source, status="error", message=message, at=self._clock.now())
+        return SyncState(
+            source=source, status="error", message=safe_message(message), at=self._clock.now()
+        )
 
     def mark_syncing(self, source: str) -> SyncState:
         """Record that source is syncing, so a reader sees it before the sync has begun."""
@@ -141,14 +143,14 @@ class SyncService:
             logger.warning("sync of %s needs reconnect", source, extra={"source": source})
             return self._remember(source, "reconnect", "Credentials were rejected; reconnect")
         except TransientError as exc:
-            message = f"Source unreachable after {MAX_RETRIES} retries: {describe(exc)}"
+            message = f"Source unreachable after {MAX_RETRIES} retries: {error_text(exc)}"
             logger.warning(
                 "sync of %s gave up: %s", source, describe(exc), extra={"source": source}
             )
             return self._remember(source, "error", message)
         except FatalError as exc:
             logger.warning("sync of %s failed: %s", source, describe(exc), extra={"source": source})
-            return self._remember(source, "error", f"Sync failed: {describe(exc)}")
+            return self._remember(source, "error", f"Sync failed: {error_text(exc)}")
         # Only a fully fetched result gets here: replace deletes whatever it does not contain.
         written = await asyncio.to_thread(self._events.replace, source, window, fetched)
         return self._remember(source, "ok", f"Synced {written} items")
@@ -186,6 +188,8 @@ class SyncService:
                 await self._sleep(delay)
 
     def _remember(self, source: str, status: SyncStatus, message: str) -> SyncState:
-        state = SyncState(source=source, status=status, message=message, at=self._clock.now())
+        state = SyncState(
+            source=source, status=status, message=safe_message(message), at=self._clock.now()
+        )
         self._states[source] = state
         return state

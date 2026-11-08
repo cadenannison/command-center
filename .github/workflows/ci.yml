@@ -67,6 +67,31 @@ jobs:
       - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
         with: { fail-on-severity: high }
 
+  # Not required and not in "gate": runs the env-guarded Redis cases of the JobQueue contract suite
+  # against a real Redis (decision 0047). A red run here does not block a merge.
+  integration:
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions: { contents: read }
+    services:
+      redis:
+        image: redis:7.4-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      CC_TEST_REDIS_URL: redis://localhost:6379/0
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
+      - uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
+      - run: uv sync --all-extras
+      - run: uv run pytest tests/test_job_queue_contract.py --no-cov
+
   # The single required status check: mark only "gate" as required in branch protection.
   gate:
     if: always() && github.event_name != 'schedule'
