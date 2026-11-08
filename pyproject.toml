@@ -28,6 +28,9 @@ dependencies = [
 [project.optional-dependencies]
 distributed = ["redis>=8.1.0", "psycopg[binary]>=3.3.8"]
 desktop = ["rumps>=0.4.0; sys_platform == 'darwin'"]
+postgres = [
+    "psycopg[binary]>=3.3.8",
+]
 
 [project.scripts]
 command-center = "command_center.app:main"
