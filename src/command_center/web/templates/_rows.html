@@ -1,0 +1,13 @@
+{% macro rows(items, empty) %}
+{% if items %}
+<ul class="rows">
+{% for r in items %}
+<li class="row kind-{{ r.kind }}{% if r.urgent %} urgent{% endif %}">
+<span class="when">{{ r.when }}</span>
+<span class="title">{% if r.link %}<a href="{{ r.link }}" target="_blank" rel="noopener noreferrer">{{ r.title }}</a>{% else %}{{ r.title }}{% endif %}{% if r.status %} <span class="muted">({{ r.status }})</span>{% endif %}</span>
+<span class="badge" title="Urgency">{{ r.urgency }}</span>
+</li>
+{% endfor %}
+</ul>
+{% else %}<p class="muted">{{ empty }}</p>{% endif %}
+{% endmacro %}

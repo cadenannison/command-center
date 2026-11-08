@@ -20,6 +20,9 @@ dependencies = [
   "google-api-python-client>=2.201.0",
   "google-genai>=3.0.0",
   "qrcode>=8.2",
+  "recurring-ical-events>=3.8.2",
+  "httplib2>=0.32.1",
+  "google-auth-httplib2>=0.4.4",
 ]
 
 [project.optional-dependencies]
@@ -198,7 +201,10 @@ type = "forbidden"
 source_modules = ["command_center"]
 forbidden_modules = ["google"]
 unmatched_ignore_imports_alerting = "none"   # the named adapter/root files are not built yet
-ignore_imports = ["command_center.adapters.summary_gemini -> google"]
+ignore_imports = [
+  "command_center.adapters.summary_gemini -> google",
+  "command_center.adapters.gmail -> google",   # decision 0043
+]
 
 [[tool.importlinter.contracts]]
 name = "keyring only in adapters/keyring_store.py"

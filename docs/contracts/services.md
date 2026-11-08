@@ -1,6 +1,6 @@
 # Contract: services
 
-Application logic. Depends on core ports only; never an adapter, storage or framework. Every store call (`EventStore`, `SecretStore`) runs through `asyncio.to_thread` (decision 0016). Decisions: 0019-0026, 0028, 0029.
+Application logic. Depends on core ports only; never an adapter, storage or framework. Every store call (`EventStore`, `SecretStore`) runs through `asyncio.to_thread` (decision 0016). Decisions: 0019-0026, 0028, 0029, 0034, 0035.
 
 ## Public exports (module: names)
 - `sync`: `SyncService`, `MAX_RETRIES`, `STORE_UNAVAILABLE_MESSAGE`, `UNEXPECTED_MESSAGE`.
@@ -9,7 +9,8 @@ Application logic. Depends on core ports only; never an adapter, storage or fram
 - `models`: `SyncState`, `SourceSettings`, `ConnectResult`, `SyncStatus`.
 - `errors`: `UnknownSourceError`, `describe`.
 - `horizon`: `horizon_window`.
-- `container`: `Container(sync, agenda, settings)`, the set the api serves.
+- `summary`: `SummaryService`, `SummaryResult`, `PROVIDER_STORED`, `PROVIDER_TEMPLATE`.
+- `container`: `Container(sync, agenda, settings, summary=None)`, the set the api serves; `summary` is `None` while summaries are off.
 
 ## Behaviour
 ### SyncService(adapters, secrets, events, clock, *, sleep=asyncio.sleep)
@@ -33,6 +34,7 @@ Application logic. Depends on core ports only; never an adapter, storage or fram
 
 ### AgendaService(events, clock, tz)
 - `day(date)`, `week(date)` (Monday start), `month(date)`, `between(window)`: events in the window, in `tz`, **re-scored** with `core.scoring.urgency(event, clock.now().astimezone(tz))` (the stored urgency is ignored), ordered by `start` (else `due`) then id.
+- `today() -> date` and `tz` (property): the calendar day it is now in the configured timezone, and that timezone. Views use them to pick the default day and to group events by local day (decision 0038).
 - `attention()`: events in the horizon window around today whose rescored urgency is 70 or more, or that are emails with status `owed` or `overdue`; ordered by urgency descending, then time. An assignment overdue by more than 14 days is outside the horizon and is not listed.
 
 ### SettingsService(adapters, secrets, sync)
@@ -40,10 +42,17 @@ Application logic. Depends on core ports only; never an adapter, storage or fram
 - `status() -> list[SourceSettings]`: per registered source, per key `{set, last4}` (core `SecretStatus`) plus its `SyncState` or None. Never a value. If the store is unavailable the entry has no keys and an error state, which is reported but does not replace the remembered sync result.
 - `disconnect(source) -> SourceSettings`: deletes every key, then `SyncService.purge(source)`: forgets the sync state and deletes every stored event of the source, dated or not (decision 0029). If the secret store is unavailable it returns the error state and neither forgets nor deletes. Unknown source: `UnknownSourceError`.
 
+### SummaryService(agenda, store, provider, clock, tz, *, include_email=False)
+Opt-in (decision 0004): the composition root builds it only when `Settings.summary_enabled` is true, so with the default there is no provider and nothing is sent.
+- `get(day) -> SummaryResult(summary, provider, cached)`: a stored summary for `day` is returned at once (`cached` true, `provider` the configured provider's name) and the provider is not called. Otherwise the events are `agenda.day(day)` plus, when `day` is today in `tz`, `agenda.attention()` (deduplicated by id); email events are dropped unless `include_email`; due dates are converted to `tz`. The prompt is `core.summary.build_prompt(events, include_email, day)`; one provider call; a success is stored and returned (`cached` false).
+- `SummaryProviderError` (incl. `SummaryRateLimited`) from the provider, logged by provider and class of failure: return `store.latest_before(day)` (an earlier day only) as `provider="stored"` (`cached` true), else `template_summary` as `provider="template"` (`cached` false). Fallbacks are never stored, so the next request retries. Any other exception propagates. No events to describe: the provider is not called; the template is returned, unstored.
+- One lock serialises requests, so concurrent requests for a new day make one provider call. Store calls run through `asyncio.to_thread`. There is no expiry: a summary built before the day's first sync stands until the next day. Decisions: 0034, 0035, 0040.
+- `for_day(day) -> str | None`: the summary as text (`headline`, then `Priorities: a; b`, then `Heads up: c`), the method the web page calls on `container.summary`.
+
 ### Secret store errors
 Services catch `core.errors.SecretStoreError` (decision 0024) and report only the fixed text `secret store unavailable`; the error's own message is never copied into a state, result or log line.
 
 ## Not built yet
-- Summary orchestration: runs redaction, then the chosen provider, only when the user has opted in.
+- Wiring `SummaryService` in the composition roots when `summary_enabled` (decision 0037).
 - Scheduled sync (`Settings.sync_interval_minutes` is not used yet; workers will call `sync_all`).
 - Pairing: issues and checks short-lived tokens.

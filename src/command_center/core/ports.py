@@ -1,10 +1,11 @@
 """Ports the pure core depends on. Time, randomness and ids are passed in, never global."""
 
 from collections.abc import Collection, Mapping, Sequence
-from datetime import datetime
+from datetime import date, datetime
 from typing import Protocol
 
 from command_center.core.schema import Event, EventKind, SecretStatus, ValidationResult
+from command_center.core.summary import DailySummary
 from command_center.core.windows import TimeWindow
 
 
@@ -107,4 +108,33 @@ class EventStore(Protocol):
 
     def delete_source(self, source: str, *, user_id: str = "local") -> int:
         """Delete every event of source for the user, dated or undated; returns the count."""
+        ...
+
+
+class SummaryProvider(Protocol):
+    """One AI backend that turns a redacted prompt into a DailySummary."""
+
+    @property
+    def name(self) -> str:
+        """Stable provider name, for example "gemini"."""
+        ...
+
+    async def summarize(self, prompt: str) -> DailySummary:
+        """Return the summary for prompt; raises SummaryRateLimited or SummaryProviderError."""
+        ...
+
+
+class SummaryStore(Protocol):
+    """Synchronous persistence for one DailySummary per (user, day)."""
+
+    def get(self, day: date, *, user_id: str = "local") -> DailySummary | None:
+        """Return the summary stored for day, or None."""
+        ...
+
+    def put(self, day: date, summary: DailySummary, *, user_id: str = "local") -> None:
+        """Store summary for day, replacing any existing row for that user and day."""
+        ...
+
+    def latest_before(self, day: date, *, user_id: str = "local") -> DailySummary | None:
+        """Return the summary of the user's latest stored day strictly before day, or None."""
         ...

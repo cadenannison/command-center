@@ -19,3 +19,14 @@ class FatalError(SourceError):
 
 class SecretStoreError(Exception):
     """The secret store (OS keychain) cannot be used. The message says why, never a secret value."""
+
+
+class SummaryProviderError(Exception):
+    """A summary provider failed (unreachable, bad key, malformed output).
+
+    The message never carries a secret or the prompt.
+    """
+
+
+class SummaryRateLimited(SummaryProviderError):  # noqa: N818  (name fixed by the task card)
+    """The summary provider rejected the call for rate or quota reasons; retry later."""

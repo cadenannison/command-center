@@ -1,0 +1,3 @@
+{% macro connect_button(card, oob=False) %}
+<button type="submit" class="connect" id="connect-{{ card.source }}" form="form-{{ card.source }}"{% if oob %} hx-swap-oob="true"{% endif %}{% if card.button_disabled %} disabled{% endif %}>{{ card.button }}</button>
+{% endmacro %}

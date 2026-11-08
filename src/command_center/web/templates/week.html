@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% from "_rows.html" import rows %}
+{% block title %}Week · Command Center{% endblock %}
+{% block content %}
+<div class="page-head"><h1>{{ view.title }}</h1>
+<span class="pager"><a href="/week?date={{ view.previous.isoformat() }}">Previous</a><a href="/week">This week</a><a href="/week?date={{ view.next.isoformat() }}">Next</a></span></div>
+<div class="week">
+{% for col in view.columns %}
+<section class="day-col{% if col.is_today %} today{% endif %}" aria-label="{{ col.label }}">
+<h2><a href="/?date={{ col.day.isoformat() }}">{{ col.label }}</a><span class="badge" title="Load: sum of urgency">{{ col.load }}</span></h2>
+{{ rows(col.rows, "Free.") }}
+</section>
+{% endfor %}
+</div>
+{% endblock %}

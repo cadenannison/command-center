@@ -1,0 +1,4 @@
+<div class="status status-{{ card.status.status }}" id="status-{{ card.source }}" role="status" aria-live="polite"
+{% if card.polling %} hx-get="/settings/{{ card.source }}/status" hx-trigger="every {{ poll_seconds }}s" hx-swap="outerHTML"{% endif %}>
+{{ card.status.label }}{% if card.status.message and card.status.status != "syncing" %}: {{ card.status.message }}{% endif %}
+</div>

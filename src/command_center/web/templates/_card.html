@@ -1,0 +1,23 @@
+{% from "_button.html" import connect_button %}
+<section class="card" id="source-{{ card.source }}" aria-labelledby="h-{{ card.source }}">
+<header><h2 id="h-{{ card.source }}">{{ card.label }}</h2>{% include "_status.html" %}</header>
+{% if card.note %}<p class="note">{{ card.note }}</p>{% endif %}
+<form id="form-{{ card.source }}" autocomplete="off"
+ hx-put="/settings/{{ card.source }}" hx-target="#source-{{ card.source }}" hx-swap="outerHTML"
+ hx-sync="this:drop" hx-disabled-elt="#connect-{{ card.source }}" hx-indicator="#busy-{{ card.source }}"
+ hx-request='{"timeout": {{ card.timeout_ms }}}'>
+{% for f in card.fields %}
+<label for="f-{{ card.source }}-{{ f.key }}">{{ f.label }}
+<span class="state">{% if f.is_set %}set{% if f.last4 %} · ends {{ f.last4 }}{% endif %}{% else %}not set{% endif %}</span></label>
+{% if f.multiline %}<textarea id="f-{{ card.source }}-{{ f.key }}" name="{{ f.key }}" rows="3" spellcheck="false" autocapitalize="off"{% if f.secret %} class="masked"{% endif %}{% if f.is_set %} placeholder="Leave blank to keep"{% endif %}></textarea>
+{% else %}<input id="f-{{ card.source }}-{{ f.key }}" name="{{ f.key }}" type="{{ 'password' if f.secret else 'text' }}" spellcheck="false" autocapitalize="off" autocomplete="off"{% if f.is_set %} placeholder="Leave blank to keep"{% elif f.hint %} placeholder="{{ f.hint }}"{% endif %}>{% endif %}
+{% if f.hint and f.multiline %}<p class="hint">{{ f.hint }}</p>{% endif %}
+{% endfor %}
+</form>
+<div class="actions">
+{{ connect_button(card) }}
+<button type="button" class="danger" hx-delete="/settings/{{ card.source }}" hx-target="#source-{{ card.source }}" hx-swap="outerHTML" hx-confirm="Delete the stored credentials and synced items of {{ card.label }}?">Delete</button>
+<span class="busy" id="busy-{{ card.source }}">{% if card.sign_in_wait %}Waiting for Google sign-in…{% else %}Connecting…{% endif %}</span>
+</div>
+{% if card.flash %}<p class="flash{% if not card.flash_ok %} bad{% endif %}" role="status">{{ card.flash }}</p>{% endif %}
+</section>

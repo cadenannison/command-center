@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>{% block title %}Command Center{% endblock %}</title>
+<style>
+:root{--bg:#f6f7f9;--fg:#1c2128;--muted:#5b6573;--card:#fff;--line:#d8dde4;--accent:#2457c5;--warn:#b42318;--ok:#18794e;--heat0:transparent;--heat1:#dbe7fb;--heat2:#b3cdf6;--heat3:#7fa8ee;--heat4:#4d82e0}
+@media (prefers-color-scheme:dark){:root{--bg:#12161c;--fg:#e6e9ee;--muted:#9aa4b2;--card:#1b212a;--line:#2e3744;--accent:#7ea6f5;--warn:#ff8a7a;--ok:#5fd09b;--heat1:#23344f;--heat2:#2b4a78;--heat3:#376bb0;--heat4:#4a86dd}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+a{color:var(--accent)}
+nav{display:flex;flex-wrap:wrap;gap:.25rem 1rem;padding:.75rem 1rem;background:var(--card);border-bottom:1px solid var(--line)}
+nav a{text-decoration:none;color:var(--muted);padding:.25rem 0;border-bottom:2px solid transparent}
+nav a[aria-current=page]{color:var(--fg);border-color:var(--accent)}
+main{max-width:72rem;margin:0 auto;padding:1rem}
+h1{font-size:1.4rem;margin:.25rem 0 1rem}h2{font-size:1.05rem;margin:0 0 .5rem}
+.page-head{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:.5rem}
+.pager a{margin-left:.75rem}
+.panel,.card{background:var(--card);border:1px solid var(--line);border-radius:.5rem;padding:1rem;margin-bottom:1rem}
+.rows{list-style:none;margin:0;padding:0}
+.row{display:grid;grid-template-columns:5.5rem 1fr auto;gap:.5rem;padding:.35rem 0;border-top:1px solid var(--line)}
+.row:first-child{border-top:0}
+.when{color:var(--muted);font-variant-numeric:tabular-nums}
+.badge{font-size:.8rem;color:var(--muted);border:1px solid var(--line);border-radius:1rem;padding:0 .5rem}
+.urgent .badge{color:var(--warn);border-color:var(--warn)}
+.muted{color:var(--muted)}
+.summary p{margin:0 0 .5rem;white-space:pre-line}
+.weather{display:flex;flex-wrap:wrap;gap:.5rem 1.25rem}
+.attribution{margin:.75rem 0 0;font-size:.8rem;color:var(--muted)}
+.week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:.5rem}
+.day-col{background:var(--card);border:1px solid var(--line);border-radius:.5rem;padding:.5rem;min-width:0}
+.day-col.today{border-color:var(--accent)}
+.day-col h2{display:flex;justify-content:space-between;font-size:.9rem}
+.day-col .row{grid-template-columns:1fr;gap:0;font-size:.9rem;overflow-wrap:anywhere}
+.month{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:.25rem}
+.dow{font-size:.8rem;color:var(--muted);text-align:center}
+.cell{display:block;min-height:3.5rem;padding:.25rem;border:1px solid var(--line);border-radius:.35rem;text-decoration:none;color:var(--fg);background:var(--heat0)}
+.cell[data-level="1"]{background:var(--heat1)}.cell[data-level="2"]{background:var(--heat2)}
+.cell[data-level="3"]{background:var(--heat3)}.cell[data-level="4"]{background:var(--heat4)}
+.cell.outside{opacity:.35}.cell.today{outline:2px solid var(--accent)}
+.cell small{display:block;color:var(--muted)}
+.card header{display:flex;flex-wrap:wrap;justify-content:space-between;gap:.5rem;align-items:baseline}
+.status{font-size:.9rem;color:var(--muted)}
+.status-ok{color:var(--ok)}.status-reconnect,.status-error{color:var(--warn)}
+label{display:block;font-weight:600;margin-top:.75rem}
+.state{font-weight:400;color:var(--muted);font-size:.85rem}
+input,textarea{width:100%;font:inherit;padding:.5rem;border:1px solid var(--line);border-radius:.35rem;background:var(--bg);color:var(--fg)}
+textarea{min-height:5rem}textarea.masked{-webkit-text-security:disc}
+.hint,.note{font-size:.85rem;color:var(--muted);margin:.25rem 0 0}
+.actions{display:flex;flex-wrap:wrap;gap:.75rem;align-items:center;margin-top:1rem}
+button{font:inherit;padding:.5rem 1rem;border-radius:.35rem;border:1px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer}
+button.danger{background:transparent;color:var(--warn);border-color:var(--warn)}
+button[disabled]{opacity:.55;cursor:not-allowed}
+.busy{display:none;color:var(--muted)}.busy.htmx-request{display:inline}
+.flash{margin:.5rem 0 0;font-size:.9rem}.flash.bad{color:var(--warn)}
+@media (max-width:48rem){.week{grid-template-columns:1fr}.row{grid-template-columns:4.5rem 1fr auto}.cell{min-height:3rem;padding:.15rem;font-size:.85rem}}
+</style>
+<script src="/static/vendor/htmx.min.js" defer></script>
+</head>
+<body hx-headers='{"X-CSRF-Token": "{{ csrf_token }}"}'>
+<nav aria-label="Main">
+{% for key, label, href in [("today","Today","/"),("week","Week","/week"),("month","Month","/month"),("settings","Settings","/settings")] %}
+<a href="{{ href }}"{% if active == key %} aria-current="page"{% endif %}>{{ label }}</a>
+{% endfor %}
+</nav>
+<main>{% block content %}{% endblock %}</main>
+</body>
+</html>

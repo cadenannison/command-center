@@ -11,6 +11,8 @@ Persistence. Implements storage ports from core; SQLAlchemy lives here.
 - The engine is created with `hide_parameters=True`: a failed statement's error text names the SQL but not the bound values, so event titles and `raw` fields never reach an exception message or a log (decision 0027).
 - Ordering by id uses the database's collation. SQLite's default is bytewise, which equals the in-memory fake; a Postgres deployment must use a `C` collation (or the suite will tell us).
 
+- `sqlite_summary.SqliteSummaryStore` implements `SummaryStore` (sync SQLAlchemy 2); `create_summary_store(database_url)` mirrors `create_event_store` (creates the file's directory and the table, `hide_parameters=True`). Table `summaries`, primary key `(user_id, day)`, `summary` holds the `DailySummary` as JSON text. `put` replaces the row; `latest_before(day)` is the row with the greatest `day` strictly before `day` for the user, not the last written; a row that no longer parses reads as missing. Decisions: 0035, 0040.
+
 ## Not built yet
 - Schema migrations (tables are created if missing, never altered) and a cache of fetched items with per-source last-sync times.
 - Never stores secrets (those are in the keychain) or email bodies.

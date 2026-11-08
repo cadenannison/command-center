@@ -1,0 +1,10 @@
+# 0034. Summary ports gain `name` and `latest`; the prompt carries kind, title and due date only
+
+Status: accepted; the `latest` clause is superseded by 0040
+
+Context: The task card names `SummaryProvider(summarize(prompt))` and `SummaryStore(get/put)`. The service must report which provider answered, and it must fall back to "the last stored summary" after a provider failure. Today's row is a cache hit by definition, so that fallback can only be an earlier day. The card also says the prompt holds titles and due dates only.
+Decision: `SummaryProvider` also has a `name` property (like `SourceAdapter`). `SummaryStore` also has `latest(*, user_id)`, the summary of the greatest stored day. Failures are two new core errors, `SummaryProviderError` and its subclass `SummaryRateLimited`, outside the `SourceError` family (a summary is not a source). `build_prompt` reads `kind`, `title` and `due` of each event and nothing else: start and end times are deliberately left out. Every title is redacted for every kind, not only email subjects, then trimmed to 80 characters; whitespace (newlines included) is collapsed first so a title cannot start a new prompt line. The instruction header tells the model the items are untrusted data.
+Alternative: (a) Keep the ports at exactly the card's shape and let the service take a `provider_name` and a "stale" lookup of its own: the store has no way to find an earlier day, so it would need a second query path anyway. (b) Add start times to the prompt: gives better briefings, but widens what leaves the machine beyond decision 0004's "titles, due dates and trimmed subjects". (c) Redact only email subjects: an event title such as "Call 801-555-1234" would leak (AGENTS.md rule 6).
+Reason: Smallest change that makes the card's fallback implementable; privacy rules stay as 0004 states them.
+Where: `src/command_center/core/ports.py`, `core/errors.py`, `core/summary.py`; `docs/contracts/core.md`.
+Revisit when: Summaries read too thin without event times (then add a local time of day, as a new decision), or a second user shares a store.

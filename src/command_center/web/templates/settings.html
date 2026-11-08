@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block title %}Settings · Command Center{% endblock %}
+{% block content %}
+<h1>Settings</h1>
+<p class="muted">Values are write-only. A blank field keeps what is already stored.</p>
+{% if cards %}{% for card in cards %}{% include "_card.html" %}{% endfor %}
+{% else %}<p class="muted">No sources are registered.</p>{% endif %}
+{% endblock %}

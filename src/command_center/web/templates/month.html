@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% from "_rows.html" import rows %}
+{% block title %}Month · Command Center{% endblock %}
+{% block content %}
+<div class="page-head"><h1>{{ view.title }}</h1>
+<span class="pager"><a href="/month?date={{ view.previous.isoformat() }}">Previous</a><a href="/month">This month</a><a href="/month?date={{ view.next.isoformat() }}">Next</a></span></div>
+<div class="month" role="grid" aria-label="Load by day">
+{% for name in ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"] %}<div class="dow">{{ name }}</div>{% endfor %}
+{% for week in view.weeks %}{% for c in week %}
+<a class="cell{% if not c.in_month %} outside{% endif %}{% if c.is_today %} today{% endif %}" data-level="{{ c.level }}" href="/?date={{ c.day.isoformat() }}" aria-label="{{ c.day.isoformat() }}: load {{ c.load }}, {{ c.count }} items">
+{{ c.day.day }}{% if c.in_month and c.count %}<small>{{ c.load }} · {{ c.count }}</small>{% endif %}
+</a>
+{% endfor %}{% endfor %}
+</div>
+<section class="panel" aria-labelledby="deadlines-h" style="margin-top:1rem"><h2 id="deadlines-h">Top deadlines</h2>
+{{ rows(view.deadlines, "No deadlines this month.") }}</section>
+{% endblock %}

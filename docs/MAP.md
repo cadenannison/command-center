@@ -31,13 +31,18 @@ two files for that rule.
 |---|---|
 | caldav | `adapters/caldav_apple.py` |
 | googleapiclient, google_auth_oauthlib | `adapters/gmail.py` |
-| google-genai (`google`) | `adapters/summary_gemini.py` |
+| google-genai (`google`) | `adapters/summary_gemini.py` (see the note below) |
 | keyring | `adapters/keyring_store.py` |
 | redis | `adapters/queue_redis.py` |
 | rumps | `adapters/menubar_rumps.py` |
 
-`keyring_store.py` exists; the other files do not exist yet and the contracts already name them.
-Other built adapters: `net_guard.py` (DNS-time SSRF check), `system_clock.py` (the real `Clock`).
+`keyring_store.py`, `caldav_apple.py`, `summary_gemini.py`, `gmail.py` and `weather.py` exist; the other files do not exist yet and the contracts already name them.
+Other built adapters: `net_guard.py` (DNS-time SSRF check), `system_clock.py` (the real `Clock`), `ical_feed.py` (LearningSuite feeds), `ical_events.py` (iCalendar parsing shared by `ical_feed.py` and `caldav_apple.py`), `summary_ollama.py` (the local summary provider).
+
+`adapters/gmail.py` also imports google-auth (`google.oauth2`, `google.auth`), which shares the `google`
+namespace with google-genai, so the google-genai contract lists `adapters.gmail -> google` as an ignored
+import (decision 0043). `mise run arch` therefore no longer proves that Gmail avoids `google.genai`;
+review enforces it. `gmail_mail.py` (the owed-reply heuristic) and `weather.py` import no SDK.
 
 ## Settings
 `src/command_center/config.py` (`Settings`, env prefix `CC_`) is imported by composition roots only; no

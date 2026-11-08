@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% from "_rows.html" import rows %}
+{% block title %}Today · Command Center{% endblock %}
+{% block content %}
+<div class="page-head"><h1>{{ view.title }}</h1>
+<span class="pager"><a href="/?date={{ view.previous.isoformat() }}">Previous</a><a href="/">Today</a><a href="/?date={{ view.next.isoformat() }}">Next</a></span></div>
+{% if summary %}
+<section class="panel summary" aria-labelledby="summary-h"><h2 id="summary-h">Summary</h2>
+{% if summary.text %}<p>{{ summary.text }}</p><p class="note">Written from titles and due dates only.</p>
+{% else %}<p class="muted">Summary unavailable right now.</p>{% endif %}
+</section>
+{% endif %}
+<section class="panel" aria-labelledby="agenda-h"><h2 id="agenda-h">Agenda</h2>
+{{ rows(view.agenda, "Nothing scheduled.") }}</section>
+<section class="panel" aria-labelledby="weather-h"><h2 id="weather-h">Weather</h2>
+{% if view.weather %}<div class="weather">{% for w in view.weather %}<span><span class="when">{{ w.when }}</span> {{ w.title }}</span>{% endfor %}</div>
+{% else %}<p class="muted">No forecast yet.</p>{% endif %}
+<p class="attribution"><a href="https://open-meteo.com/" rel="noopener noreferrer">Weather data by Open-Meteo.com</a></p>
+</section>
+<section class="panel" aria-labelledby="attention-h"><h2 id="attention-h">Needs attention</h2>
+{{ rows(view.attention, "Nothing needs attention.") }}</section>
+{% endblock %}

@@ -21,6 +21,15 @@ class AgendaService:
         self._clock = clock
         self._tz = tz
 
+    @property
+    def tz(self) -> tzinfo:
+        """The configured timezone, for views that group events by local day."""
+        return self._tz
+
+    def today(self) -> date:
+        """The calendar day it is now, in the configured timezone."""
+        return self._now().date()
+
     async def between(self, window: TimeWindow) -> list[Event]:
         """Events in window, scored now, ordered by start (else due)."""
         return await self._scored(window)

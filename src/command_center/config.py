@@ -35,6 +35,12 @@ class Settings(BaseSettings):
     )
     tz: str = "America/Denver"
     sync_interval_minutes: int = Field(default=30, ge=1)
+    # AI summaries are opt-in (decision 0004). Off means no provider is built and nothing leaves.
+    summary_enabled: bool = False
+    summary_provider: Literal["gemini", "ollama"] = "gemini"
+    # None lets the chosen provider's adapter apply its own default model.
+    summary_model: str | None = None
+    summary_include_email: bool = False
 
     @field_validator("tz")
     @classmethod

@@ -1,9 +1,10 @@
 """The shared in-memory fakes for core ports. Behaviour mirrors docs/contracts/core.md."""
 
 from collections.abc import Collection, Mapping, Sequence
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 from command_center.core.schema import Event, EventKind, SecretStatus, secret_status
+from command_center.core.summary import DailySummary
 from command_center.core.windows import TimeWindow
 
 
@@ -141,3 +142,38 @@ def _overlaps(event: Event, window: TimeWindow) -> bool:
             UTC
         ) > window.start.astimezone(UTC)
     return window.contains(start)
+
+
+class InMemorySummaryStore:
+    """SummaryStore backed by a dict keyed by (user_id, day)."""
+
+    def __init__(self) -> None:
+        self._summaries: dict[tuple[str, date], DailySummary] = {}
+
+    def get(self, day: date, *, user_id: str = "local") -> DailySummary | None:
+        return self._summaries.get((user_id, day))
+
+    def put(self, day: date, summary: DailySummary, *, user_id: str = "local") -> None:
+        self._summaries[(user_id, day)] = summary
+
+    def latest_before(self, day: date, *, user_id: str = "local") -> DailySummary | None:
+        days = [stored for owner, stored in self._summaries if owner == user_id and stored < day]
+        return self._summaries[(user_id, max(days))] if days else None
+
+
+class FakeSummaryProvider:
+    """SummaryProvider that returns a canned summary or raises a canned error; records prompts."""
+
+    name = "fake"
+
+    def __init__(self, outcome: DailySummary | Exception) -> None:
+        self._outcome = outcome
+        self.prompts: list[str] = []
+        self.calls = 0
+
+    async def summarize(self, prompt: str) -> DailySummary:
+        self.calls += 1
+        self.prompts.append(prompt)
+        if isinstance(self._outcome, Exception):
+            raise self._outcome
+        return self._outcome

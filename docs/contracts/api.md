@@ -15,8 +15,9 @@ REST under `/v1`, bound to 127.0.0.1. `docs/generated/openapi.json` (and `api-re
 - `DELETE /v1/settings/{source}`: removes every stored key and every stored event of the source (decision 0029), so its items leave the agenda. Unknown source is 404.
 - `POST /v1/sync`: syncs every source and returns each `SyncState`; a failing source is a state, not an error.
 - No response model has a field that can carry a credential. A 422 (`ValidationErrorBody`, declared on every route that takes parameters) lists `loc`, `msg` and `type` only and never echoes the submitted input (decision 0023). A secret store failure appears as the error state `secret store unavailable`, never a 500 with detail.
+- `GET /v1/summary?date=YYYY-MM-DD` (router `api/summary_routes.router`, **not mounted yet**: until `create_app` includes it the route is absent from `docs/generated/`): `{"summary": {headline, priorities, heads_up}, "provider", "cached"}`. 404 `Summaries are off` while `container.summary` is `None` (the default). A provider failure is still 200 with `provider` `stored` (an earlier day's summary) or `template`; see `services.md`. `date` is required. Decision: 0037.
 - Events carry `raw`, which adapters must fill with public item fields only.
 
 ## Not built yet
-- Summary opt-in, pairing.
+- Mounting the summary router and building `SummaryService` in `app.py` (decision 0037); pairing.
 - Auth: pairing tokens are short-lived; the phone reaches the Mac over Tailscale Serve, never Funnel.
