@@ -37,6 +37,7 @@ two files for that rule.
 | rumps | `adapters/menubar_rumps.py` |
 
 `keyring_store.py`, `caldav_apple.py`, `summary_gemini.py`, `gmail.py`, `weather.py`, `queue_redis.py` and `menubar_rumps.py` exist. `system_tokens.py` (the real `TokenSource`) is also built.
+Canvas is four files (decision 0081): `canvas.py` (the `CanvasAdapter` class), `canvas_client.py` (HTTP transport), `canvas_models.py` (response models and the parse) and `canvas_fetch.py` (the reads and `Event` mapping); none imports a vendor SDK.
 Other built adapters: `net_guard.py` (DNS-time SSRF check), `system_clock.py` (the real `Clock`), `ical_feed.py` (LearningSuite feeds), `ical_events.py` (iCalendar parsing shared by `ical_feed.py` and `caldav_apple.py`), `summary_ollama.py` (the local summary provider), `inprocess_queue.py` (the default `JobQueue`) and `json_log.py` (JSON log formatter), `inprocess_reports.py` (in-process `ReportStream`), `file_secret_store.py` and `secret_backend.py` (container secret store and its chooser), `source_registry.py` (the five source adapters), `system_rng.py` and `system_ids.py` (the real `Rng` and `IdSource`). `queue_redis.py` also holds the Redis `ReportStream`.
 
 `adapters/gmail.py` also imports google-auth (`google.oauth2`, `google.auth`), which shares the `google`
@@ -51,7 +52,8 @@ layer reads the environment itself. Enforced by review only: no import-linter co
 ## Where things live
 - Rules for agents: `AGENTS.md`; Claude-only: `CLAUDE.md`, `.claude/`
 - Command contract and tool versions: `mise.toml`; guards and hooks: `scripts/hooks/`
-- Decisions and reasons: `docs/decisions/`; behaviour per package: `docs/contracts/`
+- Decisions and reasons: `docs/decisions/` (index of numbers, titles, statuses and what replaced what: `docs/generated/decision-index.md`); behaviour per package: `docs/contracts/`
+- The phone repo's notes: `docs/mobile-api-notes.md`
 - Generated (never hand-edit): `docs/generated/`
 - Operations: `docs/runbook.md`; running the Docker stack: `docs/distributed-mode.md`
 

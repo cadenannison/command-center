@@ -47,7 +47,7 @@ Single-process mode: it fetches. With `states` (a `SyncStateStore`; `app.py` alw
 `QueuedSyncService` is the distributed api's. It fetches nothing (decision 0074):
 - `sync(source)`: unknown source is `UnknownSourceError`; otherwise `SyncEnqueuer.publish_one(source)` (a job stamped with the source's current generation) and returns the `syncing` state. A queue or database failure is logged by class and returned as an `error` state (`QUEUE_FAILED_MESSAGE`), never raised.
 - `sync_all()`: `SyncEnqueuer.publish_connected()`; each queued source is returned as `syncing`, every other source as the `SyncStateStore` holds it (left out when it holds nothing). The results arrive later through `state`.
-- `state(source)`: `SyncStateStore.get(source)`, i.e. what the normalizer recorded.
+- `state(source)`: `SyncStateStore.get(source)`, i.e. what the normalizer recorded. A database error is logged by class only and answers `None` (unknown), like `SyncService.state`, so one unreadable source does not fail the whole settings listing (decision 0084).
 - `mark_syncing`, `record_error`, `error_state` return a state stamped with this process's clock and do **not** store it: the normalizer drops a report older than the stored state, and a worker's clock may lag the api's, so an api-stamped row could hide a real result.
 - `purge(source)`: `GenerationStore.bump(source)` first, then `EventStore.delete_source` and `SyncStateStore.delete`, each through `asyncio.to_thread`. The bump comes first so a report being applied sees it and the normalizer removes what an older generation wrote (`ReportSink`, `docs/contracts/core.md`).
 

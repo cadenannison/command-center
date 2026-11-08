@@ -21,6 +21,17 @@ no secrets), run [`bash scripts/report-state.sh`](scripts/report-state.sh).
 
 AI summaries are off unless you set `CC_SUMMARY_ENABLED=true`; see "Summaries" in [docs/sources.md](docs/sources.md).
 
+More ways to run it:
+- **Distributed mode** (Docker: one container per source, Redis, Postgres, opt-in): [docs/distributed-mode.md](docs/distributed-mode.md).
+- **Phone pairing** (read-only phone app over Tailscale Serve): [docs/mobile.md](docs/mobile.md). The API notes for the phone repo are in [docs/mobile-api-notes.md](docs/mobile-api-notes.md).
+
+## Security model
+1. **Loopback only by default:** the server binds 127.0.0.1; the one exception is the API container in distributed mode, an explicit opt-in (`CC_BIND_ALL`), and a phone is served only for the tailnet names you list.
+2. **Write-only credentials:** secrets live in the OS keychain (or a file secret store in containers); the settings API returns only "set" and the last 4 characters, never a value.
+3. **Redaction before AI:** summaries are off by default, and when on, only titles, due dates and trimmed subjects reach a provider, with addresses and numbers stripped and never an email body.
+4. **Hashed device tokens:** a paired phone gets short-lived tokens of which only SHA-256 hashes are stored, with a one-time pairing code, rotation on refresh, and a read-only scope plus `POST /v1/sync`.
+5. **No secrets in the repo:** configuration comes from the environment or the keychain, tests use only `fake-` credentials, and gitleaks scans every push. Report a problem: [SECURITY.md](SECURITY.md).
+
 ## Development
 ```
 mise install && mise run setup   # pinned tools, git hooks, dependencies (needs jq: brew install jq)

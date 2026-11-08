@@ -1,4 +1,4 @@
-"""Build docs/generated/ (openapi.json + api-reference.md) from the FastAPI app.
+"""Build docs/generated/ (openapi.json, api-reference.md, decision-index.md) from the code.
 
 Usage: gen_docs.py          regenerate in place
        gen_docs.py --check  fail if the committed files are stale or orphaned
@@ -6,17 +6,35 @@ Usage: gen_docs.py          regenerate in place
 
 import json
 import sys
+from importlib.machinery import SourceFileLoader
+from importlib.util import module_from_spec, spec_from_loader
 from pathlib import Path
+from types import ModuleType
 
 from command_center.app import create_app
 
-OUT_DIR = Path(__file__).resolve().parent.parent / "docs" / "generated"
+SCRIPTS_DIR = Path(__file__).resolve().parent
+OUT_DIR = SCRIPTS_DIR.parent / "docs" / "generated"
 HTTP_METHODS = ("get", "put", "post", "delete", "patch")
+
+
+def _decision_index() -> ModuleType:
+    """Load scripts/gen-decision-index (a hyphenated file, so it cannot be imported by name)."""
+    loader = SourceFileLoader("gen_decision_index", str(SCRIPTS_DIR / "gen-decision-index"))
+    spec = spec_from_loader(loader.name, loader)
+    if spec is None:
+        msg = "Failed to load scripts/gen-decision-index"
+        raise ImportError(msg)
+    module = module_from_spec(spec)
+    sys.modules[loader.name] = module  # dataclasses look their module up here
+    loader.exec_module(module)
+    return module
 
 
 def render() -> dict[str, str]:
     """Return {filename: contents} for every generated file."""
     spec = create_app().openapi()
+    decisions = _decision_index()
     lines = [
         "# API reference",
         "",
@@ -33,6 +51,7 @@ def render() -> dict[str, str]:
     return {
         "openapi.json": json.dumps(spec, indent=2, sort_keys=True) + "\n",
         "api-reference.md": "\n".join(lines) + "\n",
+        "decision-index.md": decisions.build_index(decisions.DECISIONS_DIR),
     }
 
 

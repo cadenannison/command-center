@@ -135,6 +135,21 @@ wait_sync_ok() {
   return 1
 }
 
+# settle_state: poll until the weather sync state has not changed for two reads in a row, so jobs
+# queued earlier (the connect's and step 3's) have reported before a baseline state is taken.
+settle_state() {
+  local last="" state stable=0
+  SECONDS=0
+  while [[ "$SECONDS" -lt "$SYNC_LIMIT" ]]; do
+    state="$(weather_sync || echo null)"
+    if [[ "$state" == "$last" ]]; then stable=$((stable + 1)); else stable=0; fi
+    last="$state"
+    [[ "$stable" -ge 2 ]] && return 0
+    sleep 2
+  done
+  return 1
+}
+
 echo "Smoke test: distributed stack at $API_URL"
 
 # 1. api health
@@ -191,6 +206,10 @@ fi
 BASELINE_COUNT="$WEATHER_COUNT"
 
 # 5. kill the weather worker, start it, sync again: no duplicates
+if ! settle_state; then
+  fail "the weather sync state kept changing for ${SYNC_LIMIT}s, so the restart cannot be tested"
+  finish
+fi
 BEFORE_STATE="$(weather_sync || echo null)"
 if restart_service worker-weather; then
   pass "worker-weather killed and started"
@@ -198,7 +217,9 @@ else
   fail "worker-weather did not come back"
 fi
 api POST /v1/sync
-if wait_sync_ok "$BEFORE_STATE"; then
+if [[ "$HTTP_CODE" != 200 ]]; then
+  fail "POST /v1/sync after the worker restart (HTTP $HTTP_CODE)"
+elif wait_sync_ok "$BEFORE_STATE"; then
   pass "sync after the worker restart reported ok"
 else
   fail "no new ok state after the worker restart within ${SYNC_LIMIT}s"
@@ -250,6 +271,11 @@ gone() { # gone LABEL: no weather events, no sync state, no stored key
     pass "weather sync state gone $label"
   else
     fail "weather sync state remains $label"
+  fi
+  if [[ "$(weather_keys_set || echo error)" == false ]]; then
+    pass "weather keys gone $label"
+  else
+    fail "weather keys remain, or could not be read, $label"
   fi
 }
 gone "after the disconnect"

@@ -81,9 +81,20 @@ async def drain(rig: DistributedRig) -> None:
         pass
 
 
-async def until_fetching(adapter: object) -> None:
-    while adapter.in_flight == 0:  # type: ignore[attr-defined]  # noqa: ASYNC110
-        await asyncio.sleep(0)
+FETCH_WAIT_SECONDS = 5.0  # a bound for a hang, not a delay: the loop below yields, it never sleeps
+
+
+async def until_fetching(adapter: object, wait_seconds: float = FETCH_WAIT_SECONDS) -> None:
+    """Return once a worker is inside `adapter.fetch`; fail the test if none gets there in time."""
+    try:
+        async with asyncio.timeout(wait_seconds):
+            while adapter.in_flight == 0:  # type: ignore[attr-defined]  # noqa: ASYNC110
+                await asyncio.sleep(0)
+    except TimeoutError:
+        pytest.fail(
+            f"No worker started fetching within {wait_seconds:g} s: the job was never consumed, "
+            "or the worker died before it called the adapter"
+        )
 
 
 async def connect_and_queue(rig: DistributedRig) -> None:
@@ -176,3 +187,11 @@ async def test_a_reconnect_after_the_chaos_syncs_again(backend: Backend) -> None
     state = rig.states.get("canvas")
     assert state is not None
     assert state.status == "ok"
+
+
+async def test_waiting_for_a_fetch_that_never_starts_fails_with_a_message_instead_of_hanging() -> (
+    None
+):
+    idle = adapter_with(events("a"))  # nothing runs a worker against it
+    with pytest.raises(pytest.fail.Exception, match=r"No worker started fetching within 0\.05 s"):
+        await until_fetching(idle, wait_seconds=0.05)

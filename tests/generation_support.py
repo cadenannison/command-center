@@ -3,7 +3,7 @@
 from pathlib import Path
 
 from command_center.core.ports import GenerationStore
-from command_center.storage.sqlite_generations import create_generation_store
+from command_center.storage.sqlite_generations import SqliteGenerationStore, create_generation_store
 
 
 class InMemoryGenerationStore:
@@ -21,5 +21,17 @@ class InMemoryGenerationStore:
         return value
 
 
+_opened: list[SqliteGenerationStore] = []
+
+
 def sqlite_generations(tmp_path: Path, name: str = "generations.db") -> GenerationStore:
-    return create_generation_store(f"sqlite:///{tmp_path / name}")
+    """Open the SQLite store; `close_sqlite_generations` disposes every one opened this way."""
+    store = create_generation_store(f"sqlite:///{tmp_path / name}")
+    _opened.append(store)
+    return store
+
+
+def close_sqlite_generations() -> None:
+    """Dispose the engine of every store `sqlite_generations` opened since the last call."""
+    while _opened:
+        _opened.pop().close()

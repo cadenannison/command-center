@@ -45,8 +45,22 @@ class QueuedSyncService:
         return list(self._sources)
 
     def state(self, source: str) -> SyncState | None:
-        """What the normalizer last recorded for source, or None before its first report."""
-        return self._states.get(source)
+        """What the normalizer last recorded for source, or None before its first report.
+
+        A database error is also None (decision 0084), as in `SyncService.state`: one unreadable
+        source must not turn the whole settings listing into a 500.
+        """
+        try:
+            return self._states.get(source)
+        except Exception as exc:  # noqa: BLE001  (a database error: the state is just unknown)
+            # Class only: a database error can echo the connection URL, which holds a password.
+            logger.warning(
+                "sync state read failed for %s: %s",
+                source,
+                type(exc).__name__,
+                extra={"source": source, "error_class": type(exc).__name__},
+            )
+            return None
 
     def mark_syncing(self, source: str) -> SyncState:
         """The "syncing" state for a connect's result. It is not stored (decision 0074).

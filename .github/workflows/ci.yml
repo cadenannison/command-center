@@ -67,8 +67,9 @@ jobs:
       - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
         with: { fail-on-severity: high }
 
-  # Not required and not in "gate": runs the env-guarded Redis cases of the JobQueue contract suite
-  # against a real Redis (decision 0047). A red run here does not block a merge.
+  # Not required and not in "gate": runs the env-guarded cases (decisions 0047, 0075, 0083) against a
+  # real Redis and a real Postgres. A red run here does not block a merge. The Postgres password is
+  # a throwaway for a container that lives as long as this job; it must start with "fake-" (AGENTS.md).
   integration:
     if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
@@ -83,14 +84,34 @@ jobs:
           --health-interval 5s
           --health-timeout 3s
           --health-retries 10
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: cc
+          POSTGRES_PASSWORD: fake-ci-postgres-password
+          POSTGRES_DB: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U cc"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
     env:
       CC_TEST_REDIS_URL: redis://localhost:6379/0
+      CC_TEST_POSTGRES_URL: postgresql+psycopg://cc:fake-ci-postgres-password@localhost:5432/postgres
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { persist-credentials: false }
       - uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
       - run: uv sync --all-extras
-      - run: uv run pytest tests/test_job_queue_contract.py --no-cov
+      # Exactly the files whose cases are skipped without CC_TEST_REDIS_URL or CC_TEST_POSTGRES_URL.
+      - run: >-
+          uv run pytest --no-cov
+          tests/test_job_queue_contract.py tests/test_job_queue_dead_letter.py
+          tests/test_report_stream_contract.py tests/test_chaos_disconnect.py
+          tests/test_chaos_disconnect_sink.py tests/test_chaos_distributed.py
+          tests/test_normalizer_atomic.py tests/test_report_sink.py
+          tests/test_state_generation_column.py
 
   # The single required status check: mark only "gate" as required in branch protection.
   gate:

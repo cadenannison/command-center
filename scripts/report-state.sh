@@ -16,6 +16,14 @@ PAST_DAYS="${CC_REPORT_PAST_DAYS:-30}"
 FUTURE_DAYS="${CC_REPORT_FUTURE_DAYS:-60}"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
+# They go into shell arithmetic below, which would run anything that is not a plain number.
+for days in "$PAST_DAYS" "$FUTURE_DAYS"; do
+  if [[ ! "$days" =~ ^[0-9]+$ ]]; then
+    printf 'report-state: CC_REPORT_PAST_DAYS and CC_REPORT_FUTURE_DAYS must be whole numbers\n'
+    exit 2
+  fi
+done
+
 for tool in curl jq; do
   if ! command -v "$tool" >/dev/null 2>&1; then
     printf 'report-state: %s is required and was not found\n' "$tool"
@@ -41,7 +49,7 @@ commit="$(git -C "$ROOT" rev-parse --short HEAD 2>/dev/null || echo unknown)"
 if [[ -n "$(git -C "$ROOT" status --porcelain 2>/dev/null || true)" ]]; then
   commit="$commit (uncommitted changes)"
 fi
-version="$(sed -n 's/^version = "\(.*\)"$/\1/p' "$ROOT/pyproject.toml" 2>/dev/null | head -n 1)"
+version="$(sed -n 's/^version = "\(.*\)"$/\1/p' "$ROOT/pyproject.toml" 2>/dev/null | head -n 1 || true)"
 
 echo "Command Center state report (safe to paste: no values, only status and last 4)"
 printf 'time (UTC): %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
