@@ -2,8 +2,10 @@ version = 1
 revision = 5
 requires-python = ">=3.13"
 resolution-markers = [
-    "python_full_version >= '3.14'",
-    "python_full_version < '3.14'",
+    "python_full_version >= '3.14' and sys_platform == 'darwin'",
+    "python_full_version >= '3.14' and sys_platform != 'darwin'",
+    "python_full_version < '3.14' and sys_platform == 'darwin'",
+    "python_full_version < '3.14' and sys_platform != 'darwin'",
 ]
 
 [[package]]
@@ -338,7 +340,7 @@ dependencies = [
 
 [package.optional-dependencies]
 desktop = [
-    { name = "rumps", marker = "sys_platform == 'darwin'" },
+    { name = "rumps" },
 ]
 distributed = [
     { name = "psycopg", extra = ["binary"] },
@@ -384,6 +386,7 @@ requires-dist = [
     { name = "recurring-ical-events", specifier = ">=3.8.2" },
     { name = "redis", marker = "extra == 'distributed'", specifier = ">=8.1.0" },
     { name = "rumps", marker = "sys_platform == 'darwin' and extra == 'desktop'", specifier = ">=0.4.0" },
+    { name = "rumps", marker = "extra == 'desktop'", specifier = ">=0.4.0" },
     { name = "sqlalchemy", specifier = ">=2.1.8" },
     { name = "uvicorn", specifier = ">=0.54.0" },
 ]
