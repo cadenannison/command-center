@@ -1,6 +1,6 @@
 # Contract: services
 
-Application logic. Depends on core ports only; never an adapter, storage or framework. Every store call (`EventStore`, `SecretStore`) runs through `asyncio.to_thread` (decision 0016). Decisions: 0019-0026, 0028, 0029, 0034, 0035, 0052, 0053.
+Application logic. Depends on core ports only; never an adapter, storage or framework. Every store call (`EventStore`, `SecretStore`) runs through `asyncio.to_thread` (decision 0016). Decisions: 0019-0026, 0028, 0029, 0034, 0035, 0052, 0053, 0056.
 
 ## Public exports (module: names)
 - `sync`: `SyncService`, `MAX_RETRIES`, `STORE_UNAVAILABLE_MESSAGE`, `UNEXPECTED_MESSAGE`.
@@ -25,7 +25,7 @@ Application logic. Depends on core ports only; never an adapter, storage or fram
   - `TransientError`: up to 3 retries (4 fetches), sleeping 1, 2, 4 seconds; each retry is logged with source, attempt, delay and reason; then `error` with the reason.
   - `FatalError`: `error` with the reason; not retried.
   - `core.errors.SecretStoreError`: `error`, message exactly `secret store unavailable`.
-- Each retry and give-up is logged with the source, attempt, delay and reason in the message text (and as `extra` fields).
+- Each retry and give-up is logged with the source, attempt, delay and reason in the message text (and as `extra` fields). The reason, and the text of a `FatalError` warning, is `safe_message(error_text(exc))`: redacted, then at most 200 characters, in the message and in the `reason` field alike (decision 0056). No log record from `sync.py` carries adapter text any other way.
 - Every message kept in a `SyncState` (from a sync, `record_error` or `error_state`) goes through `core.redact.redact`, then `trim(…, 200)`, before it is stored or returned: email addresses become `[email]`, digit runs of 6+ digits become `[number]`, and the whole message, prefix included, is at most 200 characters (decision 0052). Adapters must still keep credentials out of their error text (`docs/contracts/adapters.md` rule 6); redaction is the second line, not the first. `ConnectResult.message` gets the same treatment (see `SettingsService.connect`). The shared helper is `errors.safe_message`.
 - Syncs of one source are serialised. `state(source)`, `forget(source)`, `record_error(source, message)`, `sources()`.
 - Any other exception (a bug, a database failure) propagates, but first sets the state `error` "Sync failed unexpectedly" so the source is never left `syncing`.

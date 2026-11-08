@@ -9,7 +9,7 @@ from command_center.core.errors import AuthExpired, FatalError, SecretStoreError
 from command_center.core.ports import Clock, EventStore, SecretStore, SourceAdapter
 from command_center.core.schema import Event
 from command_center.core.windows import TimeWindow
-from command_center.services.errors import UnknownSourceError, describe, error_text, safe_message
+from command_center.services.errors import UnknownSourceError, error_text, safe_message
 from command_center.services.horizon import horizon_window
 from command_center.services.models import SyncState, SyncStatus
 
@@ -145,11 +145,19 @@ class SyncService:
         except TransientError as exc:
             message = f"Source unreachable after {MAX_RETRIES} retries: {error_text(exc)}"
             logger.warning(
-                "sync of %s gave up: %s", source, describe(exc), extra={"source": source}
+                "sync of %s gave up: %s",
+                source,
+                safe_message(error_text(exc)),
+                extra={"source": source},
             )
             return self._remember(source, "error", message)
         except FatalError as exc:
-            logger.warning("sync of %s failed: %s", source, describe(exc), extra={"source": source})
+            logger.warning(
+                "sync of %s failed: %s",
+                source,
+                safe_message(error_text(exc)),
+                extra={"source": source},
+            )
             return self._remember(source, "error", f"Sync failed: {error_text(exc)}")
         # Only a fully fetched result gets here: replace deletes whatever it does not contain.
         written = await asyncio.to_thread(self._events.replace, source, window, fetched)
@@ -172,17 +180,18 @@ class SyncService:
                     raise
                 delay = BACKOFF_BASE_SECONDS * 2**attempt
                 attempt += 1
+                reason = safe_message(error_text(exc))
                 logger.warning(
                     "sync of %s retry %d in %.0fs: %s",
                     source,
                     attempt,
                     delay,
-                    describe(exc),
+                    reason,
                     extra={
                         "source": source,
                         "attempt": attempt,
                         "delay_seconds": delay,
-                        "reason": describe(exc),
+                        "reason": reason,
                     },
                 )
                 await self._sleep(delay)
