@@ -1,8 +1,8 @@
 # Distributed mode
 
-One process per job instead of one process for everything. Opt-in (decision 0001): the default is still a single process with SQLite and an in-process queue. Decisions: 0070 (roles, queues, breaker), 0071 (report stream, shared sync state), 0072 (the one non-loopback bind), 0073 (file secret store, Gmail), 0074 (the api reads shared state, connect only enqueues, disconnect cancels work in flight), 0075 (the generation is stored with the rows and a report is checked and written in one transaction).
+One process per job instead of one process for everything. Opt-in (decision 0001): the default is still a single process with SQLite and an in-process queue. Decisions: 0070 (roles, queues, breaker), 0071 (report stream, shared sync state), 0072 (the one non-loopback bind), 0073 (file secret store, Gmail), 0074 (the api reads shared state, connect only enqueues, disconnect cancels work in flight), 0075 (the generation is stored with the rows and a report is checked and written in one transaction), 0076 (compose builds the image in the api service only), 0077 (the compose password file lives outside the repo), 0078 and 0079 (the smoke and report scripts).
 
-Nothing in `Dockerfile` or `docker-compose.yml` was built or started when they were written (no Docker daemon in that sandbox), and the Redis code was only run against in-process stand-ins. Run the steps below once and the chaos tests against a real Redis before trusting it.
+`Dockerfile` and `docker-compose.yml` were written without a Docker daemon. The stack has since been built and started once on a real machine: `docker compose build api` then `up --no-build` brought up all 10 containers and the api passed its health checks (decision 0076). That is all that has been observed. Still not run, and marked "not yet observed" where they come up: the chaos tests and the Redis code paths against a real Redis, the Postgres cases of the database tests (see Known gaps), what `up --no-build` does when the image has not been built, and the Gmail workaround below.
 
 ## Architecture
 
@@ -56,13 +56,29 @@ The log lines for retry, give-up and dead-letter carry `error_class` (the except
 
 Requirements: Docker with Compose v2.
 
+The Postgres password lives in a file outside the repo, `~/.config/command-center/compose.env`, and every compose command passes it with `--env-file`. Create it once:
+
 ```sh
-export POSTGRES_PASSWORD="$(openssl rand -hex 16)"   # keep it; compose reads it each time
-docker compose build
-docker compose up -d
-docker compose ps                                     # every service should become healthy
+mkdir -p -m 700 ~/.config/command-center
+chmod 700 ~/.config/command-center
+( set -C; umask 077; printf 'POSTGRES_PASSWORD=%s\n' "$(openssl rand -hex 16)" > ~/.config/command-center/compose.env )
+chmod 600 ~/.config/command-center/compose.env
+```
+
+`set -C` makes the redirect refuse to overwrite an existing file, which is what you want: the Postgres volume keeps the first password, so a new one in the file would no longer match it (to start over, `down -v` first). `CC_TZ=...` may go in the same file; it is optional.
+
+Then build and start (the flag goes before the subcommand, and `build` needs it too, because compose reads the password while parsing the file):
+
+```sh
+docker compose --env-file ~/.config/command-center/compose.env build    # builds the image once, through the api service
+docker compose --env-file ~/.config/command-center/compose.env up -d --no-build
+docker compose --env-file ~/.config/command-center/compose.env ps       # every service should become healthy
 curl http://127.0.0.1:8765/v1/health
 ```
+
+Only the `api` service has a `build:` block; the scheduler, normalizer and workers all use `image: command-center:local` and add no build of their own, so Compose has one build to run and no parallel builds of the same tag to race (0076; observed: with `build:` on several services for the same tag, `docker compose up --build` failed with `target worker-gmail: failed to solve: image "docker.io/library/command-center:local": already exists`). The order matters: build before `up`. `--no-build` stops `up` from building anything, so a missing image is an error (expected, not yet observed: Compose then tries to pull `command-center:local` from a registry and fails) instead of a build you did not ask for. After a code change, run `docker compose --env-file ~/.config/command-center/compose.env build`, then `docker compose --env-file ~/.config/command-center/compose.env up -d --no-build` to recreate the containers from the new image.
+
+Why the file is outside the repo (0077): the password is a secret and a `.env` in the working tree can be read by anything that works in the repo, including coding agents, and can end up in a commit or a backup of the project folder. The agent sandbox that edits this repo denies reads of `.env` (it breaks the test run too), so the file would also have to be an exception to that rule. `docker-compose.yml` keeps `POSTGRES_PASSWORD` required with no default: a command that is not given the file stops with "set POSTGRES_PASSWORD" instead of starting Postgres with a guessable password. Exporting `POSTGRES_PASSWORD` in your shell also satisfies it, and wins over the file.
 
 Open `http://127.0.0.1:8765/`. The api is the only published port and it is bound to `127.0.0.1`; redis and postgres are on the compose network only. `CC_BIND_ALL=1` is set on the api service only, because inside a container uvicorn must listen on `0.0.0.0` for the published port to work (0072). Do not add it to any other service and do not change the published port to a bare `8765:8765`: `tests/test_compose_file.py` fails if you do.
 
@@ -71,13 +87,17 @@ Connect sources on the Settings page as usual. Credentials are written to `/data
 Useful commands:
 
 ```sh
-docker compose logs -f worker-canvas normalizer      # JSON lines, one per event
-docker compose stop worker-gmail                      # jobs for gmail queue up and wait
-docker compose down                                   # keep the volumes
-docker compose down -v                                # also deletes data and credentials
+docker compose --env-file ~/.config/command-center/compose.env logs -f worker-canvas normalizer   # JSON lines, one per event
+docker compose --env-file ~/.config/command-center/compose.env stop worker-gmail                   # jobs for gmail queue up and wait
+docker compose --env-file ~/.config/command-center/compose.env down                                # keep the volumes
+docker compose --env-file ~/.config/command-center/compose.env down -v                             # also deletes data and credentials
 ```
 
 Settings that matter (all `CC_`-prefixed; compose sets the first four): `CC_MODE=distributed`, `CC_REDIS_URL`, `DATABASE_URL`, `CC_SECRET_BACKEND=file`, `CC_TZ`, `CC_SYNC_INTERVAL_MINUTES` (default 30, used by the scheduler role).
+
+### Smoke test
+
+With the stack up, `bash scripts/smoke-distributed.sh` checks it through the api and `docker compose --env-file`: health, connect weather, sync, no duplicate events after killing and starting `worker-weather`, sync state and events unchanged after killing and starting the normalizer, and a disconnect that leaves nothing behind (also after another normalizer restart). It prints PASS or FAIL per step and exits 1 on any FAIL. Settings: `COMPOSE_ENV_FILE` (default `~/.config/command-center/compose.env`), `API_URL` (default `http://localhost:8765`), `CC_SMOKE_LAT` and `CC_SMOKE_LON` (default: a generic city), `CC_SMOKE_SETTLE` (seconds to wait after a restart, default 10). It refuses to run when weather is already connected, never prints a credential or the coordinates, and never reads the env file; it only hands its path to compose (decision 0078; the counts use `GET /v1/events` over a window, decision 0079). Not yet observed: it has been syntax-checked and shellchecked, not run against a real stack. A scheduler round during the normalizer restart can fail the "state unchanged" step; run it again.
 
 ### Chaos tests against a real Redis
 
@@ -100,7 +120,7 @@ Gmail's sign-in uses `InstalledAppFlow.run_local_server`: it opens a browser on 
 Workaround: connect Gmail once on a machine with a browser, then hand the result to the stack.
 
 1. Run Command Center normally on that machine with `CC_SECRET_BACKEND=file CC_DATA_DIR=$HOME/cc-gmail-data command-center`, connect Gmail in Settings (see `docs/gmail-setup.md`), then stop it.
-2. Copy `$HOME/cc-gmail-data/secrets.json` into the volume, for example `docker compose cp $HOME/cc-gmail-data/secrets.json api:/data/secrets.json`, and make sure it is mode 0600 and owned by the `cc` user (`docker compose exec -u root api chown cc:cc /data/secrets.json && docker compose exec -u root api chmod 600 /data/secrets.json`). This replaces every credential in the volume, so do it before connecting other sources, or merge the `gmail` entry by hand.
+2. Copy `$HOME/cc-gmail-data/secrets.json` into the volume, for example `docker compose --env-file ~/.config/command-center/compose.env cp $HOME/cc-gmail-data/secrets.json api:/data/secrets.json`, and make sure it is mode 0600 and owned by the `cc` user (`docker compose --env-file ~/.config/command-center/compose.env exec -u root api chown cc:cc /data/secrets.json`, then the same with `chmod 600 /data/secrets.json`). This replaces every credential in the volume, so do it before connecting other sources, or merge the `gmail` entry by hand.
 3. Google expires the sign-in after 7 days while the consent screen is in Testing (0003). Repeat steps 1 and 2 weekly; until then Gmail shows Reconnect.
 
 ## Known gaps

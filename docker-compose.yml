@@ -1,9 +1,11 @@
-# Distributed mode: docs/distributed-mode.md. Decisions 0070-0073.
+# Distributed mode: docs/distributed-mode.md. Decisions 0070-0077.
 # Nothing here could be built or started in the sandbox that wrote it; run it once first.
-# Required: POSTGRES_PASSWORD (any random string). Only the api publishes a port, on loopback.
+# Required, no default: POSTGRES_PASSWORD, kept in ~/.config/command-center/compose.env (outside the
+# repo, decision 0077). Pass it on every command: `docker compose --env-file <that file> ...`.
+# Only the api publishes a port, on loopback.
+# Run `build` first (it builds the api, which tags command-center:local), then `up --no-build`.
 
 x-app: &app
-  build: .
   image: command-center:local
   restart: unless-stopped
   environment: &env
@@ -58,6 +60,7 @@ services:
 
   api:
     <<: *app
+    build: .  # the only service that builds; the rest reuse command-center:local (decision 0076)
     command: ["command-center"]
     environment:
       <<: *env

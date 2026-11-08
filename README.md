@@ -15,6 +15,10 @@ has the setup for each one. The app syncs when it starts and then every 30 minut
 (`CC_SYNC_INTERVAL_MINUTES`). Your credentials are stored in the OS keychain, never in a file, and the
 server only answers on your own machine.
 
+First time? [docs/first-run.md](docs/first-run.md) walks through connecting each source and what a good
+first sync looks like. To send someone a status that is safe to paste (statuses, last 4 characters, counts,
+no secrets), run [`bash scripts/report-state.sh`](scripts/report-state.sh).
+
 AI summaries are off unless you set `CC_SUMMARY_ENABLED=true`; see "Summaries" in [docs/sources.md](docs/sources.md).
 
 ## Development

@@ -237,3 +237,8 @@ CLAUDE.local.md
 # Mutation testing output
 mutants/
 .mutmut-cache/
+
+# local secrets
+.env
+.env.*
+!.env.example
