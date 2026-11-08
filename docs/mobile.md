@@ -5,6 +5,14 @@ The phone talks to the same API as the web UI, through your tailnet. Nothing is 
 ## Contract for the phone app
 `docs/generated/openapi.json` (human copy: `api-reference.md`) is the contract. Pair with `POST /v1/pair`, keep the refresh token, call `POST /v1/pair/refresh` before the 15-minute access token ends, and send `Authorization: Bearer <access token>` on every other call. Behaviour and reasons: `docs/contracts/api.md`, decision 0057.
 
+## What the phone can do
+A paired phone is read-only, plus one write:
+- **Allowed:** every GET (`/v1/events`, `/v1/agenda/...`, `/v1/attention`, `/v1/summary`, `/v1/settings` status, `/v1/devices`), `POST /v1/sync`, and the pairing calls themselves.
+- **Refused with 403:** connecting or deleting a source (`PUT`/`DELETE /v1/settings/{source}`) and revoking a device (`DELETE /v1/devices/{id}`). Do those on the Mac. The web UI's own writes (the settings forms, making a pairing code) are not reachable from the phone either (404).
+- Every write is JSON: send `Content-Type: application/json` on any body, or 415 (`/v1/pair` and `/v1/pair/refresh` answer a wrong declared type with 422). A write with no body (`POST /v1/sync`) needs no Content-Type. Do not send an `Origin` header (a native app does not): one that is not the server's own Host is refused with 403.
+- Without a token the answer is 401 whatever the route.
+A new write the phone needs is a change to `api/policy.py` and a decision record; it is not available by default (decision 0060).
+
 ## Set up (once)
 1. Install Tailscale on the Mac and the phone and sign in to the same tailnet. Note the Mac's tailnet name, for example `my-mac.tail1234.ts.net`.
 2. Tell the app that name, lowercase and without `https://` or a port: `CC_ALLOWED_HOSTS=my-mac.tail1234.ts.net` (comma separate more than one; the first is the one in the QR). Restart the server. An unlisted name is refused with 400.
@@ -21,9 +29,9 @@ The phone talks to the same API as the web UI, through your tailnet. Nothing is 
 ## Launch at login
 The menu-bar item has **Launch at login**. It writes `~/Library/LaunchAgents/com.command-center.menubar.plist` (no secrets in it); it takes effect at your next login. Turn it off in the same menu.
 
-**Known limit:** the plist carries no environment, so an app started at login does not see `CC_ALLOWED_HOSTS` or `CC_PORT`. The server it starts then refuses the tailnet name until a settings file exists (decision 0057, item 12). Until then, start the app from a shell that has the variables set if you want phone access.
+The plist carries `CC_ALLOWED_HOSTS` and `CC_PORT` (neither is secret, and no other variable is ever written), copied from the environment of the app when you turn **Launch at login** on. So turn it on from an app started with the variables set. If you change either value, turn **Launch at login** off and on again to rewrite the plist (decision 0060). Without `CC_ALLOWED_HOSTS` the server that starts at login refuses the tailnet name.
 
 ## Other known limits
 - A phone that loses the response to a refresh call must pair again: the server treats the retry as a stolen credential.
-- A paired phone can do everything the web UI can, including changing sources and revoking other devices.
+- A paired phone cannot change sources or revoke devices (see above). If you lose a phone, revoke it from the Mac.
 - If the server crashes, the menu-bar title reads "CC offline" until you relaunch the app.

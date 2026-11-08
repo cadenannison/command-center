@@ -1,0 +1,120 @@
+# Distributed mode: docs/distributed-mode.md. Decisions 0070-0073.
+# Nothing here could be built or started in the sandbox that wrote it; run it once first.
+# Required: POSTGRES_PASSWORD (any random string). Only the api publishes a port, on loopback.
+
+x-app: &app
+  build: .
+  image: command-center:local
+  restart: unless-stopped
+  environment: &env
+    CC_MODE: distributed
+    CC_REDIS_URL: redis://redis:6379/0
+    DATABASE_URL: postgresql+psycopg://cc:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/cc
+    CC_SECRET_BACKEND: file
+    CC_TZ: ${CC_TZ:-America/Denver}
+  volumes:
+    - cc-data:/data
+  depends_on: &deps
+    redis:
+      condition: service_healthy
+    postgres:
+      condition: service_healthy
+
+x-worker-health: &worker-health
+  test: ["CMD-SHELL", "test -n \"$$(find /tmp/heartbeat -mmin -1 2>/dev/null)\""]
+  interval: 30s
+  timeout: 5s
+  retries: 3
+  start_period: 30s
+
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: cc
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: cc
+      POSTGRES_INITDB_ARGS: "--locale=C --encoding=UTF8"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cc -d cc"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  api:
+    <<: *app
+    command: ["command-center"]
+    environment:
+      <<: *env
+      CC_BIND_ALL: "1"
+    ports:
+      - "127.0.0.1:8765:8765"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request as u; u.urlopen('http://127.0.0.1:8765/v1/health', timeout=3)"
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  scheduler:
+    <<: *app
+    command: ["python", "-m", "command_center.workers", "--scheduler", "--heartbeat-file", "/tmp/heartbeat"]
+    healthcheck: *worker-health
+
+  normalizer:
+    <<: *app
+    command: ["python", "-m", "command_center.workers", "--normalizer", "--heartbeat-file", "/tmp/heartbeat"]
+    depends_on:
+      <<: *deps
+      api:
+        condition: service_healthy
+    healthcheck: *worker-health
+
+  worker-canvas:
+    <<: *app
+    command: ["python", "-m", "command_center.workers", "--source", "canvas", "--heartbeat-file", "/tmp/heartbeat"]
+    healthcheck: *worker-health
+
+  worker-apple-calendar:
+    <<: *app
+    command: ["python", "-m", "command_center.workers", "--source", "apple_calendar", "--heartbeat-file", "/tmp/heartbeat"]
+    healthcheck: *worker-health
+
+  worker-learningsuite:
+    <<: *app
+    command: ["python", "-m", "command_center.workers", "--source", "learningsuite", "--heartbeat-file", "/tmp/heartbeat"]
+    healthcheck: *worker-health
+
+  worker-gmail:
+    <<: *app
+    command: ["python", "-m", "command_center.workers", "--source", "gmail", "--heartbeat-file", "/tmp/heartbeat"]
+    healthcheck: *worker-health
+
+  worker-weather:
+    <<: *app
+    command: ["python", "-m", "command_center.workers", "--source", "weather", "--heartbeat-file", "/tmp/heartbeat"]
+    healthcheck: *worker-health
+
+volumes:
+  cc-data:
+  redis-data:
+  postgres-data:

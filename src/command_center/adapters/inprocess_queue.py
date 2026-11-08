@@ -102,6 +102,13 @@ class InProcessQueue:
             extra={**job_fields(held), "delay_seconds": delay.total_seconds(), "reason": reason},
         )
 
+    async def dead_letter(self, job: Job, reason: str) -> None:
+        delivery = self._in_flight.pop(job.id, None)
+        if delivery is None:
+            logger.debug("dead_letter ignored: job not in flight", extra=job_fields(job))
+            return
+        self._dead_letter(delivery.job, trim(reason, MAX_REASON_LENGTH))
+
     async def list_dead_letters(self) -> list[DeadLetter]:
         return list(self._dead)
 

@@ -978,7 +978,7 @@
     },
     "/v1/settings/{source}": {
       "delete": {
-        "description": "Delete every stored key and every stored event of the source.",
+        "description": "Delete every stored key, event and sync state of the source.\n\nWork already in flight for the source is cancelled: whatever it reports afterwards is dropped.",
         "operationId": "delete_settings_v1_settings__source__delete",
         "parameters": [
           {
@@ -1034,7 +1034,7 @@
         ]
       },
       "put": {
-        "description": "Validate and store the credentials; the sync runs after the response (state \"syncing\").\n\nA credential-only integration (the Gemini key) has no sync: its result carries `sync` null.",
+        "description": "Validate and store the credentials; the sync starts after the response (state \"syncing\").\n\nIn distributed mode the api runs no sync: it queues a job for the source's worker, and\n`GET /v1/settings` shows the state the normalizer records when the worker reports.\n\nA credential-only integration (the Gemini key) has no sync: its result carries `sync` null.",
         "operationId": "put_settings_v1_settings__source__put",
         "parameters": [
           {
@@ -1161,7 +1161,7 @@
     },
     "/v1/sync": {
       "post": {
-        "description": "Sync all sources and return each one's new state; a failing source does not raise.",
+        "description": "Sync all sources and return each one's new state; a failing source does not raise.\n\nIn distributed mode nothing is fetched here: a job is queued for every connected source and\neach is returned as \"syncing\"; the other sources are returned as last recorded. Read the\nresults from `GET /v1/settings` once the workers have reported.",
         "operationId": "sync_all_v1_sync_post",
         "responses": {
           "200": {

@@ -6,7 +6,7 @@ from collections.abc import Awaitable, Callable, Mapping
 from datetime import UTC
 
 from command_center.core.errors import AuthExpired, FatalError, SecretStoreError, TransientError
-from command_center.core.ports import Clock, EventStore, SecretStore, SourceAdapter
+from command_center.core.ports import Clock, EventStore, SecretStore, SourceAdapter, SyncStateStore
 from command_center.core.schema import Event
 from command_center.core.windows import TimeWindow
 from command_center.services.errors import UnknownSourceError, error_text, safe_message
@@ -24,9 +24,14 @@ type Sleep = Callable[[float], Awaitable[None]]
 
 
 class SyncService:
-    """Fetches from source adapters over the sync window and replaces the source's events."""
+    """Fetches from source adapters over the sync window and replaces the source's events.
 
-    def __init__(
+    With a `states` store every state is also written to it, so it survives a restart and is the
+    one place a reader looks in either mode (decision 0074). The in-memory copy stays the first
+    answer and the fallback when the store is down: a store failure never fails a sync.
+    """
+
+    def __init__(  # noqa: PLR0913
         self,
         adapters: Mapping[str, SourceAdapter],
         secrets: SecretStore,
@@ -34,8 +39,10 @@ class SyncService:
         clock: Clock,
         *,
         sleep: Sleep = asyncio.sleep,
+        states: SyncStateStore | None = None,
     ) -> None:
         self._adapters = adapters
+        self._store = states
         self._secrets = secrets
         self._events = events
         self._clock = clock
@@ -49,14 +56,25 @@ class SyncService:
         return list(self._adapters)
 
     def state(self, source: str) -> SyncState | None:
-        """The last sync result of source, or None if it has not been synced in this process."""
-        return self._states.get(source)
+        """The last sync result of source: this process's, else the stored one, else None."""
+        remembered = self._states.get(source)
+        if remembered is not None or self._store is None:
+            return remembered
+        try:
+            return self._store.get(source)
+        except Exception as exc:  # noqa: BLE001  (a database error: the state is just unknown)
+            self._log_store_failure("read", source, exc)
+            return None
 
     def forget(self, source: str) -> None:
         """Drop the remembered sync result of source (after a disconnect).
 
         A sync already running for source finishes without remembering its result (decision 0026).
         """
+        self._forget_in_memory(source)
+        self._drop_stored(source)
+
+    def _forget_in_memory(self, source: str) -> None:
         self._forgotten[source] = self._forgotten.get(source, 0) + 1
         self._states.pop(source, None)
 
@@ -65,7 +83,8 @@ class SyncService:
 
         Forgetting comes first, so a sync still running deletes what it writes late (0029).
         """
-        self.forget(source)
+        self._forget_in_memory(source)
+        await asyncio.to_thread(self._drop_stored, source)
         await asyncio.to_thread(self._events.delete_source, source)
 
     def error_state(self, source: str, message: str) -> SyncState:
@@ -84,6 +103,7 @@ class SyncService:
         """Remember an error state for source that did not come from a sync attempt."""
         state = self.error_state(source, message)
         self._states[source] = state
+        self._persist(state)
         return state
 
     async def sync(self, source: str) -> SyncState:
@@ -119,6 +139,7 @@ class SyncService:
     async def _discard_if_forgotten(self, source: str, forgotten_before: int) -> None:
         if self._forgotten.get(source, 0) != forgotten_before:
             self._states.pop(source, None)
+            await asyncio.to_thread(self._drop_stored, source)
             # The disconnect may have deleted the events before this sync wrote them (0029).
             await asyncio.to_thread(self._events.delete_source, source)
 
@@ -201,4 +222,33 @@ class SyncService:
             source=source, status=status, message=safe_message(message), at=self._clock.now()
         )
         self._states[source] = state
+        self._persist(state)
         return state
+
+    def _persist(self, state: SyncState) -> None:
+        # A small indexed upsert, written inline so a state is never remembered without it.
+        if self._store is None:
+            return
+        try:
+            self._store.put(state)
+        except Exception as exc:  # noqa: BLE001  (a database error must not fail the sync)
+            self._log_store_failure("write", state.source, exc)
+
+    def _drop_stored(self, source: str) -> None:
+        if self._store is None:
+            return
+        try:
+            self._store.delete(source)
+        except Exception as exc:  # noqa: BLE001
+            self._log_store_failure("delete", source, exc)
+
+    @staticmethod
+    def _log_store_failure(action: str, source: str, exc: Exception) -> None:
+        # Class only: a database error can echo the connection URL, which holds a password.
+        logger.warning(
+            "sync state %s failed for %s: %s",
+            action,
+            source,
+            type(exc).__name__,
+            extra={"source": source, "error_class": type(exc).__name__},
+        )

@@ -1,6 +1,7 @@
 """Composition root for the macOS menu-bar launcher: starts the server, shows the next deadline."""
 
 import logging
+import os
 import sys
 import webbrowser
 from datetime import timedelta
@@ -55,7 +56,9 @@ def main() -> None:  # pragma: no cover - needs a macOS GUI session
     def toggle_login(enable: bool) -> bool:  # noqa: FBT001 - a menu check mark is a boolean
         try:
             if enable:
-                launch_agent.install(home, program, log_dir)
+                launch_agent.install(
+                    home, program, log_dir, launch_agent.launch_environment(os.environ)
+                )
             else:
                 launch_agent.remove(home)
         except OSError:

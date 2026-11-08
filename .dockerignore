@@ -1,0 +1,15 @@
+.git
+.venv
+.uv-cache
+.hypothesis
+.pytest_cache
+.ruff_cache
+.import_linter_cache
+.coverage
+.claude
+.github
+tests
+docs
+**/__pycache__
+.env
+.env.*

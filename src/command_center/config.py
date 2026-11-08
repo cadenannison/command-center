@@ -2,10 +2,10 @@
 
 import re
 from pathlib import Path
-from typing import Annotated, Any, Literal, cast
+from typing import Annotated, Any, Literal, Self, cast
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from pydantic import AliasChoices, Field, field_validator
+from pydantic import AliasChoices, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 _PLAIN_HOSTNAME = re.compile(r"[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*")
@@ -30,6 +30,9 @@ class Settings(BaseSettings):
 
     # Loopback only (AGENTS.md rule 5); widening this is a security decision, not a setting.
     host: Literal["127.0.0.1"] = "127.0.0.1"
+    # The one opt-in to listen beyond loopback (decision 0072): CC_BIND_ALL=1, set only in the api
+    # container, whose published port is bound to 127.0.0.1 on the host. `host` stays loopback.
+    bind_all: bool = False
     port: int = Field(default=8765, ge=1, le=65535)
     data_dir: Path = Field(default_factory=lambda: Path.home() / ".command-center")
     # Declared after data_dir: its default is derived from it.
@@ -38,6 +41,12 @@ class Settings(BaseSettings):
         repr=False,  # a hosted URL embeds the password; keep it out of repr/str and logs
         validation_alias=AliasChoices("CC_DATABASE_URL", "DATABASE_URL"),
     )
+    # "single" is one process with an in-process scheduler (decision 0001); "distributed" leaves
+    # syncing to the scheduler and worker processes over Redis.
+    mode: Literal["single", "distributed"] = "single"
+    redis_url: str | None = Field(default=None, repr=False)  # may embed a password
+    # "file" is for containers, which have no OS keychain (decision 0073).
+    secret_backend: Literal["keyring", "file"] = "keyring"  # noqa: S105 - a backend name
     tz: str = "America/Denver"
     sync_interval_minutes: int = Field(default=30, ge=1)
     # AI summaries are opt-in (decision 0004). Off means no provider is built and nothing leaves.
@@ -49,6 +58,18 @@ class Settings(BaseSettings):
     # Hosts other than loopback that may reach the API (the tailnet name Tailscale Serve answers
     # on). Each one needs a device token (decision 0057). Comma separated in CC_ALLOWED_HOSTS.
     allowed_hosts: Annotated[tuple[str, ...], NoDecode] = ()
+
+    @property
+    def listen_host(self) -> str:
+        """The address the server binds: loopback unless CC_BIND_ALL is set."""
+        return "0.0.0.0" if self.bind_all else self.host  # noqa: S104 - the one explicit opt-in
+
+    @model_validator(mode="after")
+    def _distributed_needs_redis(self) -> Self:
+        if self.mode == "distributed" and not self.redis_url:
+            msg = "CC_MODE=distributed needs CC_REDIS_URL (for example redis://redis:6379/0)"
+            raise ValueError(msg)
+        return self
 
     @field_validator("allowed_hosts", mode="before")
     @classmethod

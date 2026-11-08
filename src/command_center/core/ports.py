@@ -2,12 +2,13 @@
 
 from collections.abc import Collection, Mapping, Sequence
 from datetime import date, datetime
-from typing import Protocol
+from typing import Literal, Protocol
 
-from command_center.core.jobs import DeadLetter, Job
+from command_center.core.jobs import DeadLetter, DeadReport, Job, SyncReport
 from command_center.core.pairing import Device, RefreshRecord
 from command_center.core.schema import Event, EventKind, SecretStatus, ValidationResult
 from command_center.core.summary import DailySummary
+from command_center.core.sync_state import SyncState
 from command_center.core.windows import TimeWindow
 
 
@@ -181,8 +182,119 @@ class JobQueue(Protocol):
         """
         ...
 
+    async def dead_letter(self, job: Job, reason: str) -> None:
+        """Move job to the dead letters now, whatever its attempt (a failure retrying cannot fix).
+
+        A job that is not in flight is a no-op, like ack and fail.
+        """
+        ...
+
     async def list_dead_letters(self) -> list[DeadLetter]:
         """Return the jobs that gave up, with reason and time."""
+        ...
+
+
+class ReportStream(Protocol):
+    """At-least-once stream of SyncReports from the sync workers to the normalizer.
+
+    One lane and one consumer group, like JobQueue. A report that is delivered and not acked is
+    delivered again after the visibility timeout; one delivered too many times is dead-lettered.
+    """
+
+    async def publish(self, report: SyncReport) -> None:
+        """Add report to the stream."""
+        ...
+
+    async def consume(self, group: str, consumer: str, block_ms: int) -> SyncReport | None:
+        """Take the next report, waiting up to block_ms (0 = do not wait); None if none."""
+        ...
+
+    async def ack(self, report: SyncReport) -> None:
+        """Mark report handled; one that is not in flight is a no-op."""
+        ...
+
+    async def dead_letter(self, report: SyncReport, reason: str) -> None:
+        """Give up on report now (it can never be applied); not in flight is a no-op."""
+        ...
+
+    async def list_dead_reports(self) -> list[DeadReport]:
+        """Return the reports that were given up on, with reason and time."""
+        ...
+
+
+class SyncStateStore(Protocol):
+    """Synchronous persistence of each source's last sync state, shared between processes."""
+
+    def put(self, state: SyncState, *, user_id: str = "local") -> None:
+        """Store state as the source's current one, replacing any earlier state."""
+        ...
+
+    def get(self, source: str, *, user_id: str = "local") -> SyncState | None:
+        """Return the source's stored state, or None."""
+        ...
+
+    def delete(self, source: str, *, user_id: str = "local") -> None:
+        """Forget the source's state; none stored is not an error."""
+        ...
+
+
+class GenerationStore(Protocol):
+    """Synchronous per-source counter, bumped when the source is disconnected (decision 0074).
+
+    Work (a job, then its report) carries the generation current when it was queued; a result
+    whose generation is below the current one belongs to a connection that no longer exists.
+    """
+
+    def current(self, source: str, *, user_id: str = "local") -> int:
+        """The source's generation; 0 if it was never bumped."""
+        ...
+
+    def bump(self, source: str, *, user_id: str = "local") -> int:
+        """Add one atomically and return the new generation; concurrent bumps never share one."""
+        ...
+
+
+ApplyOutcome = Literal["applied", "not_current", "older"]
+"""What `ReportSink.apply` did: wrote, refused for its generation, or refused as older."""
+
+
+class ReportSink(Protocol):
+    """Writes a report's events and state together, only while its generation is current (0075).
+
+    One synchronous port over the three tables a report touches, so an implementation can do the
+    check and the writes in one transaction where its database allows it. Rows it writes carry the
+    generation they were written under, which is what `purge_stale` compares.
+    """
+
+    def apply(
+        self,
+        generation: int,
+        window: TimeWindow,
+        events: Sequence[Event] | None,
+        state: SyncState,
+        *,
+        user_id: str = "local",
+    ) -> ApplyOutcome:
+        """Apply one report for `state.source`, atomically.
+
+        Reads the source's current generation and returns "not_current", writing nothing, unless
+        it equals `generation`. Rows of the source written under an older generation (a purge
+        that never finished) are deleted first. A `state.at` before the stored state's returns
+        "older", writing nothing. Otherwise `EventStore.replace` semantics for `events` in
+        `window` (None for a report that carries no events), the state is stored stamped with
+        `generation`, and the result is "applied". An event of another user or source is a
+        ValueError and nothing changes.
+        """
+        ...
+
+    def purge_stale(self, source: str, *, user_id: str = "local") -> bool:
+        """Delete the source's events and state written under a generation below the current one.
+
+        The state row's generation says which one the source's events were written under, because
+        `apply` writes both in one transaction. Rows written under the current generation are
+        kept. Idempotent: nothing to delete is False, not an error. Returns whether anything was
+        deleted.
+        """
         ...
 
 

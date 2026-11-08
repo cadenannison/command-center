@@ -7,7 +7,8 @@ from command_center.core.errors import AuthExpired, FatalError, SecretStoreError
 from command_center.core.ports import IntegrationAdapter, SecretStore, SourceAdapter
 from command_center.services.errors import UnknownSourceError, error_text, safe_message
 from command_center.services.models import ConnectResult, SourceSettings, SyncState
-from command_center.services.sync import STORE_UNAVAILABLE_MESSAGE, SyncService
+from command_center.services.sync import STORE_UNAVAILABLE_MESSAGE
+from command_center.services.sync_control import SyncControl
 
 
 class SettingsService:
@@ -15,14 +16,14 @@ class SettingsService:
 
     Besides the sync sources it manages credential-only integrations (an API key): they are
     validated, stored, listed and deleted the same way, but they have no sync state, no
-    events, and `SyncService` does not know them (decision 0058).
+    events, and the sync service does not know them (decision 0058).
     """
 
     def __init__(
         self,
         adapters: Mapping[str, SourceAdapter],
         secrets: SecretStore,
-        sync: SyncService,
+        sync: SyncControl,
         integrations: Mapping[str, IntegrationAdapter] | None = None,
     ) -> None:
         self._adapters = adapters
@@ -47,7 +48,8 @@ class SettingsService:
         is cleared by disconnecting and reconnecting. The adapter validates the merged set.
 
         A successful result carries the source's state as "syncing". Running the sync is the
-        caller's job (`SyncService.sync`), so connecting never waits for a slow source.
+        caller's job (`SyncControl.sync`; in distributed mode that queues a job for the workers),
+        so connecting never waits for a slow source.
 
         A rejected credential is a result with ok false and nothing stored, not an exception.
         An integration's result carries no sync state, so the caller has nothing to sync.
@@ -111,5 +113,8 @@ class SettingsService:
         except SecretStoreError:
             state = self._sync.error_state(source, STORE_UNAVAILABLE_MESSAGE)
             return SourceSettings(source=source, keys={}, sync=state)
-        sync = self._sync.state(source) if source in self._adapters else None
+        sync = None
+        if source in self._adapters:
+            # The distributed api reads the database here, so it runs off the event loop.
+            sync = await asyncio.to_thread(self._sync.state, source)
         return SourceSettings(source=source, keys=dict(keys), sync=sync)

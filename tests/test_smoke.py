@@ -56,9 +56,10 @@ def test_ports_accept_simple_fakes() -> None:
     assert ids.new_id() == "id-1"
 
 
-def test_unbuilt_composition_roots_fail_loudly() -> None:
-    with pytest.raises(NotImplementedError, match="not built yet"):
-        importlib.import_module("command_center.workers.__main__").main()
+def test_the_worker_root_imports_without_running() -> None:
+    # Import only: workers.__main__.main() is built now (decision 0070) and would parse sys.argv,
+    # require CC_REDIS_URL and start a consumer loop.
+    assert callable(importlib.import_module("command_center.workers.__main__").main)
 
 
 def test_the_menu_bar_root_imports_without_running() -> None:

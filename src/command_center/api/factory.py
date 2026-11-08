@@ -48,6 +48,9 @@ def create_app(
         finally:
             if scheduler is not None:
                 await scheduler.stop()
+            close = app.state.container.close
+            if close is not None:
+                await close()
 
     app = FastAPI(title="Command Center", version="0.1.0", lifespan=lifespan)
     if isinstance(container, Container):

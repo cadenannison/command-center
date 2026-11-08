@@ -20,7 +20,7 @@ from sqlalchemy import (
     select,
 )
 from sqlalchemy.engine import CursorResult, make_url
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
+from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 from sqlalchemy.sql.elements import ColumnElement
 
 from command_center.core.schema import Event, EventKind
@@ -111,32 +111,13 @@ class SqliteEventStore:
         *,
         user_id: str = "local",
     ) -> int:
-        for event in events:
-            if event.user_id != user_id:
-                msg = f"Event {event.id} has user_id {event.user_id!r}, expected {user_id!r}"
-                raise ValueError(msg)
-            if event.source != source:
-                msg = f"Event {event.id} has source {event.source!r}, expected {source!r}"
-                raise ValueError(msg)
-        distinct = {event.id: event for event in events}
-        stale = delete(_EventRow).where(
-            _EventRow.user_id == user_id,
-            _EventRow.source == source,
-            _matches_window(window),
-        )
         # One transaction: a failure while writing rolls the delete back too.
         with self._sessions.begin() as session:
-            session.execute(stale)
-            for event in distinct.values():
-                session.merge(_to_row(event))
-        return len(distinct)
+            return replace_events(session, source, window, events, user_id)
 
     def delete_source(self, source: str, *, user_id: str = "local") -> int:
-        statement = delete(_EventRow).where(
-            _EventRow.user_id == user_id, _EventRow.source == source
-        )
         with self._sessions.begin() as session:
-            return cast("CursorResult[Any]", session.execute(statement)).rowcount
+            return delete_source_events(session, source, user_id)
 
     def query(
         self,
@@ -154,6 +135,41 @@ class SqliteEventStore:
             statement = statement.where(_EventRow.kind.in_(list(kinds)))
         with self._sessions() as session:
             return [_to_event(row) for row in session.scalars(statement)]
+
+
+def replace_events(
+    session: Session, source: str, window: TimeWindow, events: Sequence[Event], user_id: str
+) -> int:
+    """Swap the source's events in window for events inside the caller's transaction.
+
+    The rules of `EventStore.replace`; a ValueError (an event of another user or source) is
+    raised before anything is written. Shared with the report sink, which adds more statements
+    to the same transaction (decision 0075).
+    """
+    for event in events:
+        if event.user_id != user_id:
+            msg = f"Event {event.id} has user_id {event.user_id!r}, expected {user_id!r}"
+            raise ValueError(msg)
+        if event.source != source:
+            msg = f"Event {event.id} has source {event.source!r}, expected {source!r}"
+            raise ValueError(msg)
+    distinct = {event.id: event for event in events}
+    session.execute(
+        delete(_EventRow).where(
+            _EventRow.user_id == user_id,
+            _EventRow.source == source,
+            _matches_window(window),
+        )
+    )
+    for event in distinct.values():
+        session.merge(_to_row(event))
+    return len(distinct)
+
+
+def delete_source_events(session: Session, source: str, user_id: str) -> int:
+    """Delete every event of the source (dated or not) inside the caller's transaction."""
+    statement = delete(_EventRow).where(_EventRow.user_id == user_id, _EventRow.source == source)
+    return cast("CursorResult[Any]", session.execute(statement)).rowcount
 
 
 def _matches_window(window: TimeWindow) -> ColumnElement[bool]:
@@ -176,8 +192,13 @@ def create_event_store(database_url: str) -> SqliteEventStore:
     if url.get_backend_name() == "sqlite" and url.database not in (None, "", ":memory:"):
         Path(str(url.database)).parent.mkdir(parents=True, exist_ok=True)
     engine = create_engine(url, hide_parameters=True)  # error text must not carry event content
-    _Base.metadata.create_all(engine)
+    ensure_event_schema(engine)
     return SqliteEventStore(engine)
+
+
+def ensure_event_schema(engine: Engine) -> None:
+    """Create the events table if it is missing."""
+    _Base.metadata.create_all(engine)
 
 
 def _to_row(event: Event) -> _EventRow:

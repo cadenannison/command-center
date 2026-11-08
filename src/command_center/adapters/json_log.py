@@ -20,6 +20,7 @@ LOG_FIELDS = (
     "delay_seconds",
     "reason",
     "consumer",
+    "error_class",
 )
 
 _HANDLER_MARK = "_command_center_json_handler"

@@ -21,7 +21,9 @@ from command_center.core.jobs import (
     MAX_REASON_LENGTH,
     VISIBILITY_TIMEOUT_REASON,
     DeadLetter,
+    DeadReport,
     Job,
+    SyncReport,
 )
 from command_center.core.ports import Clock, Rng
 from command_center.core.redact import trim
@@ -55,6 +57,14 @@ else
 end
 return 1
 """
+
+
+def source_queue_prefix(source: str) -> str:
+    """The Redis key prefix of one source's job queue: one queue per source (decision 0070).
+
+    The api, the scheduler and the workers must agree on it, so it lives here, once.
+    """
+    return f"cc-{source}"
 
 
 @dataclass(frozen=True)
@@ -169,6 +179,14 @@ class RedisStreamsQueue:
         reason = trim(reason, MAX_REASON_LENGTH)
         dead = self._policy.exhausted(delivery.job.attempt)
         await self._resolve(delivery.group, delivery.entry_id, delivery.job, reason, dead=dead)
+
+    async def dead_letter(self, job: Job, reason: str) -> None:
+        delivery = self._entries.pop(job.id, None)
+        if delivery is None:
+            logger.debug("dead_letter ignored: job not in flight", extra=job_fields(job))
+            return
+        reason = trim(reason, MAX_REASON_LENGTH)
+        await self._resolve(delivery.group, delivery.entry_id, delivery.job, reason, dead=True)
 
     async def list_dead_letters(self) -> list[DeadLetter]:
         rows = cast("list[tuple[str, dict[str, str]]]", await self._client.xrange(self._dead) or [])
@@ -297,3 +315,212 @@ class RedisStreamsQueue:
             block=block_ms if block_ms > 0 else None,
         )
         return cast("list[Any] | None", reply)
+
+
+DEFAULT_MAX_DELIVERIES = 5
+DELIVERIES_EXHAUSTED_REASON = "delivered too many times without an ack"
+
+
+@dataclass(frozen=True)
+class _Held:
+    group: str
+    entry_id: str
+    report: SyncReport
+
+
+class RedisReportStream:
+    """ReportStream over Redis Streams (decision 0071).
+
+    Keys `{prefix}:reports` and `{prefix}:reports:dead`. Like the job queue, an acked entry is
+    deleted, entry ids are held in the consuming process, and an unacked report returns after the
+    visibility timeout. A report delivered `max_deliveries` times without an ack is dead-lettered
+    (as a `DeadReport`, without its events) instead of looping forever.
+    """
+
+    def __init__(
+        self,
+        client: Redis,
+        clock: Clock,
+        *,
+        prefix: str = "cc",
+        visibility_timeout: timedelta = DEFAULT_VISIBILITY_TIMEOUT,
+        max_deliveries: int = DEFAULT_MAX_DELIVERIES,
+    ) -> None:
+        self._client = client
+        self._clock = clock
+        self._visibility_ms = int(visibility_timeout.total_seconds() * 1000)
+        self._max_deliveries = max_deliveries
+        self._stream = f"{{{prefix}}}:reports"
+        self._dead = f"{{{prefix}}}:reports:dead"
+        self._groups: set[str] = set()
+        self._held: dict[str, _Held] = {}
+
+    @classmethod
+    def from_url(
+        cls,
+        url: str,
+        clock: Clock,
+        *,
+        prefix: str = "cc",
+        visibility_timeout: timedelta = DEFAULT_VISIBILITY_TIMEOUT,
+        max_deliveries: int = DEFAULT_MAX_DELIVERIES,
+    ) -> Self:
+        """Build a stream and its client; composition roots call this instead of importing redis."""
+        client = Redis.from_url(url, decode_responses=True, protocol=2)  # pyright: ignore[reportUnknownMemberType]
+        return cls(
+            client,
+            clock,
+            prefix=prefix,
+            visibility_timeout=visibility_timeout,
+            max_deliveries=max_deliveries,
+        )
+
+    async def aclose(self) -> None:
+        """Close the Redis connection."""
+        await self._client.aclose()
+
+    async def publish(self, report: SyncReport) -> None:
+        await self._client.xadd(self._stream, {"report": report.model_dump_json()})
+        logger.info(
+            "report published",
+            extra={"correlation_id": report.correlation_id, "source": report.source},
+        )
+
+    async def consume(self, group: str, consumer: str, block_ms: int) -> SyncReport | None:
+        await self._ensure_group(group)
+        while True:
+            raw = await self._claim_stale(group, consumer) or await self._read_new(
+                group, consumer, block_ms
+            )
+            if raw is None:
+                return None
+            report = self._parse(raw)
+            if report is None:
+                await self._remove(group, raw.entry_id)
+                continue
+            if raw.deliveries > self._max_deliveries:
+                await self._give_up(group, raw.entry_id, report, DELIVERIES_EXHAUSTED_REASON)
+                continue
+            self._held[report.id] = _Held(group, raw.entry_id, report)
+            return report
+
+    async def ack(self, report: SyncReport) -> None:
+        held = self._held.pop(report.id, None)
+        if held is None:
+            return
+        await self._remove(held.group, held.entry_id)
+
+    async def dead_letter(self, report: SyncReport, reason: str) -> None:
+        held = self._held.pop(report.id, None)
+        if held is None:
+            return
+        await self._give_up(held.group, held.entry_id, held.report, trim(reason, MAX_REASON_LENGTH))
+
+    async def list_dead_reports(self) -> list[DeadReport]:
+        rows = cast("list[tuple[str, dict[str, str]]]", await self._client.xrange(self._dead) or [])
+        return [DeadReport.model_validate_json(fields["dead"]) for _, fields in rows]
+
+    async def _give_up(self, group: str, entry_id: str, report: SyncReport, reason: str) -> None:
+        note = DeadReport(
+            id=report.id,
+            correlation_id=report.correlation_id,
+            source=report.source,
+            reason=reason,
+            failed_at=self._clock.now(),
+        )
+        script = self._client.register_script(_RESOLVE)
+        resolved = await script(
+            keys=[self._stream, self._dead, self._dead],
+            args=[group, entry_id, "dead", note.model_dump_json(), 0],
+        )
+        if resolved:
+            logger.error(
+                "report dead-lettered: %s",
+                reason,
+                extra={
+                    "correlation_id": report.correlation_id,
+                    "source": report.source,
+                    "reason": reason,
+                },
+            )
+
+    async def _remove(self, group: str, entry_id: str) -> None:
+        async with self._client.pipeline(transaction=True) as pipe:
+            pipe.xack(self._stream, group, entry_id)
+            pipe.xdel(self._stream, entry_id)
+            await pipe.execute()
+
+    def _parse(self, raw: _Raw) -> SyncReport | None:
+        try:
+            return SyncReport.model_validate_json(raw.fields["report"])
+        except (KeyError, ValueError) as error:
+            # Never log the payload or the validation text: both can echo events.
+            logger.error(  # noqa: TRY400
+                "discarding unreadable report entry %s (%s)",
+                raw.entry_id,
+                type(error).__name__,
+                extra={"reason": f"unreadable entry: {type(error).__name__}"},
+            )
+            return None
+
+    async def _ensure_group(self, group: str) -> None:
+        if group in self._groups:
+            return
+        try:
+            await self._client.xgroup_create(self._stream, group, id="0", mkstream=True)
+        except ResponseError as error:
+            if "BUSYGROUP" not in str(error):
+                raise
+        self._groups.add(group)
+
+    async def _in_group[T](self, group: str, call: Callable[[], Awaitable[T]]) -> T:
+        """Run call; if Redis lost the group (restart, flush), recreate it and retry once."""
+        try:
+            return await call()
+        except ResponseError as error:
+            if "NOGROUP" not in str(error):
+                raise
+            logger.warning("consumer group missing, recreating it", extra={"reason": "NOGROUP"})
+            self._groups.discard(group)
+            await self._ensure_group(group)
+            return await call()
+
+    async def _claim_stale(self, group: str, consumer: str) -> _Raw | None:
+        cursor = "0-0"
+        while True:
+            reply = await self._in_group(
+                group,
+                lambda start=cursor: self._client.xautoclaim(
+                    self._stream, group, consumer, self._visibility_ms, start_id=start, count=1
+                ),
+            )
+            cursor = str(reply[0])
+            for entry_id, fields in cast("list[tuple[str, dict[str, str]]]", reply[1]):
+                pending = cast(
+                    "list[dict[str, Any]]",
+                    await self._client.xpending_range(self._stream, group, entry_id, entry_id, 1),
+                )
+                if pending:
+                    return _Raw(entry_id, fields, int(pending[0]["times_delivered"]))
+            if cursor == "0-0":
+                return None
+
+    async def _read_new(self, group: str, consumer: str, block_ms: int) -> _Raw | None:
+        # redis-py treats block=0 as "wait forever"; the port treats 0 as "do not wait".
+        reply = cast(
+            "list[Any] | None",
+            await self._in_group(
+                group,
+                lambda: self._client.xreadgroup(
+                    group,
+                    consumer,
+                    {self._stream: ">"},
+                    count=1,
+                    block=block_ms if block_ms > 0 else None,
+                ),
+            ),
+        )
+        if not reply:
+            return None
+        entry_id, fields = cast("tuple[str, dict[str, str]]", reply[0][1][0])
+        return _Raw(entry_id, fields, 1)

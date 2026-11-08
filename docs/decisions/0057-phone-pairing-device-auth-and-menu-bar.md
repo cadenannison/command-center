@@ -1,6 +1,6 @@
 # 0057. Phone pairing, Host-based device auth and the menu-bar launcher
 
-Status: accepted
+Status: accepted; item 12 (c) is superseded by 0060 (a paired phone is read-only plus POST /v1/sync), and items 9 and 12 (b) in part
 
 Context: Task 3c (security-critical). A phone reaches the Mac through Tailscale Serve, which proxies to 127.0.0.1 but keeps the tailnet name in `Host`. The card fixed the token lifetimes, the hashing, the rate limit and the Host rule; the decisions below are the places it left open or where the layer rules forced a different shape.
 Decisions:

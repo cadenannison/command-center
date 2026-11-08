@@ -99,3 +99,16 @@ def test_only_composition_roots_configure_logging() -> None:
         if "configure_json_logging" in path.read_text(encoding="utf-8")
     }
     assert callers <= ALLOWED_CALLERS
+
+
+def test_the_error_class_is_emitted_and_an_error_message_attached_under_another_key_is_not() -> (
+    None
+):
+    data = json.loads(
+        JsonFormatter().format(
+            record({"error_class": "TransientError", "error": "token fake-secret-value rejected"})
+        )
+    )
+    assert data["error_class"] == "TransientError"
+    assert "error" not in data
+    assert "fake-secret-value" not in json.dumps(data)

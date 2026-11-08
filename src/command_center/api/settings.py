@@ -44,7 +44,10 @@ async def put_settings(
     container: ContainerDep,
     background: BackgroundTasks,
 ) -> ConnectResult:
-    """Validate and store the credentials; the sync runs after the response (state "syncing").
+    """Validate and store the credentials; the sync starts after the response (state "syncing").
+
+    In distributed mode the api runs no sync: it queues a job for the source's worker, and
+    `GET /v1/settings` shows the state the normalizer records when the worker reports.
 
     A credential-only integration (the Gemini key) has no sync: its result carries `sync` null.
     """
@@ -60,5 +63,8 @@ async def put_settings(
     responses={**NOT_FOUND, **INVALID_REQUEST},
 )
 async def delete_settings(source: str, container: ContainerDep) -> SourceSettings:
-    """Delete every stored key and every stored event of the source."""
+    """Delete every stored key, event and sync state of the source.
+
+    Work already in flight for the source is cancelled: whatever it reports afterwards is dropped.
+    """
     return await container.settings.disconnect(source)
