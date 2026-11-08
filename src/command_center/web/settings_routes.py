@@ -95,7 +95,7 @@ def settings_router(get_container: Callable[..., Container], renderer: Renderer)
         if refusal is not None:
             return await card(request, services, source, refusal, ok=False)
         result = await _connect(services, source, creds, connecting)
-        if result.ok:
+        if result.ok and result.sync is not None:  # an integration has nothing to sync
             background.add_task(services.sync.sync, source)
         return await card(request, services, source, result.message, ok=result.ok)
 

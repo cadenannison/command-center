@@ -52,6 +52,7 @@ class CardView:
     button_disabled: bool
     sign_in_wait: bool
     timeout_ms: int
+    credential_only: bool = False
     flash: str = ""
     flash_ok: bool = True
 
@@ -77,7 +78,9 @@ def card_view(item: SourceSettings, *, flash: str = "", flash_ok: bool = True) -
         )
         for f in form.fields
     )
-    if item.sync is None:
+    if item.sync is None and form.credential_only and any(f.is_set for f in fields):
+        status = StatusView("ok", "Connected", "")
+    elif item.sync is None:
         status = StatusView("none", "Not connected", "")
     else:
         label = _STATUS_LABELS.get(item.sync.status, item.sync.status)
@@ -92,6 +95,7 @@ def card_view(item: SourceSettings, *, flash: str = "", flash_ok: bool = True) -
         button_disabled=status.status == "syncing",
         sign_in_wait=form.sign_in_wait,
         timeout_ms=SIGN_IN_TIMEOUT_MS if form.sign_in_wait else CONNECT_TIMEOUT_MS,
+        credential_only=form.credential_only,
         flash=flash,
         flash_ok=flash_ok,
     )

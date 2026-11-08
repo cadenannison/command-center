@@ -11,6 +11,7 @@ The adapter behaviour behind each is in [contracts/adapters.md](contracts/adapte
 | LearningSuite | iCal feed URLs | [LearningSuite](#learningsuite) |
 | Gmail | OAuth client JSON | [gmail-setup.md](gmail-setup.md) |
 | Weather | Latitude, Longitude | [Weather](#weather) |
+| Gemini (summaries) | API key | [Summaries](#summaries) |
 
 ## Canvas
 1. In Canvas open Account > Settings > Approved Integrations > **New Access Token**.
@@ -48,6 +49,13 @@ and then kept.
 | `CC_SUMMARY_MODEL` | Override the provider's default model |
 | `CC_SUMMARY_INCLUDE_EMAIL=true` | Let trimmed email subjects into the summary |
 
-Gemini reads its key from the keychain (source `gemini`, key `api_key`). On Gemini's free tier Google may
-use what you send to improve its products. Note: the Settings page does not show a Gemini card yet, so
-there is no in-app place to enter the key; use Ollama until that is added (decision 0053, item 6).
+### Gemini key
+Create a key in [Google AI Studio](https://aistudio.google.com/apikey), then enter it in Settings > Gemini
+summaries. It is checked with one small request to Gemini before it is stored in the keychain (source
+`gemini`, key `api_key`), and works at once: no restart. Deleting it stops new Gemini summaries: a summary already made for a day is kept, a later day shows the
+latest earlier summary, and with none stored the built-in fallback is used. The key alone does not turn summaries on, that is
+`CC_SUMMARY_ENABLED=true`.
+
+On Gemini's free tier Google may use what you send to improve its products, and human reviewers may read it.
+Only titles, due dates and trimmed subjects are sent, with email addresses and numbers redacted first, never
+email bodies.

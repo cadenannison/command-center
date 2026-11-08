@@ -13,6 +13,8 @@ Persistence. Implements storage ports from core; SQLAlchemy lives here.
 
 - `sqlite_summary.SqliteSummaryStore` implements `SummaryStore` (sync SQLAlchemy 2); `create_summary_store(database_url)` mirrors `create_event_store` (creates the file's directory and the table, `hide_parameters=True`). Table `summaries`, primary key `(user_id, day)`, `summary` holds the `DailySummary` as JSON text. `put` replaces the row; `latest_before(day)` is the row with the greatest `day` strictly before `day` for the user, not the last written; a row that no longer parses reads as missing. Decisions: 0035, 0040.
 
+- `sqlite_devices.SqliteDeviceStore` implements `DeviceStore`; `create_device_store(database_url)` mirrors the other factories (`hide_parameters=True`). Tables `pairing_tokens`, `devices` and `device_credentials(token_hash PK, device_id, kind, expires_at, superseded)`; only SHA-256 hex digests are stored, timestamps are fixed-width UTC ISO strings. A pairing token is taken by one `DELETE ... RETURNING`, a refresh credential is rotated by one `UPDATE ... RETURNING`; reads compare digests with `hashes_match`. Both the fake and SQLite stores run `tests/device_store_contract.py`. Decision 0057.
+
 ## Not built yet
 - Schema migrations (tables are created if missing, never altered) and a cache of fetched items with per-source last-sync times.
 - Never stores secrets (those are in the keychain) or email bodies.

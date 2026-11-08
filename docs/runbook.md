@@ -8,7 +8,7 @@
 ## Common situations (fill in as features land)
 - Gmail shows "Reconnect": the refresh token expired (7 days while the OAuth client is unverified).
   Reconnect from settings. See docs/decisions/0003-gmail.md.
-- Phone cannot connect: the Mac is asleep, or Tailscale Serve is off. Never use Funnel.
+- Phone cannot connect: the Mac is asleep, or Tailscale Serve is off. Never use Funnel. Setup and checks: docs/mobile.md.
 - Rotate a secret: overwrite it through the settings API (write-only); the old value is replaced in the keychain.
 
 ## Production-readiness checklist (local-first app; tick before relying on it daily)

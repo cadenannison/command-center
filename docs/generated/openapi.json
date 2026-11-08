@@ -93,6 +93,37 @@
         "title": "DailySummary",
         "type": "object"
       },
+      "DeviceInfo": {
+        "description": "A paired phone. Carries no credential.",
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "last_seen_at": {
+            "format": "date-time",
+            "title": "Last Seen At",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "created_at",
+          "last_seen_at"
+        ],
+        "title": "DeviceInfo",
+        "type": "object"
+      },
       "ErrorBody": {
         "description": "A plain error.",
         "properties": {
@@ -223,6 +254,52 @@
         "title": "Event",
         "type": "object"
       },
+      "PairRequest": {
+        "additionalProperties": false,
+        "description": "The one-time token shown on the Mac's pairing page, and a name for the phone.",
+        "properties": {
+          "device_name": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Device Name"
+          },
+          "pairing_token": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Pairing Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pairing_token"
+        ],
+        "title": "PairRequest",
+        "type": "object"
+      },
+      "RefreshRequest": {
+        "additionalProperties": false,
+        "description": "The device's current refresh credential.",
+        "properties": {
+          "refresh_token": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Refresh Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "refresh_token"
+        ],
+        "title": "RefreshRequest",
+        "type": "object"
+      },
       "SecretStatus": {
         "description": "What the settings API may reveal about a secret: whether it is set and its last 4 chars.\n\n`last4` is None for an unset secret and for any value shorter than 8 characters, where four\ncharacters would give away too much of the value.",
         "properties": {
@@ -339,6 +416,42 @@
         "title": "SyncState",
         "type": "object"
       },
+      "TokenResponse": {
+        "description": "A device's credentials. The refresh credential is single use: store the new one.",
+        "properties": {
+          "access_expires_at": {
+            "format": "date-time",
+            "title": "Access Expires At",
+            "type": "string"
+          },
+          "access_token": {
+            "title": "Access Token",
+            "type": "string"
+          },
+          "device_id": {
+            "title": "Device Id",
+            "type": "string"
+          },
+          "refresh_token": {
+            "title": "Refresh Token",
+            "type": "string"
+          },
+          "token_type": {
+            "const": "bearer",
+            "default": "bearer",
+            "title": "Token Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "device_id",
+          "access_token",
+          "access_expires_at",
+          "refresh_token"
+        ],
+        "title": "TokenResponse",
+        "type": "object"
+      },
       "ValidationErrorBody": {
         "description": "Body of a 422 for a malformed request.",
         "properties": {
@@ -389,6 +502,13 @@
         ],
         "title": "ValidationIssue",
         "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "DeviceToken": {
+        "description": "A device access token from POST /v1/pair or /v1/pair/refresh. Required when the Host is the tailnet name; the Mac's own loopback web UI needs none.",
+        "scheme": "bearer",
+        "type": "http"
       }
     }
   },
@@ -454,6 +574,11 @@
             "description": "Unprocessable Content"
           }
         },
+        "security": [
+          {
+            "DeviceToken": []
+          }
+        ],
         "summary": "Agenda for a day, week or month",
         "tags": [
           "agenda"
@@ -480,9 +605,96 @@
             "description": "Successful Response"
           }
         },
+        "security": [
+          {
+            "DeviceToken": []
+          }
+        ],
         "summary": "Items needing attention",
         "tags": [
           "agenda"
+        ]
+      }
+    },
+    "/v1/devices": {
+      "get": {
+        "description": "Every paired phone, oldest first.",
+        "operationId": "list_devices_v1_devices_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DeviceInfo"
+                  },
+                  "title": "Response List Devices V1 Devices Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "DeviceToken": []
+          }
+        ],
+        "summary": "List paired devices",
+        "tags": [
+          "devices"
+        ]
+      }
+    },
+    "/v1/devices/{device_id}": {
+      "delete": {
+        "description": "Delete a device; its access and refresh tokens stop working at once.",
+        "operationId": "revoke_device_v1_devices__device_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "device_id",
+            "required": true,
+            "schema": {
+              "title": "Device Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "DeviceToken": []
+          }
+        ],
+        "summary": "Revoke a paired device",
+        "tags": [
+          "devices"
         ]
       }
     },
@@ -538,6 +750,11 @@
             "description": "Unprocessable Content"
           }
         },
+        "security": [
+          {
+            "DeviceToken": []
+          }
+        ],
         "summary": "Events in a time window",
         "tags": [
           "agenda"
@@ -570,6 +787,164 @@
         ]
       }
     },
+    "/v1/pair": {
+      "post": {
+        "description": "Trade the one-time pairing token (single use, 5 minutes) for an access and refresh token.",
+        "operationId": "pair_v1_pair_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PairRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "The token or credential is not valid"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Pairing is not available"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Five failures in a row; wait Retry-After seconds",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Exchange a pairing token for device credentials",
+        "tags": [
+          "pairing"
+        ]
+      }
+    },
+    "/v1/pair/refresh": {
+      "post": {
+        "description": "Trade the refresh credential for a new pair. Reusing a spent one revokes the device.",
+        "operationId": "refresh_v1_pair_refresh_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "The token or credential is not valid"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Pairing is not available"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Five failures in a row; wait Retry-After seconds",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Rotate a device's refresh credential",
+        "tags": [
+          "pairing"
+        ]
+      }
+    },
     "/v1/settings": {
       "get": {
         "description": "Per source and per key: whether it is set and its last 4 characters; plus the sync state.",
@@ -590,6 +965,11 @@
             "description": "Successful Response"
           }
         },
+        "security": [
+          {
+            "DeviceToken": []
+          }
+        ],
         "summary": "Status of every source",
         "tags": [
           "settings"
@@ -643,13 +1023,18 @@
             "description": "Unprocessable Content"
           }
         },
+        "security": [
+          {
+            "DeviceToken": []
+          }
+        ],
         "summary": "Disconnect a source",
         "tags": [
           "settings"
         ]
       },
       "put": {
-        "description": "Validate and store the credentials; the sync runs after the response (state \"syncing\").",
+        "description": "Validate and store the credentials; the sync runs after the response (state \"syncing\").\n\nA credential-only integration (the Gemini key) has no sync: its result carries `sync` null.",
         "operationId": "put_settings_v1_settings__source__put",
         "parameters": [
           {
@@ -704,6 +1089,11 @@
             "description": "Unprocessable Content"
           }
         },
+        "security": [
+          {
+            "DeviceToken": []
+          }
+        ],
         "summary": "Connect a source",
         "tags": [
           "settings"
@@ -758,6 +1148,11 @@
             "description": "Unprocessable Content"
           }
         },
+        "security": [
+          {
+            "DeviceToken": []
+          }
+        ],
         "summary": "The day's AI summary",
         "tags": [
           "summary"
@@ -784,6 +1179,11 @@
             "description": "Successful Response"
           }
         },
+        "security": [
+          {
+            "DeviceToken": []
+          }
+        ],
         "summary": "Sync every source now",
         "tags": [
           "sync"

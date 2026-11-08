@@ -6,8 +6,9 @@ MAX_VALUE_LENGTH = 8192  # same bound as the API's CredentialValue
 
 GEMINI_CAVEAT = (
     "On Gemini's free tier Google may use what you send to improve its products, and human "
-    "reviewers may read it. Only titles, due dates and trimmed subjects are sent, never email "
-    "bodies (decision 0004)."
+    "reviewers may read it. Only titles, due dates and trimmed subjects are sent, with email "
+    "addresses and numbers redacted first, never email bodies. Saving a key does not turn "
+    "summaries on; that is the CC_SUMMARY_ENABLED setting."
 )
 
 
@@ -30,6 +31,7 @@ class SourceForm:
     fields: tuple[Field, ...]
     note: str = ""
     sign_in_wait: bool = False  # connect blocks on a browser sign-in and can take minutes
+    credential_only: bool = False  # an API key: no sync, no items, so no sync state to show
 
 
 SOURCE_FORMS: dict[str, SourceForm] = {
@@ -64,6 +66,7 @@ SOURCE_FORMS: dict[str, SourceForm] = {
         "Gemini summaries",
         (Field("api_key", "API key", secret=True),),
         note=GEMINI_CAVEAT,
+        credential_only=True,
     ),
 }
 

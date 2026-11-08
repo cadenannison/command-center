@@ -16,7 +16,7 @@
 </form>
 <div class="actions">
 {{ connect_button(card) }}
-<button type="button" class="danger" hx-delete="/settings/{{ card.source }}" hx-target="#source-{{ card.source }}" hx-swap="outerHTML" hx-confirm="Delete the stored credentials and synced items of {{ card.label }}?">Delete</button>
+<button type="button" class="danger" hx-delete="/settings/{{ card.source }}" hx-target="#source-{{ card.source }}" hx-swap="outerHTML" hx-confirm="{% if card.credential_only %}Delete the stored key of {{ card.label }}?{% else %}Delete the stored credentials and synced items of {{ card.label }}?{% endif %}">Delete</button>
 <span class="busy" id="busy-{{ card.source }}">{% if card.sign_in_wait %}Waiting for Google sign-in…{% else %}Connecting…{% endif %}</span>
 </div>
 {% if card.flash %}<p class="flash{% if not card.flash_ok %} bad{% endif %}" role="status">{{ card.flash }}</p>{% endif %}

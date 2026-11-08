@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, Request
 from command_center.services.container import Container
 from command_center.web.csrf import new_token, require_csrf
 from command_center.web.pages import pages_router
+from command_center.web.pair_routes import pair_router
 from command_center.web.render import Renderer
 from command_center.web.settings_routes import settings_router
 
@@ -31,4 +32,5 @@ def create_router(
     router = APIRouter(dependencies=[Depends(require_csrf(token))], include_in_schema=False)
     router.include_router(pages_router(get_container, renderer))
     router.include_router(settings_router(get_container, renderer))
+    router.include_router(pair_router(get_container, renderer))
     return router

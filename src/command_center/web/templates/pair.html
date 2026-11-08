@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Pair phone · Command Center{% endblock %}
+{% block content %}
+<h1>Pair phone</h1>
+{% if configured %}
+<p class="muted">Open the Command Center app on your phone and scan the code. The phone must be on your tailnet, and this Mac must be awake to answer it.</p>
+<div class="panel">
+<button type="button" hx-post="/pair/code" hx-target="#pair-result" hx-swap="innerHTML">Show pairing code</button>
+<div id="pair-result" aria-live="polite"></div>
+</div>
+{% else %}
+<div class="panel"><p class="flash bad">{{ not_configured }}</p></div>
+{% endif %}
+{% endblock %}

@@ -44,9 +44,12 @@ async def put_settings(
     container: ContainerDep,
     background: BackgroundTasks,
 ) -> ConnectResult:
-    """Validate and store the credentials; the sync runs after the response (state "syncing")."""
+    """Validate and store the credentials; the sync runs after the response (state "syncing").
+
+    A credential-only integration (the Gemini key) has no sync: its result carries `sync` null.
+    """
     result = await container.settings.connect(source, body.credentials)
-    if result.ok:
+    if result.ok and result.sync is not None:
         background.add_task(container.sync.sync, source)
     return result
 

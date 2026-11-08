@@ -9,19 +9,28 @@ from command_center.adapters.canvas import CanvasAdapter
 from command_center.adapters.gmail import GmailAdapter
 from command_center.adapters.ical_feed import IcalFeedAdapter
 from command_center.adapters.keyring_store import KeyringSecretStore
-from command_center.adapters.summary_gemini import GeminiSummaryProvider
+from command_center.adapters.summary_gemini import GeminiIntegration, GeminiSummaryProvider
 from command_center.adapters.summary_ollama import OllamaSummaryProvider
 from command_center.adapters.system_clock import SystemClock
+from command_center.adapters.system_tokens import SystemTokenSource
 from command_center.adapters.weather import WeatherAdapter
 from command_center.api import create_app as create_api_app
 from command_center.config import Settings
-from command_center.core.ports import Clock, SecretStore, SourceAdapter, SummaryProvider
+from command_center.core.ports import (
+    Clock,
+    IntegrationAdapter,
+    SecretStore,
+    SourceAdapter,
+    SummaryProvider,
+)
 from command_center.services.agenda import AgendaService
 from command_center.services.container import Container
+from command_center.services.pairing import PairingService
 from command_center.services.settings import SettingsService
 from command_center.services.summary import SummaryService
 from command_center.services.sync import SyncService
 from command_center.storage.sqlite import create_event_store
+from command_center.storage.sqlite_devices import create_device_store
 from command_center.storage.sqlite_summary import create_summary_store
 
 
@@ -37,6 +46,16 @@ def build_adapters(tz: ZoneInfo, clock: Clock) -> dict[str, SourceAdapter]:
     return {adapter.name: adapter for adapter in adapters}
 
 
+def build_integrations(settings: Settings) -> dict[str, IntegrationAdapter]:
+    """The credential-only integrations: the Gemini key, checked with Gemini's model name."""
+    # summary_model names the chosen provider's model; an Ollama name is not a Gemini model.
+    if settings.summary_provider == "gemini" and settings.summary_model is not None:
+        gemini = GeminiIntegration(model=settings.summary_model)
+    else:
+        gemini = GeminiIntegration()
+    return {gemini.name: gemini}
+
+
 def build_summary_provider(settings: Settings, secrets: SecretStore) -> SummaryProvider:
     """The configured provider. Gemini reads its key from the secret store on every call."""
     if settings.summary_provider == "ollama":
@@ -46,6 +65,18 @@ def build_summary_provider(settings: Settings, secrets: SecretStore) -> SummaryP
     if settings.summary_model is None:
         return GeminiSummaryProvider(secrets)
     return GeminiSummaryProvider(secrets, model=settings.summary_model)
+
+
+def build_pairing(settings: Settings, clock: Clock) -> PairingService:
+    """Phone pairing over the same database. The phone's URL is https on the first allowed host.
+
+    Tailscale Serve answers HTTPS on 443 for the tailnet name, so no port is added; with no
+    allowed host there is no URL and the /pair page says how to set one.
+    """
+    base_url = f"https://{settings.allowed_hosts[0]}" if settings.allowed_hosts else None
+    return PairingService(
+        create_device_store(settings.database_url), SystemTokenSource(), clock, base_url=base_url
+    )
 
 
 def build_container(settings: Settings | None = None) -> Container:
@@ -75,15 +106,18 @@ def build_container(settings: Settings | None = None) -> Container:
     return Container(
         sync=sync,
         agenda=agenda,
-        settings=SettingsService(adapters, secrets, sync),
+        settings=SettingsService(adapters, secrets, sync, build_integrations(settings)),
         summary=summary,
+        pairing=build_pairing(settings, clock),
     )
 
 
 def build_app(settings: Settings) -> FastAPI:
     """The app for these settings; the container is built when the server starts, not here."""
     return create_api_app(
-        lambda: build_container(settings), sync_interval_minutes=settings.sync_interval_minutes
+        lambda: build_container(settings),
+        sync_interval_minutes=settings.sync_interval_minutes,
+        remote_hosts=settings.allowed_hosts,
     )
 
 

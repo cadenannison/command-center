@@ -53,6 +53,8 @@ textarea{min-height:5rem}textarea.masked{-webkit-text-security:disc}
 button{font:inherit;padding:.5rem 1rem;border-radius:.35rem;border:1px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer}
 button.danger{background:transparent;color:var(--warn);border-color:var(--warn)}
 button[disabled]{opacity:.55;cursor:not-allowed}
+.qr svg{display:block;width:min(100%,16rem);height:auto;background:#fff;padding:.5rem;border-radius:.35rem}
+code{overflow-wrap:anywhere}
 .busy{display:none;color:var(--muted)}.busy.htmx-request{display:inline}
 .flash{margin:.5rem 0 0;font-size:.9rem}.flash.bad{color:var(--warn)}
 @media (max-width:48rem){.week{grid-template-columns:1fr}.row{grid-template-columns:4.5rem 1fr auto}.cell{min-height:3rem;padding:.15rem;font-size:.85rem}}
@@ -61,7 +63,7 @@ button[disabled]{opacity:.55;cursor:not-allowed}
 </head>
 <body hx-headers='{"X-CSRF-Token": "{{ csrf_token }}"}'>
 <nav aria-label="Main">
-{% for key, label, href in [("today","Today","/"),("week","Week","/week"),("month","Month","/month"),("settings","Settings","/settings")] %}
+{% for key, label, href in [("today","Today","/"),("week","Week","/week"),("month","Month","/month"),("settings","Settings","/settings"),("pair","Pair phone","/pair")] %}
 <a href="{{ href }}"{% if active == key %} aria-current="page"{% endif %}>{{ label }}</a>
 {% endfor %}
 </nav>

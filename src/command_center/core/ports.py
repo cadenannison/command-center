@@ -5,6 +5,7 @@ from datetime import date, datetime
 from typing import Protocol
 
 from command_center.core.jobs import DeadLetter, Job
+from command_center.core.pairing import Device, RefreshRecord
 from command_center.core.schema import Event, EventKind, SecretStatus, ValidationResult
 from command_center.core.summary import DailySummary
 from command_center.core.windows import TimeWindow
@@ -48,6 +49,19 @@ class SourceAdapter(Protocol):
 
     async def fetch(self, creds: Mapping[str, str], window: TimeWindow) -> list[Event]:
         """Return the source's items for window, normalised to Event."""
+        ...
+
+
+class IntegrationAdapter(Protocol):
+    """A credential-only integration (an API key): it validates credentials and fetches nothing."""
+
+    @property
+    def name(self) -> str:
+        """Stable name; it is the `source` under which its credentials are stored."""
+        ...
+
+    async def validate(self, creds: Mapping[str, str]) -> ValidationResult:
+        """Check creds with a cheap call; raise the core.errors a SourceAdapter would."""
         ...
 
 
@@ -169,4 +183,72 @@ class JobQueue(Protocol):
 
     async def list_dead_letters(self) -> list[DeadLetter]:
         """Return the jobs that gave up, with reason and time."""
+        ...
+
+
+class TokenSource(Protocol):
+    """Source of random tokens; the entropy lives outside core."""
+
+    def new_token(self, num_bytes: int) -> str:
+        """Return a fresh URL-safe random token carrying num_bytes of entropy."""
+        ...
+
+
+class DeviceStore(Protocol):
+    """Synchronous persistence for pairing tokens and phone credentials.
+
+    Only SHA-256 hashes (hex) are ever passed in.
+    """
+
+    def put_pairing(self, token_hash: str, expires_at: datetime, now: datetime) -> None:
+        """Store a one-time pairing token.
+
+        Also deletes expired pairing tokens and every other unused one, so at most one is live.
+        """
+        ...
+
+    def take_pairing(self, token_hash: str, now: datetime) -> bool:
+        """Atomically consume the token: True once if it exists and expires_at > now, else False."""
+        ...
+
+    def add_device(
+        self, device: Device, refresh_hash: str, access_hash: str, access_expires_at: datetime
+    ) -> None:
+        """Store a new device with its first refresh and access credential hashes."""
+        ...
+
+    def rotate_refresh(
+        self,
+        old_refresh_hash: str,
+        new_refresh_hash: str,
+        new_access_hash: str,
+        access_expires_at: datetime,
+        now: datetime,
+    ) -> str | None:
+        """Atomically swap the credentials of the device whose current refresh hash this is.
+
+        The old refresh hash is marked superseded, the new refresh and access hashes are stored
+        (the device's older access hashes are dropped) and last_seen_at becomes now; returns the
+        device id. If old_refresh_hash is unknown or already superseded, nothing changes and the
+        result is None.
+        """
+        ...
+
+    def refresh_record(self, refresh_hash: str) -> RefreshRecord | None:
+        """Look up a refresh hash, current or superseded; None if unknown."""
+        ...
+
+    def device_for_access(self, access_hash: str, now: datetime) -> str | None:
+        """Return the id of the device owning an unexpired access hash, else None."""
+        ...
+
+    def list_devices(self) -> list[Device]:
+        """Return every paired device, oldest first."""
+        ...
+
+    def remove_device(self, device_id: str) -> bool:
+        """Delete the device and every credential of it so its tokens stop working at once.
+
+        Returns False if the device is unknown.
+        """
         ...

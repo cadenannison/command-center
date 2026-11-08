@@ -56,7 +56,11 @@ def test_ports_accept_simple_fakes() -> None:
     assert ids.new_id() == "id-1"
 
 
-@pytest.mark.parametrize("root", ["command_center.workers.__main__", "command_center.desktop.main"])
-def test_unbuilt_composition_roots_fail_loudly(root: str) -> None:
+def test_unbuilt_composition_roots_fail_loudly() -> None:
     with pytest.raises(NotImplementedError, match="not built yet"):
-        importlib.import_module(root).main()
+        importlib.import_module("command_center.workers.__main__").main()
+
+
+def test_the_menu_bar_root_imports_without_running() -> None:
+    # Import only: desktop.main.main() is built now and would start a server and the macOS menu bar.
+    assert callable(importlib.import_module("command_center.desktop.main").main)

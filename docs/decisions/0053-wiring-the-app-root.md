@@ -1,6 +1,6 @@
 # 0053. App wiring: summary route always mounted, scheduler started by the lifespan, summary built lazily
 
-Status: accepted
+Status: accepted; item 7 is resolved by 0058
 
 Context: Task 2z wires the five source adapters, the summary service, the web router, static files and a sync loop into the production app. The card says to mount `api/summary_routes.router` "when the container has a summary service", but the production container is built in the lifespan (decision 0021), after the routes are registered, so the app cannot know at construction whether `container.summary` is set.
 Decisions:

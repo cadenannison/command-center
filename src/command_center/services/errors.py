@@ -11,6 +11,25 @@ class UnknownSourceError(Exception):
         self.source = source
 
 
+class CredentialRejectedError(Exception):
+    """A pairing token or refresh credential was not accepted.
+
+    One message for every cause (unknown, expired, used, reused): the caller learns nothing it
+    could use to tell them apart. The cause goes to the log as a reason code.
+    """
+
+    def __init__(self) -> None:
+        super().__init__("The pairing token or credential is not valid")
+
+
+class PairingLockedError(Exception):
+    """Too many recent failures; nothing is checked until the lock ends."""
+
+    def __init__(self, retry_after_seconds: int) -> None:
+        super().__init__(f"Too many failed attempts; try again in {retry_after_seconds} seconds")
+        self.retry_after_seconds = retry_after_seconds
+
+
 _MESSAGE_LIMIT = 200
 
 

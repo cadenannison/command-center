@@ -1,0 +1,8 @@
+{% if error %}
+<p class="flash bad">{{ error }}</p>
+{% else %}
+<div class="qr">{{ svg }}</div>
+<p>Phone address: <code>{{ url }}</code></p>
+<p>Or type this code in the app: <code id="pair-token">{{ token }}</code></p>
+<p class="hint">The code works once and expires in {{ minutes }} minutes. Showing a new code cancels this one. Anyone who sees it before then can pair a phone, so do not share a screenshot.</p>
+{% endif %}

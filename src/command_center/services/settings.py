@@ -4,28 +4,41 @@ import asyncio
 from collections.abc import Mapping
 
 from command_center.core.errors import AuthExpired, FatalError, SecretStoreError, TransientError
-from command_center.core.ports import SecretStore, SourceAdapter
+from command_center.core.ports import IntegrationAdapter, SecretStore, SourceAdapter
 from command_center.services.errors import UnknownSourceError, error_text, safe_message
-from command_center.services.models import ConnectResult, SourceSettings
+from command_center.services.models import ConnectResult, SourceSettings, SyncState
 from command_center.services.sync import STORE_UNAVAILABLE_MESSAGE, SyncService
 
 
 class SettingsService:
-    """Write-only credential management: status is set + last4 per key, never a value."""
+    """Write-only credential management: status is set + last4 per key, never a value.
+
+    Besides the sync sources it manages credential-only integrations (an API key): they are
+    validated, stored, listed and deleted the same way, but they have no sync state, no
+    events, and `SyncService` does not know them (decision 0058).
+    """
 
     def __init__(
         self,
         adapters: Mapping[str, SourceAdapter],
         secrets: SecretStore,
         sync: SyncService,
+        integrations: Mapping[str, IntegrationAdapter] | None = None,
     ) -> None:
         self._adapters = adapters
+        self._integrations = dict(integrations or {})
+        shared = self._integrations.keys() & adapters.keys()
+        if shared:
+            msg = f"Registered as both a source and an integration: {sorted(shared)}"
+            raise ValueError(msg)
         self._secrets = secrets
         self._sync = sync
 
     async def status(self) -> list[SourceSettings]:
-        """Settings of every registered source."""
-        return [await self._source_settings(source) for source in self._adapters]
+        """Settings of every registered source, then of every integration."""
+        return [
+            await self._source_settings(source) for source in (*self._adapters, *self._integrations)
+        ]
 
     async def connect(self, source: str, creds: Mapping[str, str]) -> ConnectResult:
         """Validate the stored credentials overlaid by creds, store them; the caller then syncs.
@@ -37,8 +50,11 @@ class SettingsService:
         caller's job (`SyncService.sync`), so connecting never waits for a slow source.
 
         A rejected credential is a result with ok false and nothing stored, not an exception.
+        An integration's result carries no sync state, so the caller has nothing to sync.
         """
-        adapter = self._adapters.get(source)
+        adapter: SourceAdapter | IntegrationAdapter | None = self._adapters.get(
+            source
+        ) or self._integrations.get(source)
         if adapter is None:
             raise UnknownSourceError(source)
         try:
@@ -62,24 +78,31 @@ class SettingsService:
                     await asyncio.to_thread(self._secrets.set, source, key, value)
         except SecretStoreError:
             return self._store_unavailable(source)
-        state = self._sync.mark_syncing(source)
+        state = self._sync.mark_syncing(source) if source in self._adapters else None
         message = safe_message(result.message)
         return ConnectResult(source=source, ok=True, message=message, sync=state)
 
     def _store_unavailable(self, source: str) -> ConnectResult:
-        state = self._sync.record_error(source, STORE_UNAVAILABLE_MESSAGE)
+        state = self._unavailable_state(source)
         return ConnectResult(source=source, ok=False, message=state.message, sync=state)
+
+    def _unavailable_state(self, source: str) -> SyncState:
+        # An integration has no sync result to keep, so its error is reported, not remembered.
+        if source in self._adapters:
+            return self._sync.record_error(source, STORE_UNAVAILABLE_MESSAGE)
+        return self._sync.error_state(source, STORE_UNAVAILABLE_MESSAGE)
 
     async def disconnect(self, source: str) -> SourceSettings:
         """Delete every stored key and stored event of source and forget its sync state."""
-        if source not in self._adapters:
+        if source not in self._adapters and source not in self._integrations:
             raise UnknownSourceError(source)
         try:
             await asyncio.to_thread(self._secrets.delete, source)
         except SecretStoreError:
-            state = self._sync.record_error(source, STORE_UNAVAILABLE_MESSAGE)
+            state = self._unavailable_state(source)
             return SourceSettings(source=source, keys={}, sync=state)
-        await self._sync.purge(source)
+        if source in self._adapters:
+            await self._sync.purge(source)
         return SourceSettings(source=source, keys={}, sync=None)
 
     async def _source_settings(self, source: str) -> SourceSettings:
@@ -88,4 +111,5 @@ class SettingsService:
         except SecretStoreError:
             state = self._sync.error_state(source, STORE_UNAVAILABLE_MESSAGE)
             return SourceSettings(source=source, keys={}, sync=state)
-        return SourceSettings(source=source, keys=dict(keys), sync=self._sync.state(source))
+        sync = self._sync.state(source) if source in self._adapters else None
+        return SourceSettings(source=source, keys=dict(keys), sync=sync)
