@@ -340,7 +340,7 @@ dependencies = [
 
 [package.optional-dependencies]
 desktop = [
-    { name = "rumps" },
+    { name = "rumps", marker = "sys_platform == 'darwin'" },
 ]
 distributed = [
     { name = "psycopg", extra = ["binary"] },
@@ -386,7 +386,6 @@ requires-dist = [
     { name = "recurring-ical-events", specifier = ">=3.8.2" },
     { name = "redis", marker = "extra == 'distributed'", specifier = ">=8.1.0" },
     { name = "rumps", marker = "sys_platform == 'darwin' and extra == 'desktop'", specifier = ">=0.4.0" },
-    { name = "rumps", marker = "extra == 'desktop'", specifier = ">=0.4.0" },
     { name = "sqlalchemy", specifier = ">=2.1.8" },
     { name = "uvicorn", specifier = ">=0.54.0" },
 ]
