@@ -40,6 +40,15 @@ class SyncControl(Protocol):
         """Start a sync of every source."""
         ...
 
+    async def cancel(self, source: str) -> None:
+        """First step of a disconnect: make work in flight for source stop counting.
+
+        Distributed: bump the source's generation, so a report still on its way is dropped. It
+        may raise; the disconnect then stops before deleting anything. Single mode: nothing to do
+        (`purge` forgets what a running sync would remember).
+        """
+        ...
+
     async def purge(self, source: str) -> None:
-        """After a disconnect: delete the source's events and sync state, and cancel its work."""
+        """Last step of a disconnect: delete the source's events and sync state. May raise."""
         ...

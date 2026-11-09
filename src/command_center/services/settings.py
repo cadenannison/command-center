@@ -1,14 +1,24 @@
 """Connects and disconnects sources. Secrets go in and only their status comes back out."""
 
 import asyncio
+import logging
 from collections.abc import Mapping
 
 from command_center.core.errors import AuthExpired, FatalError, SecretStoreError, TransientError
 from command_center.core.ports import IntegrationAdapter, SecretStore, SourceAdapter
+from command_center.core.schema import SecretStatus
 from command_center.services.errors import UnknownSourceError, error_text, safe_message
 from command_center.services.models import ConnectResult, SourceSettings, SyncState
 from command_center.services.sync import STORE_UNAVAILABLE_MESSAGE
 from command_center.services.sync_control import SyncControl
+
+logger = logging.getLogger(__name__)
+
+DISCONNECT_FAILED_MESSAGE = "Could not disconnect; nothing was removed. Try again"
+DISCONNECT_INCOMPLETE_MESSAGE = (
+    "Disconnect incomplete: the credentials are gone but some stored data is not. "
+    "Disconnect again to finish"
+)
 
 
 class SettingsService:
@@ -95,17 +105,43 @@ class SettingsService:
         return self._sync.error_state(source, STORE_UNAVAILABLE_MESSAGE)
 
     async def disconnect(self, source: str) -> SourceSettings:
-        """Delete every stored key and stored event of source and forget its sync state."""
+        """Delete every stored key and stored event of source and forget its sync state.
+
+        The order is cancel, secrets, purge (decision 0085). If the cancel fails nothing has been
+        deleted and the result carries an error state. If the purge fails the credentials are
+        already gone: the result says the disconnect is incomplete, and disconnecting again
+        finishes it. Rows the purge missed are also removed by the normalizer's next apply or
+        drop for the source, which compares their generation.
+        """
         if source not in self._adapters and source not in self._integrations:
             raise UnknownSourceError(source)
+        is_source = source in self._adapters
+        if is_source:
+            try:
+                await self._sync.cancel(source)
+            except Exception as exc:  # noqa: BLE001  (a database error; only its class is logged)
+                _log_failure("cancel", source, exc)
+                state = self._sync.error_state(source, DISCONNECT_FAILED_MESSAGE)
+                return SourceSettings(source=source, keys=await self._keys(source), sync=state)
         try:
             await asyncio.to_thread(self._secrets.delete, source)
         except SecretStoreError:
             state = self._unavailable_state(source)
             return SourceSettings(source=source, keys={}, sync=state)
-        if source in self._adapters:
-            await self._sync.purge(source)
+        if is_source:
+            try:
+                await self._sync.purge(source)
+            except Exception as exc:  # noqa: BLE001  (a database error; only its class is logged)
+                _log_failure("purge", source, exc)
+                state = self._sync.error_state(source, DISCONNECT_INCOMPLETE_MESSAGE)
+                return SourceSettings(source=source, keys={}, sync=state)
         return SourceSettings(source=source, keys={}, sync=None)
+
+    async def _keys(self, source: str) -> dict[str, SecretStatus]:
+        try:
+            return dict(await asyncio.to_thread(self._secrets.status, source))
+        except SecretStoreError:
+            return {}
 
     async def _source_settings(self, source: str) -> SourceSettings:
         try:
@@ -118,3 +154,14 @@ class SettingsService:
             # The distributed api reads the database here, so it runs off the event loop.
             sync = await asyncio.to_thread(self._sync.state, source)
         return SourceSettings(source=source, keys=dict(keys), sync=sync)
+
+
+def _log_failure(step: str, source: str, exc: Exception) -> None:
+    # Class only: a database error can echo the connection URL, which holds a password.
+    logger.warning(
+        "disconnect of %s failed at %s: %s",
+        source,
+        step,
+        type(exc).__name__,
+        extra={"source": source, "step": step, "error_class": type(exc).__name__},
+    )

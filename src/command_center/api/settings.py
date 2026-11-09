@@ -65,6 +65,8 @@ async def put_settings(
 async def delete_settings(source: str, container: ContainerDep) -> SourceSettings:
     """Delete every stored key, event and sync state of the source.
 
-    Work already in flight for the source is cancelled: whatever it reports afterwards is dropped.
+    Work already in flight for the source is cancelled first: whatever it reports afterwards is
+    dropped. A failure is a 200 with an "error" `sync`: nothing was removed (the cancel failed), or
+    the credentials are gone but some stored data is not ("incomplete"); disconnect again to finish.
     """
     return await container.settings.disconnect(source)

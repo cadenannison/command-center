@@ -978,7 +978,7 @@
     },
     "/v1/settings/{source}": {
       "delete": {
-        "description": "Delete every stored key, event and sync state of the source.\n\nWork already in flight for the source is cancelled: whatever it reports afterwards is dropped.",
+        "description": "Delete every stored key, event and sync state of the source.\n\nWork already in flight for the source is cancelled first: whatever it reports afterwards is\ndropped. A failure is a 200 with an \"error\" `sync`: nothing was removed (the cancel failed), or\nthe credentials are gone but some stored data is not (\"incomplete\"); disconnect again to finish.",
         "operationId": "delete_settings_v1_settings__source__delete",
         "parameters": [
           {
@@ -1161,7 +1161,7 @@
     },
     "/v1/sync": {
       "post": {
-        "description": "Sync all sources and return each one's new state; a failing source does not raise.\n\nIn distributed mode nothing is fetched here: a job is queued for every connected source and\neach is returned as \"syncing\"; the other sources are returned as last recorded. Read the\nresults from `GET /v1/settings` once the workers have reported.",
+        "description": "Sync all sources and return each one's new state; a failing source does not raise.\n\nIn distributed mode nothing is fetched here: a job is queued for every connected source and\neach is returned as \"syncing\" (as \"error\" if its job could not be queued, say because Redis\nis down; the others are still queued); the other sources are returned as last recorded.\nRead the results from `GET /v1/settings` once the workers have reported.",
         "operationId": "sync_all_v1_sync_post",
         "responses": {
           "200": {

@@ -8,6 +8,7 @@ import asyncio
 import contextlib
 import logging
 from collections.abc import Awaitable, Callable, Mapping, Sequence
+from dataclasses import dataclass
 from datetime import UTC
 
 from command_center.core.jobs import Job
@@ -21,6 +22,14 @@ type Sleep = Callable[[float], Awaitable[None]]
 
 
 SYNC_JOB_KIND = "sync"
+
+
+@dataclass(frozen=True)
+class PublishOutcome:
+    """What a round did: the sources that got a job, and those that were connected but did not."""
+
+    published: tuple[str, ...]
+    failed: tuple[str, ...]
 
 
 class SyncEnqueuer:
@@ -52,39 +61,54 @@ class SyncEnqueuer:
 
     async def publish_round(self) -> int:
         """Publish a job for every connected source; return how many were published."""
-        return len(await self.publish_connected())
+        return len((await self.publish_outcome()).published)
 
     async def publish_connected(self) -> list[str]:
-        """Publish a job for every connected source and name the sources that got one.
+        """Publish a job for every connected source and name the sources that got one."""
+        return list((await self.publish_outcome()).published)
+
+    async def publish_outcome(self) -> PublishOutcome:
+        """Publish a job for every connected source; name the sources that got one and the rest.
 
         One source failing (store unreadable, queue down: any exception) is logged by its class
-        and does not stop the others.
+        and does not stop the others. It is listed in `failed` so the caller can say so; a source
+        with no credentials is neither published nor failed, whatever the generation store says.
         """
         published: list[str] = []
+        failed: list[str] = []
         for source in self._sources:
             try:
                 # The generation is read before the credentials: a disconnect that lands in between
-                # then leaves a job with the old number, which the normalizer drops.
-                generation = await self._generation(source)
+                # then leaves a job with the old number, which the normalizer drops. A failed read
+                # counts against the source only once it is known to be connected, so a down
+                # generation store does not turn sources that were never connected into errors.
+                generation, generation_error = await self._try_generation(source)
                 creds = await asyncio.to_thread(self._secrets.get, source)
                 if not creds:
                     continue
-                await self._queues[source].publish(self._job(source, generation))
+                if generation_error is None:
+                    await self._queues[source].publish(self._job(source, generation))
             except Exception as exc:  # noqa: BLE001  (not a builtin for Redis; class logged)
-                logger.warning(
-                    "could not enqueue a sync of %s: %s",
-                    source,
-                    type(exc).__name__,
-                    extra={"source": source, "error_class": type(exc).__name__},
-                )
+                _log_failure(source, exc)
+                failed.append(source)
+                continue
+            if generation_error is not None:
+                _log_failure(source, generation_error)
+                failed.append(source)
                 continue
             published.append(source)
-        return published
+        return PublishOutcome(tuple(published), tuple(failed))
 
     async def publish_one(self, source: str) -> None:
         """Publish a sync job for one source, connected or not; the worker reports "reconnect"
         for a source with no credentials. Errors from the store or the queue propagate."""
         await self._queues[source].publish(self._job(source, await self._generation(source)))
+
+    async def _try_generation(self, source: str) -> tuple[int, Exception | None]:
+        try:
+            return await self._generation(source), None
+        except Exception as exc:  # noqa: BLE001  (the caller raises it once the source is connected)
+            return 0, exc
 
     async def _generation(self, source: str) -> int:
         if self._generations is None:
@@ -101,6 +125,15 @@ class SyncEnqueuer:
             correlation_id=self._ids.new_id(),
             generation=generation,
         )
+
+
+def _log_failure(source: str, exc: Exception) -> None:
+    logger.warning(
+        "could not enqueue a sync of %s: %s",
+        source,
+        type(exc).__name__,
+        extra={"source": source, "error_class": type(exc).__name__},
+    )
 
 
 class SyncScheduler:

@@ -3,7 +3,8 @@
 Nothing here fetches. `sync` publishes a job for the source's worker; the worker reports; the
 normalizer is the only writer of events and sync state (decisions 0070, 0071), so this class
 writes neither, except to purge a disconnected source. A disconnect bumps the source's generation
-first, which is what makes the normalizer drop any report still on its way (decision 0074).
+first (`cancel`), which is what makes the normalizer drop any report still on its way (decision
+0074); the purge comes last (decision 0085).
 """
 
 import asyncio
@@ -99,25 +100,37 @@ class QueuedSyncService:
     async def sync_all(self) -> list[SyncState]:
         """Queue a job for every connected source.
 
-        Each queued source is reported as syncing; the others as the normalizer last recorded
-        them, left out when it recorded nothing. The results arrive later, through `state`.
+        Each queued source is reported as syncing; a connected source whose job could not be
+        queued as an error state (not stored, like `sync`); the others as the normalizer last
+        recorded them, left out when it recorded nothing. The results arrive later, through
+        `state`.
         """
-        queued = set(await self._enqueuer.publish_connected())
+        outcome = await self._enqueuer.publish_outcome()
         states: list[SyncState] = []
         for source in self._sources:
-            if source in queued:
+            if source in outcome.published:
                 states.append(self.mark_syncing(source))
-            elif (known := await asyncio.to_thread(self._states.get, source)) is not None:
+            elif source in outcome.failed:
+                states.append(self.error_state(source, QUEUE_FAILED_MESSAGE))
+            elif (known := await asyncio.to_thread(self.state, source)) is not None:
                 states.append(known)
         return states
 
-    async def purge(self, source: str) -> None:
-        """Cancel the source's work in flight, then delete its events and sync state.
+    async def cancel(self, source: str) -> None:
+        """Bump the source's generation, which cancels the work still in flight for it.
 
-        The bump comes first: a report the normalizer is applying right now sees it after its
-        write and deletes what it wrote (the normalizer's own check, decision 0074).
+        It comes before anything is deleted: a report the normalizer is applying right now sees
+        the bump after its write and deletes what it wrote (the normalizer's own check, decision
+        0074). If it raises, the caller deletes nothing (decision 0085).
         """
         await asyncio.to_thread(self._generations.bump, source)
+
+    async def purge(self, source: str) -> None:
+        """Delete the source's events and sync state. The generation was bumped by `cancel`.
+
+        A failure leaves rows of the old generation behind; the normalizer's next apply or drop
+        for the source deletes them (`ReportSink.purge_stale`), and a repeated disconnect does too.
+        """
         await asyncio.to_thread(self._events.delete_source, source)
         await asyncio.to_thread(self._states.delete, source)
 

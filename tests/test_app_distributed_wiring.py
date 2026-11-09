@@ -6,9 +6,12 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
+from command_center.adapters.keyring_store import KeyringSecretStore
+from command_center.adapters.queue_redis import RedisStreamsQueue
 from command_center.api import create_app as create_api_app
 from command_center.app import build_container
 from command_center.config import Settings
+from command_center.core.jobs import Job
 from command_center.core.sync_state import SyncState
 from command_center.services.queued_sync import QueuedSyncService
 from command_center.services.sync import SyncService
@@ -87,12 +90,41 @@ def test_the_distributed_api_shows_the_state_the_normalizer_wrote_to_the_databas
     assert shown["gmail"] is None
 
 
-def test_the_distributed_api_runs_no_sync_and_a_manual_sync_queues_only_connected_sources(
+def test_a_manual_sync_with_nothing_connected_returns_no_states_and_queues_no_job(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
+    published = record_published_jobs(monkeypatch)
     settings = make_settings(monkeypatch, tmp_path, distributed=True)
     app = create_api_app(lambda: build_container(settings))
 
     with TestClient(app, base_url="http://localhost") as client:
-        # Nothing is connected, so nothing is queued and Redis is never touched.
         assert client.post("/v1/sync").json() == []
+
+    assert published == []
+
+
+def test_the_distributed_api_runs_no_sync_and_a_manual_sync_queues_only_connected_sources(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    published = record_published_jobs(monkeypatch)
+    settings = make_settings(monkeypatch, tmp_path, distributed=True)
+    KeyringSecretStore().set("canvas", "token", "fake-token-12345678")
+    app = create_api_app(lambda: build_container(settings))
+
+    with TestClient(app, base_url="http://localhost") as client:
+        shown = [(row["source"], row["status"]) for row in client.post("/v1/sync").json()]
+
+    # "syncing" and not "ok", "reconnect" or "error": the api fetched nothing, it queued a job.
+    assert shown == [("canvas", "syncing")]
+    assert published == ["canvas"]
+
+
+def record_published_jobs(monkeypatch: pytest.MonkeyPatch) -> list[str]:
+    """Replace the Redis publish, so the test sees which sources got a job and Redis is unused."""
+    published: list[str] = []
+
+    async def publish(_queue: RedisStreamsQueue, job: Job) -> None:
+        published.append(job.source)
+
+    monkeypatch.setattr(RedisStreamsQueue, "publish", publish)
+    return published

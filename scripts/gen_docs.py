@@ -31,6 +31,15 @@ def _decision_index() -> ModuleType:
     return module
 
 
+def _index_text(decisions: ModuleType) -> str:
+    """The index, or a one-line error naming the bad record instead of a traceback."""
+    try:
+        return decisions.build_index(decisions.DECISIONS_DIR)
+    except decisions.DecisionFormatError as exc:
+        print(f"gen_docs: {exc}", file=sys.stderr)
+        raise SystemExit(1) from exc
+
+
 def render() -> dict[str, str]:
     """Return {filename: contents} for every generated file."""
     spec = create_app().openapi()
@@ -51,7 +60,7 @@ def render() -> dict[str, str]:
     return {
         "openapi.json": json.dumps(spec, indent=2, sort_keys=True) + "\n",
         "api-reference.md": "\n".join(lines) + "\n",
-        "decision-index.md": decisions.build_index(decisions.DECISIONS_DIR),
+        "decision-index.md": _index_text(decisions),
     }
 
 

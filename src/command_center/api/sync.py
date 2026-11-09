@@ -13,7 +13,8 @@ async def sync_all(container: ContainerDep) -> list[SyncState]:
     """Sync all sources and return each one's new state; a failing source does not raise.
 
     In distributed mode nothing is fetched here: a job is queued for every connected source and
-    each is returned as "syncing"; the other sources are returned as last recorded. Read the
-    results from `GET /v1/settings` once the workers have reported.
+    each is returned as "syncing" (as "error" if its job could not be queued, say because Redis
+    is down; the others are still queued); the other sources are returned as last recorded.
+    Read the results from `GET /v1/settings` once the workers have reported.
     """
     return await container.sync.sync_all()

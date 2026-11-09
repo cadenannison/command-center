@@ -78,6 +78,9 @@ class SyncService:
         self._forgotten[source] = self._forgotten.get(source, 0) + 1
         self._states.pop(source, None)
 
+    async def cancel(self, source: str) -> None:
+        """Nothing to cancel in single mode: `purge` forgets first, so a running sync cleans up."""
+
     async def purge(self, source: str) -> None:
         """Forget source's sync result and delete its stored events (after a disconnect).
 

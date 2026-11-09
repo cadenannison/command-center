@@ -26,7 +26,7 @@ More ways to run it:
 - **Phone pairing** (read-only phone app over Tailscale Serve): [docs/mobile.md](docs/mobile.md). The API notes for the phone repo are in [docs/mobile-api-notes.md](docs/mobile-api-notes.md).
 
 ## Security model
-1. **Loopback only by default:** the server binds 127.0.0.1; the one exception is the API container in distributed mode, an explicit opt-in (`CC_BIND_ALL`), and a phone is served only for the tailnet names you list.
+1. **Loopback only by default:** the server binds 127.0.0.1; the one exception is an explicit opt-in (`CC_BIND_ALL`) that exists for the API container in distributed mode (it makes the app server listen on all of that container's interfaces; compose still publishes it on 127.0.0.1 only), and a phone is served only for the tailnet names you list.
 2. **Write-only credentials:** secrets live in the OS keychain (or a file secret store in containers); the settings API returns only "set" and the last 4 characters, never a value.
 3. **Redaction before AI:** summaries are off by default, and when on, only titles, due dates and trimmed subjects reach a provider, with addresses and numbers stripped and never an email body.
 4. **Hashed device tokens:** a paired phone gets short-lived tokens of which only SHA-256 hashes are stored, with a one-time pairing code, rotation on refresh, and a read-only scope plus `POST /v1/sync`.

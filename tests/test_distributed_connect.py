@@ -105,7 +105,9 @@ async def test_the_api_reads_what_the_normalizer_recorded(rig: DistributedRig) -
 async def test_the_state_shown_is_redacted_and_trimmed_to_200(
     rig: DistributedRig, backend: Backend
 ) -> None:
-    long_message = "token fake-secret-abc123 for ann@example.com " + "x" * 400
+    long_message = (
+        "token fake-secret-abc123 for ann@example.com key fake-key-4155550123456 " + "x" * 400
+    )
     report = SyncReport.model_validate(
         {
             "id": "r1",
@@ -125,6 +127,9 @@ async def test_the_state_shown_is_redacted_and_trimmed_to_200(
     assert state is not None
     assert len(state.message) <= 200
     assert "ann@example.com" not in state.message
+    assert "4155550123456" not in state.message
+    assert "[email]" in state.message
+    assert "[number]" in state.message
 
 
 async def test_disconnect_purges_events_and_state_and_bumps_the_generation(
