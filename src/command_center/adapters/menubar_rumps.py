@@ -3,7 +3,7 @@
 from collections.abc import Callable
 from typing import Any
 
-import rumps  # pyright: ignore[reportMissingTypeStubs]
+import rumps  # pyright: ignore[reportMissingTypeStubs, reportMissingImports]  # darwin-only extra
 
 # rumps ships no type information, so it is typed once here and nowhere else.
 _rumps: Any = rumps
