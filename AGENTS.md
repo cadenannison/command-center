@@ -69,6 +69,8 @@ openapi.json is the contract for a separate mobile repo, so an API change is a b
   in the same change if you alter a public interface.
 - Identifiers that are persisted or referenced elsewhere (DB columns, API paths under /v1, settings
   keys) are permanent: deprecate, never rename or delete.
+- Never edit tests with scripts or shell commands to get around guard-tests; if the hook blocks an edit, stop and report.
+- Don't read the real database under ~/.command-center unless the project manager asks; if told to, print only counts and types, never titles, links or notes.
 
 ## Definition of done
 `mise run check` passes · a test exists that fails without the change · contracts/MAP updated if an
