@@ -52,7 +52,7 @@ BODY_FILE="$WORK/response.json"
 REQUEST_FILE="$WORK/request.json"
 
 # Leave nothing behind: if the script stops after connecting weather, take the connection away again.
-# shellcheck disable=SC2329  # run by the trap below
+# shellcheck disable=SC2317,SC2329  # run by the trap below; older shellcheck reports SC2317, newer SC2329
 cleanup() {
   if [[ "$CONNECTED" == 1 && "$DISCONNECTED" == 0 ]]; then
     curl -sS --max-time 20 -o /dev/null -X DELETE "$API_URL/v1/settings/weather" >/dev/null 2>&1 || true
