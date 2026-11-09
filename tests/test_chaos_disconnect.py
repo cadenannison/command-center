@@ -13,6 +13,7 @@ import pytest_asyncio
 from command_center.core.jobs import Job
 from command_center.core.ports import JobQueue
 from distributed_support import TOKEN, DistributedRig, make_distributed_rig
+from fetch_support import until_fetching
 from queue_support import REDIS_URL_ENV, WINDOW
 from worker_support import (
     Backend,
@@ -79,22 +80,6 @@ async def drain(rig: DistributedRig) -> None:
     normalizer = rig.normalizer()
     while await normalizer.run_once():
         pass
-
-
-FETCH_WAIT_SECONDS = 5.0  # a bound for a hang, not a delay: the loop below yields, it never sleeps
-
-
-async def until_fetching(adapter: object, wait_seconds: float = FETCH_WAIT_SECONDS) -> None:
-    """Return once a worker is inside `adapter.fetch`; fail the test if none gets there in time."""
-    try:
-        async with asyncio.timeout(wait_seconds):
-            while adapter.in_flight == 0:  # type: ignore[attr-defined]  # noqa: ASYNC110
-                await asyncio.sleep(0)
-    except TimeoutError:
-        pytest.fail(
-            f"No worker started fetching within {wait_seconds:g} s: the job was never consumed, "
-            "or the worker died before it called the adapter"
-        )
 
 
 async def connect_and_queue(rig: DistributedRig) -> None:

@@ -1,4 +1,4 @@
-"""scripts/gen-decision-index turns docs/decisions/*.md into decision-index.md (decision 0082).
+"""scripts/gen_decision_index.py turns docs/decisions/*.md into decision-index.md (decision 0082).
 
 The cases run on a fixture directory, so a new real decision never changes what they expect.
 """
@@ -12,7 +12,7 @@ from types import ModuleType
 
 import pytest
 
-SCRIPT = Path(__file__).parent.parent / "scripts" / "gen-decision-index"
+SCRIPT = Path(__file__).parent.parent / "scripts" / "gen_decision_index.py"
 
 
 @pytest.fixture(scope="module")
@@ -84,15 +84,64 @@ def test_a_record_that_says_it_supersedes_another_marks_the_other_as_replaced(
     assert old[3] == "0002"
 
 
-def test_a_record_replaced_only_in_part_stays_accepted_and_says_so(
+def test_a_record_that_says_it_was_replaced_in_part_stays_accepted_and_says_so(
+    gen: ModuleType, tmp_path: Path
+) -> None:
+    # Only the replaced record speaks: the replacement's own line names nothing.
+    record(tmp_path, "0001-old.md", "Old", "accepted; item 3 is superseded by 0002")
+    record(tmp_path, "0002-new.md", "New", "accepted")
+
+    old, new = rows(gen.build_index(tmp_path))
+
+    assert (old[2], old[3]) == ("accepted", "0002 (in part)")
+    assert (new[2], new[3]) == ("accepted", "")
+
+
+def test_a_record_that_supersedes_only_part_of_another_marks_it_in_part(
+    gen: ModuleType, tmp_path: Path
+) -> None:
+    # Only the replacement speaks: the replaced record's own line says nothing.
+    record(tmp_path, "0001-old.md", "Old", "accepted")
+    record(tmp_path, "0002-new.md", "New", "accepted. Supersedes item 3 of 0001.")
+
+    old, new = rows(gen.build_index(tmp_path))
+
+    assert (old[2], old[3]) == ("accepted", "0002 (in part)")
+    assert (new[2], new[3]) == ("accepted", "")
+
+
+def test_a_record_that_says_superseded_in_part_is_in_part_even_when_marked_superseded(
+    gen: ModuleType, tmp_path: Path
+) -> None:
+    record(tmp_path, "0001-old.md", "Old", "superseded in part by 0002")
+    record(tmp_path, "0002-new.md", "New", "accepted")
+
+    assert rows(gen.build_index(tmp_path))[0][2:] == ["superseded", "0002 (in part)"]
+
+
+def test_a_partly_superseded_record_is_in_part(gen: ModuleType, tmp_path: Path) -> None:
+    record(tmp_path, "0001-old.md", "Old", "superseded; partly superseded by 0002")
+    record(tmp_path, "0002-new.md", "New", "accepted")
+
+    assert rows(gen.build_index(tmp_path))[0][3] == "0002 (in part)"
+
+
+def test_a_supersedes_clause_that_says_in_part_marks_a_superseded_record_in_part(
+    gen: ModuleType, tmp_path: Path
+) -> None:
+    record(tmp_path, "0001-old.md", "Old", "superseded")
+    record(tmp_path, "0002-new.md", "New", "accepted. Supersedes 0001 in part.")
+
+    assert rows(gen.build_index(tmp_path))[0][3] == "0002 (in part)"
+
+
+def test_a_record_both_sides_call_in_part_is_listed_once_as_in_part(
     gen: ModuleType, tmp_path: Path
 ) -> None:
     record(tmp_path, "0001-old.md", "Old", "accepted; item 3 is superseded by 0002")
     record(tmp_path, "0002-new.md", "New", "accepted. Supersedes item 3 of 0001.")
 
-    old, _new = rows(gen.build_index(tmp_path))
-
-    assert (old[2], old[3]) == ("accepted", "0002 (in part)")
+    assert rows(gen.build_index(tmp_path))[0][3] == "0002 (in part)"
 
 
 def test_a_replacement_named_in_both_records_is_listed_once(
@@ -101,15 +150,77 @@ def test_a_replacement_named_in_both_records_is_listed_once(
     record(tmp_path, "0001-old.md", "Old", "superseded by 0002")
     record(tmp_path, "0002-new.md", "New", "accepted; supersedes 0001")
 
+    old, new = rows(gen.build_index(tmp_path))
+
+    assert (old[2], old[3]) == ("superseded", "0002")
+    assert new[3] == ""
+
+
+@pytest.mark.parametrize(
+    "listing",
+    ["0002 and 0003", "0002, 0003", "0002, 0003 and 0004", "0002, and 0003, 0004", "0002 & 0003"],
+)
+def test_a_list_of_replacements_in_superseded_by_names_every_number(
+    gen: ModuleType, tmp_path: Path, listing: str
+) -> None:
+    record(tmp_path, "0001-old.md", "Old", f"superseded by {listing}")
+    for number in ("0002", "0003", "0004"):
+        record(tmp_path, f"{number}-x.md", number, "accepted")
+    wanted = sorted(n for n in ("0002", "0003", "0004") if n in listing)
+
+    assert rows(gen.build_index(tmp_path))[0][3] == ", ".join(wanted)
+
+
+@pytest.mark.parametrize("word", ["by", "by decision", "by decisions"])
+def test_superseded_by_may_say_decision(gen: ModuleType, tmp_path: Path, word: str) -> None:
+    record(tmp_path, "0001-old.md", "Old", f"superseded {word} 0002")
+    record(tmp_path, "0002-new.md", "New", "accepted")
+
     assert rows(gen.build_index(tmp_path))[0][3] == "0002"
 
 
-def test_several_replacements_are_all_listed(gen: ModuleType, tmp_path: Path) -> None:
-    record(tmp_path, "0001-old.md", "Old", "superseded by 0002 and 0003")
-    record(tmp_path, "0002-a.md", "A", "accepted")
-    record(tmp_path, "0003-b.md", "B", "accepted")
+@pytest.mark.parametrize(
+    "clause", ["0002 and 0003", "0002, 0003", "0002, 0003 and 0004", "decisions 0002, 0003, 0004"]
+)
+def test_a_supersedes_list_marks_every_number_it_names(
+    gen: ModuleType, tmp_path: Path, clause: str
+) -> None:
+    for number in ("0001", "0002", "0003", "0004"):
+        record(tmp_path, f"{number}-x.md", number, "superseded")
+    record(tmp_path, "0005-new.md", "New", f"accepted; supersedes {clause}")
+    wanted = {n for n in ("0002", "0003", "0004") if n in clause}
 
-    assert rows(gen.build_index(tmp_path))[0][3] == "0002, 0003"
+    cells = {row[0]: row[3] for row in rows(gen.build_index(tmp_path))}
+
+    assert {n for n, cell in cells.items() if cell == "0005"} == wanted
+    assert cells["0001"] == ""
+
+
+def test_every_supersedes_clause_of_a_status_line_counts(gen: ModuleType, tmp_path: Path) -> None:
+    for number in ("0001", "0002", "0003"):
+        record(tmp_path, f"{number}-x.md", number, "accepted")
+    record(
+        tmp_path,
+        "0004-new.md",
+        "New",
+        "accepted. Supersedes item 2 of 0001. Supersedes the `f(x)` rule of 0002; supersedes 0003.",
+    )
+
+    first, second, third, _new = rows(gen.build_index(tmp_path))
+
+    assert (first[3], second[3], third[3]) == ("0004 (in part)",) * 3
+
+
+def test_a_supersedes_in_brackets_stops_at_the_closing_bracket(
+    gen: ModuleType, tmp_path: Path
+) -> None:
+    record(tmp_path, "0001-a.md", "A", "superseded")
+    record(tmp_path, "0002-b.md", "B", "accepted")
+    record(tmp_path, "0003-c.md", "C", "accepted (supersedes 0001) and extends 0002")
+
+    first, second, _third = rows(gen.build_index(tmp_path))
+
+    assert (first[3], second[3]) == ("0003", "")
 
 
 def test_numbers_after_the_supersedes_sentence_are_not_counted(
@@ -162,10 +273,17 @@ def test_two_records_with_one_number_fail_naming_both_files(
         gen.build_index(tmp_path)
 
 
-def test_every_real_decision_record_follows_the_format_and_gets_a_row(gen: ModuleType) -> None:
-    on_disk = [p for p in gen.DECISIONS_DIR.glob("*.md") if p.name[:4].isdigit()]
+def test_every_real_decision_record_follows_the_format_and_gets_its_own_row(
+    gen: ModuleType,
+) -> None:
+    on_disk = sorted(p for p in gen.DECISIONS_DIR.glob("*.md") if p.name[:4].isdigit())
 
-    assert len(rows(gen.build_index(gen.DECISIONS_DIR))) == len(on_disk)  # gen:check owns freshness
+    table = rows(gen.build_index(gen.DECISIONS_DIR))  # gen:check owns freshness
+
+    assert [row[0] for row in table] == [p.name[:4] for p in on_disk]
+    assert [row[1].split("(../decisions/")[1].rstrip(")") for row in table] == [
+        p.name for p in on_disk
+    ]
 
 
 def test_check_mode_fails_on_a_stale_index_and_passes_on_a_fresh_one(

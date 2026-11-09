@@ -1,6 +1,6 @@
 # 0072. `CC_BIND_ALL=1` is the only way to listen beyond loopback
 
-Status: accepted
+Status: accepted; its claim that the published port stays loopback-only is qualified by 0090: with `CC_BIND_ALL` set any container on the compose network passes the loopback Host check, so the compose network is a trusted boundary
 
 Context: Decision 0013 made `Settings.host` `Literal["127.0.0.1"]` and said the distributed task must add an explicit opt-in rather than loosen the default. Inside a container the server must listen on `0.0.0.0` or the published port is unreachable.
 Decision: `Settings.host` stays loopback-only. A separate boolean `Settings.bind_all` (`CC_BIND_ALL`, default false) makes the read-only property `listen_host` return `0.0.0.0`; `app.main()` passes `listen_host` to uvicorn. `docker-compose.yml` sets `CC_BIND_ALL=1` on the `api` service only; no other service listens on HTTP. Every published port in compose is `127.0.0.1:<port>:<port>`, so the host's loopback is still the only reachable address (and Tailscale Serve, 0002, still fronts it).

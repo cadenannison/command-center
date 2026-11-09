@@ -1,0 +1,11 @@
+# 0088. One bounded `until_fetching` in `tests/fetch_support.py`
+
+Status: accepted; supersedes item 1 of 0080 for the helper's location and limit
+
+Context: Task 4d, closing an open decision of 0085. Three chaos test files each had their own `until_fetching`: `test_chaos_disconnect.py` with a 5 s bound and a failure message (0080), `test_chaos_disconnect_sink.py` with a 10 s `asyncio.timeout` that raised a bare `TimeoutError`, and `test_chaos_distributed.py` with no bound, so a worker that never reached `fetch` hung the run.
+Decision: one `until_fetching(adapter, wait_seconds=10.0)` in the new `tests/fetch_support.py`, imported by all three files, which no longer define one. It yields to the loop (`sleep(0)`) until `adapter.in_flight` is above zero, under `asyncio.timeout`, and on timeout calls `pytest.fail` with `No worker started fetching within N s: the job was never consumed, or the worker died before it called the adapter`. The bound is 10 s: the larger of the two that existed, because the Redis cases are slower; it is a hang guard, not a delay, so the "no sleeping" rule of `.claude/rules/tests.md` holds. The existing test of the timeout message (`test_chaos_disconnect.py`) now exercises the shared helper. The adapter parameter is typed `FakeAdapter` instead of `object` / `Any`, so the attribute access needs no ignore.
+Alternative: (a) Put it in `tests/worker_support.py`, as 0085 suggested: that is an existing support file, outside the files the card lets be edited; a new module needs no allowance. (b) Keep three copies and fix each: the three had already drifted.
+Reason: a hang in CI is worse than a failure, and a message that says what did not happen is faster to act on than a bare `TimeoutError`.
+Where: `tests/fetch_support.py`, `tests/test_chaos_disconnect.py`, `tests/test_chaos_disconnect_sink.py`, `tests/test_chaos_distributed.py` (edited under the card's allowance, for the removed copy and the import only).
+Not done: `tests/test_sync_service_state_store.py` has an inline loop of the same shape (`while adapter.in_flight == 0`) with no bound. It is not a chaos test and not named by the card, so it was left; the helper can replace it when that file is next edited.
+Revisit when: a Redis case needs longer than 10 s to start a worker (raise `FETCH_WAIT_SECONDS`).

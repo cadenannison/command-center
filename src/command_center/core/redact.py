@@ -2,6 +2,14 @@
 
 import re
 
+# The scheme plus everything up to whitespace: one forward scan, no backtracking.
+_URL = re.compile(r"https?://\S+", re.IGNORECASE)
+# A maximal run of 24+ token characters. The lookbehind pins the start to the run's first
+# character (unanchored, every start inside a long run would rescan it: quadratic); the greedy body
+# then takes the whole run, so the run is maximal and each character is read once. Whether it holds
+# a digit is checked in the callback, so a long digit-free word is a single O(n) scan.
+_TOKEN = re.compile(r"(?<![A-Za-z0-9_-])[A-Za-z0-9_-]{24,}")
+_ASCII_DIGIT = re.compile(r"[0-9]")
 # Anchored at a token start: unanchored, every start inside a long token rescans it (quadratic).
 _EMAIL = re.compile(r"(?<!\S)\S+@\S+")
 # A run of digits joined by whitespace, dashes, dots or parentheses, with an optional opening "(".
@@ -14,12 +22,26 @@ _ELLIPSIS = "…"
 
 
 def redact(text: str) -> str:
-    """Replace email addresses and digit groups of 6+ digits with [email] / [number].
+    """Replace URLs, token-like runs, emails and digit groups of 6+ digits with markers.
+
+    Markers are [url], [token], [email] and [number]. URLs go first because they may hold an "@",
+    digits and query tokens. Emails go before tokens: an email is a whole whitespace-delimited
+    token, so masking it first removes any token inside it in one step, and no marker is left
+    glued to a half-masked address. The digit rule runs last, after tokens already swallowed their
+    digits.
 
     Over-redaction is deliberate: a false positive costs a word of context, a miss leaks data.
     Run it before trim, never after, so a cut cannot leave a partial number behind.
     """
-    return _DIGIT_GROUP.sub(_redact_group, _EMAIL.sub("[email]", text))
+    without_urls = _URL.sub("[url]", text)
+    without_emails = _EMAIL.sub("[email]", without_urls)
+    without_tokens = _TOKEN.sub(_redact_token, without_emails)
+    return _DIGIT_GROUP.sub(_redact_group, without_tokens)
+
+
+def _redact_token(match: re.Match[str]) -> str:
+    run = match.group()
+    return "[token]" if _ASCII_DIGIT.search(run) else run
 
 
 def _redact_group(match: re.Match[str]) -> str:

@@ -1,4 +1,4 @@
-# 0080. Four existing test files get a bounded wait, a deterministic collision test and engine disposal
+# 0080. Three existing test files get a bounded wait, a deterministic collision test and engine disposal
 
 Status: accepted
 
@@ -10,5 +10,5 @@ Decisions:
 4. **`test_normalizer_atomic.py` needed no change.** Its `stores` fixture gets the engine from `sink_support.open_engine`, which disposes in its generator's tail, and the fixture drives that generator to its end. Run with `-W error::ResourceWarning` the file is clean (8 passed, 8 skipped). The skipped cases are the Redis ones; the Postgres engines are created and disposed by the same `open_engine`, but no Postgres was available here, so that path was not run under the warning.
 Alternative: (a) Convert the SQLite helper to a pytest fixture and rewrite the call sites: more churn for the same effect. (b) Replace the racing test: it would lose the real-thread check. (c) Stub `_increment` to force the collision: it would couple the test to a private function.
 Reason: a hung CI run and a test that passes without testing what its name says are both silent failures; the ResourceWarning would become an error as soon as anyone enables `-W error`.
-Where: `tests/test_chaos_disconnect.py`, `tests/generation_support.py`, `tests/test_generation_store.py`.
+Where: `tests/test_chaos_disconnect.py`, `tests/generation_support.py`, `tests/test_generation_store.py`. A fourth file, `tests/test_normalizer_atomic.py`, was named by the card and checked, and needed no change (item 4). The file name still says "four"; names of records are permanent (0091).
 Revisit when: `filterwarnings = error` is added to pytest's config (then the three files are already ready), or the Redis and Postgres cases run in CI and show a warning.

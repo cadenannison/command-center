@@ -1,6 +1,6 @@
 # 0082. The decision index is generated, and `gen_docs.py` runs it
 
-Status: accepted
+Status: accepted; the script name and how `gen_docs.py` loads it are superseded in part by 0087
 
 Context: Task 4a. There are 80 records and `Status:` lines are free text ("accepted; item 12 (c) is superseded by 0060 ..."), so finding what replaced what meant reading them all. The card asks for `scripts/gen-decision-index`, wired into `gen:build` and `gen:check`, writing `docs/generated/decision-index.md` and linked from `docs/MAP.md`.
 Decisions:

@@ -16,6 +16,7 @@ import pytest_asyncio
 from command_center.workers.normalizer import Normalizer
 from distributed_support import TOKEN, DistributedRig, make_distributed_rig
 from fake_adapter import FakeAdapter
+from fetch_support import until_fetching
 from queue_support import REDIS_URL_ENV, WINDOW
 from sink_support import Stores, open_engine, open_stores
 from test_chaos_disconnect import DiesOnAck, WorkerKilled
@@ -85,12 +86,6 @@ async def drain(backend: Backend, stores: Stores) -> None:
     normalizer = sink_normalizer(backend, stores)
     while await normalizer.run_once():
         pass
-
-
-async def until_fetching(adapter: object) -> None:
-    async with asyncio.timeout(10):  # a test that cannot get there fails instead of hanging
-        while adapter.in_flight == 0:  # type: ignore[attr-defined]  # noqa: ASYNC110
-            await asyncio.sleep(0)
 
 
 async def connect_and_queue(rig: DistributedRig) -> None:

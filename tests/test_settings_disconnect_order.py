@@ -104,7 +104,8 @@ async def test_disconnect_bumps_the_generation_then_deletes_secrets_then_purges(
 
     await rig.settings.disconnect("canvas")
 
-    assert journal.calls == ["bump", "delete_secrets", "delete_events"]
+    # cancel bumps first; purge bumps again before it deletes (0086)
+    assert journal.calls == ["bump", "delete_secrets", "bump", "delete_events"]
 
 
 async def test_a_failed_bump_aborts_before_anything_is_deleted(backend: Backend) -> None:
@@ -149,7 +150,8 @@ async def test_a_failed_purge_after_the_secrets_are_gone_says_the_disconnect_is_
         result = await rig.settings.disconnect("canvas")
 
     assert rig.secrets.get("canvas") == {}
-    assert generations.current("canvas") == 1
+    # cancel and purge each bump, and purge bumps before its delete fails (0086)
+    assert generations.current("canvas") == 2
     assert result.keys == {}
     assert result.sync is not None
     assert (result.sync.status, result.sync.message) == ("error", DISCONNECT_INCOMPLETE_MESSAGE)
@@ -169,7 +171,7 @@ async def test_a_retried_disconnect_completes_after_a_failed_purge(backend: Back
     assert retry.keys == {}
     assert [e.id for e in rig.events.query(WINDOW)] == []
     assert rig.states.get("canvas") is None
-    assert generations.current("canvas") == 2
+    assert generations.current("canvas") == 4  # two disconnects, each cancel + purge bump (0086)
 
 
 async def test_a_failed_purge_in_single_mode_is_also_incomplete() -> None:

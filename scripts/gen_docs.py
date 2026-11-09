@@ -19,11 +19,11 @@ HTTP_METHODS = ("get", "put", "post", "delete", "patch")
 
 
 def _decision_index() -> ModuleType:
-    """Load scripts/gen-decision-index (a hyphenated file, so it cannot be imported by name)."""
-    loader = SourceFileLoader("gen_decision_index", str(SCRIPTS_DIR / "gen-decision-index"))
+    """Load scripts/gen_decision_index.py as a fresh module on each call (a test sets its paths)."""
+    loader = SourceFileLoader("gen_decision_index", str(SCRIPTS_DIR / "gen_decision_index.py"))
     spec = spec_from_loader(loader.name, loader)
     if spec is None:
-        msg = "Failed to load scripts/gen-decision-index"
+        msg = "Failed to load scripts/gen_decision_index.py"
         raise ImportError(msg)
     module = module_from_spec(spec)
     sys.modules[loader.name] = module  # dataclasses look their module up here

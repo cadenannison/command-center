@@ -146,7 +146,7 @@ async def test_disconnect_purges_events_and_state_and_bumps_the_generation(
     assert after.sync is None
     assert stored(rig) == []
     assert rig.states.get("canvas") is None
-    assert rig.generations.current("canvas") == 1
+    assert rig.generations.current("canvas") == 2
     assert rig.secrets.get("canvas") == {}
 
 
@@ -177,7 +177,7 @@ async def test_a_reconnect_after_a_disconnect_queues_a_job_with_the_new_generati
 
     await rig.sync.sync("canvas")
 
-    assert [j.generation for j in await pending(backend)] == [1]
+    assert [j.generation for j in await pending(backend)] == [2]
 
 
 async def test_post_sync_queues_the_connected_sources_and_says_they_are_syncing(

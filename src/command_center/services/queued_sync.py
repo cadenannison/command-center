@@ -4,7 +4,7 @@ Nothing here fetches. `sync` publishes a job for the source's worker; the worker
 normalizer is the only writer of events and sync state (decisions 0070, 0071), so this class
 writes neither, except to purge a disconnected source. A disconnect bumps the source's generation
 first (`cancel`), which is what makes the normalizer drop any report still on its way (decision
-0074); the purge comes last (decision 0085).
+0074); the purge comes last and bumps again (decisions 0085, 0086).
 """
 
 import asyncio
@@ -126,11 +126,16 @@ class QueuedSyncService:
         await asyncio.to_thread(self._generations.bump, source)
 
     async def purge(self, source: str) -> None:
-        """Delete the source's events and sync state. The generation was bumped by `cancel`.
+        """Bump the generation again, then delete the source's events and sync state.
+
+        The second bump invalidates a sync queued after `cancel` and before the credentials were
+        deleted, whose report would otherwise be applied after this purge (decision 0086). A
+        disconnect therefore ends on `cancel`'s number plus one.
 
         A failure leaves rows of the old generation behind; the normalizer's next apply or drop
         for the source deletes them (`ReportSink.purge_stale`), and a repeated disconnect does too.
         """
+        await asyncio.to_thread(self._generations.bump, source)
         await asyncio.to_thread(self._events.delete_source, source)
         await asyncio.to_thread(self._states.delete, source)
 

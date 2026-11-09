@@ -1,6 +1,6 @@
 # 0085. A failed publish is an error state per source, and a disconnect cancels, then deletes secrets, then purges
 
-Status: accepted
+Status: accepted; its open decisions are answered by 0086 (the second bump), 0087 (the script rename and findings), 0088 (the shared `until_fetching`), 0089 (token-shaped strings in `redact`) and 0090 (the bind-all trust boundary)
 
 Context: Task 4c. Decision 0084 listed two things it did not decide: `POST /v1/sync` hid a dead Redis (the failed source was just missing from the answer, while `docs/distributed-mode.md` said an `error` state is shown), and `SettingsService.disconnect` deleted the secrets first, then bumped the generation and purged in one call, so a failure in the middle left no way to tell it had happened.
 Decisions:

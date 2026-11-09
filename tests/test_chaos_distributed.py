@@ -8,7 +8,6 @@ import asyncio
 import os
 from collections.abc import AsyncIterator
 from datetime import timedelta
-from typing import Any
 
 import pytest
 import pytest_asyncio
@@ -17,6 +16,7 @@ from command_center.core.errors import TransientError
 from command_center.core.jobs import Job
 from command_center.core.ports import JobQueue, SyncStateStore
 from fakes import InMemoryEventStore
+from fetch_support import until_fetching
 from queue_support import POLICY, REDIS_URL_ENV, WINDOW, make_job
 from worker_support import (
     BREAKER_FAILURES,
@@ -101,12 +101,6 @@ async def drain_reports(
     normalizer = make_normalizer(backend.reports(), store, states)  # type: ignore[arg-type]
     while await normalizer.run_once():
         pass
-
-
-async def until_fetching(adapter: Any) -> None:  # noqa: ANN401
-    """Yield to the loop until the adapter has a fetch in flight."""
-    while adapter.in_flight == 0:  # noqa: ASYNC110 - the fake exposes a counter, not an event
-        await asyncio.sleep(0)
 
 
 def stored(store: InMemoryEventStore) -> list[str]:
