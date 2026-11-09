@@ -22,6 +22,7 @@ from canvas_support import (
     planner_assignment,
     planner_calendar_event,
     planner_note,
+    planner_quiz,
     planner_topic,
     sent,
     serve,
@@ -224,6 +225,87 @@ async def test_a_planner_assignment_is_left_to_the_course_fetch(router: respx.Mo
     )
     [event] = await make_adapter().fetch(CREDS, WINDOW)
     assert (event.kind, event.status) == ("assignment", "done")
+
+
+async def test_a_planner_quiz_matching_an_assignment_is_not_listed_twice(
+    router: respx.MockRouter,
+) -> None:
+    serve(
+        router,
+        courses=[course()],
+        assignments={7: [assignment(state="submitted")]},
+        planner=[planner_quiz()],
+    )
+    [event] = await make_adapter().fetch(CREDS, WINDOW)
+    assert (event.kind, event.status) == ("assignment", "done")
+
+
+async def test_a_planner_quiz_with_no_matching_assignment_is_kept(
+    router: respx.MockRouter,
+) -> None:
+    serve(
+        router,
+        courses=[course()],
+        assignments={7: [assignment()]},
+        planner=[planner_quiz(title="Ungraded survey")],
+    )
+    kinds = sorted(event.kind for event in await make_adapter().fetch(CREDS, WINDOW))
+    assert kinds == ["assignment", "event"]
+
+
+async def test_a_planner_quiz_sharing_an_assignments_title_and_due_in_another_course_is_kept(
+    router: respx.MockRouter,
+) -> None:
+    serve(
+        router,
+        courses=[course(7), course(8)],
+        assignments={7: [assignment()]},
+        planner=[planner_quiz(course_id=8)],
+    )
+    kinds = sorted(event.kind for event in await make_adapter().fetch(CREDS, WINDOW))
+    assert kinds == ["assignment", "event"]
+
+
+async def test_a_planner_quiz_with_an_assignments_course_and_title_but_another_due_is_kept(
+    router: respx.MockRouter,
+) -> None:
+    serve(
+        router,
+        courses=[course()],
+        assignments={7: [assignment()]},
+        planner=[planner_quiz(due_at="2026-11-05T06:59:00Z")],
+    )
+    kinds = sorted(event.kind for event in await make_adapter().fetch(CREDS, WINDOW))
+    assert kinds == ["assignment", "event"]
+
+
+async def test_a_planner_quiz_without_a_link_still_matches_by_title_and_due(
+    router: respx.MockRouter,
+) -> None:
+    serve(
+        router,
+        courses=[course()],
+        assignments={7: [assignment()]},
+        planner=[planner_quiz(with_link=False)],
+    )
+    [event] = await make_adapter().fetch(CREDS, WINDOW)
+    assert event.kind == "assignment"
+
+
+async def test_a_planner_event_is_tagged_with_the_course_in_its_link(
+    router: respx.MockRouter,
+) -> None:
+    serve(router, planner=[planner_quiz(title="Ungraded survey", course_id=8)])
+    [event] = await make_adapter().fetch(CREDS, WINDOW)
+    assert event.raw["course_id"] == 8
+
+
+async def test_a_planner_event_with_no_course_in_its_link_has_no_course_tag(
+    router: respx.MockRouter,
+) -> None:
+    serve(router, planner=[planner_note()])
+    [event] = await make_adapter().fetch(CREDS, WINDOW)
+    assert "course_id" not in event.raw
 
 
 async def test_a_relative_planner_link_is_resolved_against_the_canvas_origin(

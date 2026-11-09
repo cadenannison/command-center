@@ -111,6 +111,22 @@ def planner_topic(topic_id: int = 8, due_at: str | None = "2026-11-06T06:59:00Z"
     }
 
 
+def planner_quiz(
+    quiz_id: int = 31,
+    title: str = "Lab report",
+    due_at: str = "2026-11-04T06:59:00Z",
+    course_id: int = 7,
+    *,
+    with_link: bool = True,
+) -> Json:
+    return {
+        "plannable_type": "quiz",
+        "plannable_id": str(quiz_id),
+        "plannable": {"id": quiz_id, "title": title, "due_at": due_at},
+        "html_url": f"/courses/{course_id}/quizzes/{quiz_id}" if with_link else None,
+    }
+
+
 def planner_calendar_event(
     event_id: int = 5,
     start_at: str = "2026-11-05T15:00:00Z",

@@ -39,4 +39,4 @@ mise run check                   # every non-mutating gate; same tasks run in CI
 uv run command-center            # API on http://127.0.0.1:8765
 ```
 Rules for contributors and coding agents: [AGENTS.md](AGENTS.md). Layers: [docs/MAP.md](docs/MAP.md).
-Decisions: [docs/decisions/](docs/decisions/). Operations: [docs/runbook.md](docs/runbook.md).
+Decisions: [docs/decisions/](docs/decisions/). Ideas for later: [docs/backlog.md](docs/backlog.md). Operations: [docs/runbook.md](docs/runbook.md).

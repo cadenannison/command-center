@@ -61,10 +61,11 @@ class CanvasAdapter:
         bounds = date_params(window, self._lookback)
         async with open_canvas(creds, self._sleep) as canvas:
             courses = await active_courses(canvas)
+            listed: list[Event] = []
             for course in courses:
-                for event in await assignments(canvas, course, window, fetched_at):
-                    events[event.id] = event
-            for event in await planner_events(canvas, window, bounds, fetched_at):
+                listed += await assignments(canvas, course, window, fetched_at)
+            events.update((event.id, event) for event in listed)
+            for event in await planner_events(canvas, window, bounds, fetched_at, listed):
                 events[event.id] = event
             # Calendar events go last: they carry an end, so they win over the planner's copy.
             for event in await calendar_events(canvas, courses, window, bounds, fetched_at):

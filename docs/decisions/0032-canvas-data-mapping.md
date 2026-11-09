@@ -1,6 +1,6 @@
 # 0032. Canvas data mapping: planner dates, de-duplication, windowing and status
 
-Status: accepted; gap (a) is resolved by 0042 (lookback before the window)
+Status: accepted; gap (a) is resolved by 0042 (lookback before the window); gap (b) by 0094, superseded by 0095
 
 Context: Task 2a maps Canvas assignments, planner items and calendar events to `Event`. The Canvas docs (read 2026-11-07) leave four things open: the planner list has no documented top-level date field, `plannable` is documented only for `planner_note`, the assignments list has no date filter, and `calendar_events` returns the personal calendar unless `context_codes[]` is given (ten at most).
 Decision:

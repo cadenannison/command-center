@@ -4,6 +4,7 @@ Every function takes an open `CanvasClient`; the adapter in `canvas.py` owns the
 """
 
 import logging
+import re
 from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime, timedelta
 from urllib.parse import urljoin
@@ -26,6 +27,7 @@ logger = logging.getLogger("command_center.adapters.canvas")
 SOURCE = "canvas"
 CONTEXT_CODE_LIMIT = 10  # Canvas ignores context_codes[] beyond ten.
 _SUBMITTED_STATES = frozenset({"submitted", "graded", "pending_review"})
+_COURSE_IN_PATH = re.compile(r"/courses/(\d+)(?:/|$)")
 
 
 async def active_courses(canvas: CanvasClient) -> list[Course]:
@@ -79,9 +81,14 @@ async def assignments(
 
 
 async def planner_events(
-    canvas: CanvasClient, window: TimeWindow, bounds: Mapping[str, str], fetched_at: datetime
+    canvas: CanvasClient,
+    window: TimeWindow,
+    bounds: Mapping[str, str],
+    fetched_at: datetime,
+    known_assignments: Sequence[Event] = (),
 ) -> list[Event]:
     rows = await canvas.pages("/api/v1/planner/items", bounds)
+    listed = {(a.raw.get("course_id"), a.title, a.due) for a in known_assignments}
     events: list[Event] = []
     for item in parse_rows(rows, PlannerItem, "planner items"):
         # Assignments arrive per course with their submission state, so skip the planner's copy.
@@ -91,16 +98,29 @@ async def planner_events(
         start = plannable.start_at or plannable.todo_date or plannable.due_at
         if start is None:
             continue
+        title = plannable.title or "Untitled event"
+        course_id = _course_id(item.html_url)
+        # A graded quiz or discussion is also an assignment, and the planner links the two by no
+        # documented field, so an item with an assignment's course, title and due instant is its
+        # copy; with no course in its link, title and due instant alone decide (decision 0095).
+        if (course_id, title, start) in listed or (
+            course_id is None and any(key[1:] == (title, start) for key in listed)
+        ):
+            continue
         kind_key = f"{item.plannable_type}:{item.plannable_id}"
         event = _event(
             canvas,
             source_id=kind_key,
-            title=plannable.title,
+            title=title,
             start=start,
             end=plannable.end_at,
             html_url=item.html_url,
             fetched_at=fetched_at,
-            raw={"plannable_type": item.plannable_type, "plannable_id": str(item.plannable_id)},
+            raw={
+                "plannable_type": item.plannable_type,
+                "plannable_id": str(item.plannable_id),
+                **({"course_id": course_id} if course_id is not None else {}),
+            },
         )
         if _in_window(event, window):
             events.append(event)
@@ -165,6 +185,12 @@ def _event(  # noqa: PLR0913  (one call per source shape; keyword-only, all requ
         raw=raw,
         fetched_at=fetched_at,
     )
+
+
+def _course_id(html_url: str | None) -> int | None:
+    """The course a planner item belongs to, read from `/courses/<id>/...` in its link."""
+    found = _COURSE_IN_PATH.search(html_url or "")
+    return int(found.group(1)) if found else None
 
 
 def _in_window(event: Event, window: TimeWindow) -> bool:

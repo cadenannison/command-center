@@ -1,0 +1,10 @@
+# 0094. A planner copy of an assignment is dropped by matching title and due instant
+
+Status: superseded by 0095; resolves gap (b) of 0032
+
+Context: A graded quiz or discussion is returned twice: as an assignment (per course, with its submission state) and by the planner as an item of type `quiz` or `discussion_topic`, which the adapter maps to an `event`. Decision 0032 only skips planner items of type `assignment`, so the same quiz showed twice on one day: once at urgency 70 as an assignment and once at 10 as an event. A live sync confirmed it (planner type `quiz`, same title, same due instant as the assignment). The documented `plannable` fields carry no id that links the planner item back to its assignment.
+Decision: `fetch` passes the assignments it read to `planner_events`. A planner item whose title and start (its first of `start_at`, `todo_date`, `due_at`) equal an assignment's title and `due` is that assignment's copy and is left out. Every other planner item is kept.
+Alternative: Skip every planner item of type `quiz` and `discussion_topic`. That also hides an ungraded survey or a discussion with no assignment, which has no other source. Read the undocumented `assignment_id` on the quiz: 0032 chose to trust only documented fields.
+Reason: The assignment copy has the submission state and the urgency that matter, and the match needs only fields we already read. It is a heuristic: two different items with the same title and the same due instant in different courses would be merged, which for a planner view costs one hidden duplicate-looking row at worst.
+Where: `planner_events` in `src/command_center/adapters/canvas_fetch.py`, called from `CanvasAdapter.fetch`; tests `test_a_planner_quiz_matching_an_assignment_is_not_listed_twice` and `test_a_planner_quiz_with_no_matching_assignment_is_kept` in `tests/test_canvas_adapter.py`; `docs/contracts/adapters.md` (Canvas entry).
+Revisit when: A live planner response shows a documented or stable field that names the assignment (then match on it), or a real item is wrongly hidden by the title and due match.
