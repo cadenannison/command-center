@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}History · Command Center{% endblock %}
+{% block content %}
+<div class="page-head"><h1>{{ view.title }}</h1>
+<span class="pager"><a href="/history?date={{ view.previous.isoformat() }}">Previous</a><a href="/history">Today</a><a href="/history?date={{ view.next.isoformat() }}">Next</a></span></div>
+<form class="pick-day" method="get" action="/history"><label for="history-date">Day</label>
+<input id="history-date" type="date" name="date" value="{{ view.day.isoformat() }}" required>
+<button type="submit" class="secondary">Show</button></form>
+{% for s in view.sections %}
+<section class="panel" aria-labelledby="h-{{ s.key }}"><h2 id="h-{{ s.key }}">{{ s.heading }}</h2>
+{% if s.lines %}
+<ul class="rows">
+{% for e in s.lines %}
+<li class="row history-line">
+<span class="when">{{ e.at }}</span>
+<span class="title">{% if e.link %}<a href="{{ e.link }}" target="_blank" rel="noopener noreferrer">{{ e.title }}</a>{% else %}{{ e.title }}{% endif %}{% if e.reopened %} <span class="chip chip-reopened" title="The source completed this, then reported it open again">later reopened</span>{% endif %}
+{% if e.note %}<p class="note-text"><span class="muted">Note:</span> {{ e.note }}</p>{% endif %}</span>
+<span class="chip">{{ e.source }}</span>
+</li>
+{% endfor %}
+</ul>
+{% else %}<p class="muted">{{ s.empty }}</p>{% endif %}
+</section>
+{% endfor %}
+{% endblock %}

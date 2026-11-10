@@ -1,4 +1,5 @@
 {% from "_button.html" import connect_button %}
+{% from "_field.html" import single_input %}
 <section class="card" id="source-{{ card.source }}" aria-labelledby="h-{{ card.source }}">
 <header><h2 id="h-{{ card.source }}">{{ card.label }}</h2>{% include "_status.html" %}</header>
 {% if card.note %}<p class="note">{{ card.note }}</p>{% endif %}
@@ -6,6 +7,7 @@
 <ol>{% for step in card.howto.steps %}<li>{{ step }}</li>{% endfor %}</ol>
 {% if card.howto.note %}<p class="hint">{{ card.howto.note }}</p>{% endif %}
 </details>{% endif %}
+{% if card.city_search %}{% include "_city_search.html" %}{% endif %}
 <form id="form-{{ card.source }}" autocomplete="off"
  hx-put="/settings/{{ card.source }}" hx-target="#source-{{ card.source }}" hx-swap="outerHTML"
  hx-sync="this:drop" hx-disabled-elt="#connect-{{ card.source }}" hx-indicator="#busy-{{ card.source }}"
@@ -14,7 +16,7 @@
 <label for="f-{{ card.source }}-{{ f.key }}">{{ f.label }}
 <span class="state">{% if f.is_set %}set{% if f.last4 %} · ends {{ f.last4 }}{% endif %}{% else %}not set{% endif %}</span></label>
 {% if f.multiline %}<textarea id="f-{{ card.source }}-{{ f.key }}" name="{{ f.key }}" rows="3" spellcheck="false" autocapitalize="off"{% if f.secret %} class="masked"{% if card.keep_typed %} hx-preserve="true"{% endif %}{% endif %}{% if f.is_set and f.secret %} placeholder="Leave blank to keep"{% endif %}>{{ f.value }}</textarea>
-{% else %}<input id="f-{{ card.source }}-{{ f.key }}" name="{{ f.key }}" type="{{ 'password' if f.secret else 'text' }}" spellcheck="false" autocapitalize="off" autocomplete="off"{% if f.value %} value="{{ f.value }}"{% endif %}{% if f.secret and card.keep_typed %} hx-preserve="true"{% endif %}{% if f.is_set and f.secret %} placeholder="Leave blank to keep"{% elif f.hint %} placeholder="{{ f.hint }}"{% endif %}>{% endif %}
+{% else %}{{ single_input(card, f) }}{% endif %}
 {% if f.hint and f.multiline %}<p class="hint">{{ f.hint }}</p>{% endif %}
 {% endfor %}
 </form>
@@ -27,4 +29,5 @@
 <span class="busy" id="busy-{{ card.source }}">{% if card.sign_in_wait %}Waiting for Google sign-in…{% else %}Connecting…{% endif %}</span>
 </div>
 <p class="flash{% if card.flash and not card.flash_ok %} bad{% endif %}" id="result-{{ card.source }}" role="status" aria-live="polite">{{ card.flash }}</p>
+{% if card.city_search %}<footer class="attribution"><a href="https://open-meteo.com/" rel="noopener noreferrer">Weather data by Open-Meteo.com</a> (<a href="https://open-meteo.com/en/licence" rel="noopener noreferrer">CC BY 4.0</a>) · <a href="https://open-meteo.com/en/terms" rel="noopener noreferrer">Open-Meteo terms</a> · Place names from the GeoNames database (CC BY 4.0), through Open-Meteo.</footer>{% endif %}
 </section>

@@ -92,6 +92,11 @@ HOWTO: dict[str, HowTo] = {
                 "Enter the latitude and longitude of the place you want a forecast for, for "
                 "example 40.2338 and -111.6585."
             ),
+            (
+                "Or type a city under Find a city and press Search: pick the right match from the "
+                "list and the two boxes fill in (you can still edit them). Nothing is saved until "
+                "you press Connect."
+            ),
             "Forecasts come from Open-Meteo and need no account.",
         ),
     ),
@@ -109,6 +114,26 @@ HOWTO: dict[str, HowTo] = {
                 "A key alone does not turn summaries on: "
                 "use the Enable button on the Today summary card."
             ),
+        ),
+    ),
+    "chat": HowTo(
+        (
+            (
+                "This is the API key for the chat provider you choose, for example OpenRouter or "
+                "OpenAI. Create one in that provider's account (the page layout may differ)."
+            ),
+            (
+                "Hosted providers need a key. Local providers such as Ollama, LM Studio or "
+                "llama.cpp on this machine or your network need none: leave this empty."
+            ),
+            (
+                "Enter the key here and press Connect. It is kept in your keychain and never "
+                "shown again, only its last four characters."
+            ),
+        ),
+        (
+            "Saving a key does not turn chat on or choose a provider. Chat with Gemini uses the "
+            "Gemini key above, not this one."
         ),
     ),
 }

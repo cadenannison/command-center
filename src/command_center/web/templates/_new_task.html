@@ -1,0 +1,16 @@
+<details class="panel new-task" id="new-task"{% if nt.error %} open{% endif %}>
+<summary>New task</summary>
+<form hx-post="/tasks" hx-target="#new-task" hx-swap="outerHTML" hx-disabled-elt="find button" autocomplete="off">
+<label for="nt-title">Title</label>
+<input id="nt-title" name="title" value="{{ nt.title }}" maxlength="200" required>
+<label for="nt-date">Due date</label>
+<input id="nt-date" name="due_date" type="date" value="{{ nt.due_date }}" required>
+<label for="nt-time">Due time</label>
+<input id="nt-time" name="due_time" type="time" value="{{ nt.due_time }}" required>
+<label for="nt-label">Course label (optional)</label>
+<input id="nt-label" name="label" value="{{ nt.label }}" maxlength="80">
+<p class="hint">Times are in your settings timezone. A task stays until you delete it; no sync removes it.</p>
+<div class="actions"><button type="submit">Add task</button></div>
+<p class="flash bad" role="alert">{{ nt.error }}</p>
+</form>
+</details>

@@ -1,0 +1,9 @@
+<form class="city-search" id="city-form-{{ card.source }}" role="search" autocomplete="off"
+ hx-put="/settings/{{ card.source }}" hx-vals='{"action": "search"}' hx-target="#city-results-{{ card.source }}" hx-swap="innerHTML"
+ hx-sync="this:replace" hx-disabled-elt="find button" hx-indicator="#city-busy-{{ card.source }}">
+<label for="f-{{ card.source }}-city">Find a city</label>
+<input id="f-{{ card.source }}-city" name="city" type="text" maxlength="100" spellcheck="false" autocomplete="off" placeholder="Provo" aria-describedby="city-hint-{{ card.source }}">
+<p class="hint" id="city-hint-{{ card.source }}">The name you type is sent to Open-Meteo's geocoding service. You choose from up to five matches; nothing is picked for you.</p>
+<div class="actions"><button type="submit" class="secondary">Search</button><span class="busy" id="city-busy-{{ card.source }}">Searching…</span></div>
+</form>
+<div class="city-results" id="city-results-{{ card.source }}" role="status" aria-live="polite"></div>

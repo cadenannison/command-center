@@ -12,6 +12,7 @@ from fastapi.responses import HTMLResponse
 from command_center.services.container import Container
 from command_center.services.models import ConnectResult, SourceSettings
 from command_center.web.cards import card_view
+from command_center.web.city_search import CITY_ACTIONS, CitySearch
 from command_center.web.render import Renderer
 from command_center.web.sources import MAX_VALUE_LENGTH, form_for
 
@@ -24,7 +25,8 @@ NO_SYNC = "This integration has no items to sync."
 SYNC_RUNNING = "A sync is already running."
 SYNC_STARTED = "Sync started. The status above updates when it ends."
 
-ACTIONS = frozenset({"connect", "unverified", "test", "sync"})
+ACTIONS = frozenset({"connect", "unverified", "test", "sync"}) | CITY_ACTIONS
+NO_CITY_SEARCH = "This source has no city search"
 
 
 def not_found(source: str) -> HTTPException:
@@ -76,6 +78,7 @@ class SettingsActions:
     def __init__(self, renderer: Renderer) -> None:
         self._renderer = renderer
         self._busy: set[str] = set()
+        self._city = CitySearch(renderer)
 
     async def card(  # noqa: PLR0913
         self,
@@ -110,6 +113,10 @@ class SettingsActions:
         action = str(form.get("action") or "connect")
         if action not in ACTIONS:
             raise HTTPException(status_code=422, detail="Unknown action")
+        if action in CITY_ACTIONS:
+            if not form_for(item.source).city_search:
+                raise HTTPException(status_code=422, detail=NO_CITY_SEARCH)
+            return await self._city.run(request, services, item, action, form)
         if action == "test":
             return await self._test(request, services, item.source)
         if action == "sync":

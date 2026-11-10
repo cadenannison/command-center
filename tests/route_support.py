@@ -11,6 +11,7 @@ SAMPLE = {
     "source": "canvas",
     "device_id": "no-such-device",
     "item_id": "no-such-item",
+    "conversation_id": "no-such-chat",
 }
 SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
 

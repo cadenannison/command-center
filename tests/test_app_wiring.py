@@ -35,7 +35,7 @@ def test_the_real_container_serves_an_empty_agenda_and_unconnected_settings_and_
         assert client.get("/v1/agenda/day", params={"date": "2026-11-07"}).json() == []
         assert client.get("/v1/settings").json() == [
             {"source": source, "keys": {}, "sync": None, "values": {}}
-            for source in [*SOURCES, "gemini"]
+            for source in [*SOURCES, "gemini", "chat"]
         ]
         states = client.post("/v1/sync").json()
 

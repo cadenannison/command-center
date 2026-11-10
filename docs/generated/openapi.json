@@ -1,6 +1,83 @@
 {
   "components": {
     "schemas": {
+      "ChatContextPreview": {
+        "description": "What would be sent as context right now, redacted, and which opt-ins shaped it.",
+        "properties": {
+          "context": {
+            "title": "Context",
+            "type": "string"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "include_history": {
+            "title": "Include History",
+            "type": "boolean"
+          },
+          "include_notes": {
+            "title": "Include Notes",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled",
+          "include_history",
+          "include_notes",
+          "context"
+        ],
+        "title": "ChatContextPreview",
+        "type": "object"
+      },
+      "ChatReply": {
+        "description": "The model's answer and the id of the conversation it belongs to.",
+        "properties": {
+          "conversation_id": {
+            "title": "Conversation Id",
+            "type": "string"
+          },
+          "reply": {
+            "title": "Reply",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reply",
+          "conversation_id"
+        ],
+        "title": "ChatReply",
+        "type": "object"
+      },
+      "ChatRequest": {
+        "description": "One message from the user.",
+        "properties": {
+          "conversation_id": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Za-z0-9_-]{1,64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Continue this conversation; omit to start one. Ids are issued by the server.",
+            "title": "Conversation Id"
+          },
+          "message": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "title": "ChatRequest",
+        "type": "object"
+      },
       "ConnectRequest": {
         "additionalProperties": false,
         "description": "Credentials for one source. Write-only: no response model has a field for them.",
@@ -928,6 +1005,226 @@
         "summary": "Items needing attention",
         "tags": [
           "agenda"
+        ]
+      }
+    },
+    "/v1/chat": {
+      "post": {
+        "description": "The assistant's `reply` and the `conversation_id` to continue with.\n\nThe assistant is read-only: it sees a redacted, size-capped view of the next 7 days (and,\nonly if the user opted in, recent history and notes), and has no tools, so nothing it says\nchanges anything. Conversations are kept in memory (20 turns) and lost on restart: an unknown\n`conversation_id` is a 404. Loopback only: a paired phone gets 403. At most 10 messages a\nminute. 404 while chat is off (the default).",
+        "operationId": "post_chat_v1_chat_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatReply"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Chat is off, or there is no such conversation"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Chat is on but its provider setting is unusable"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Too many messages in the last minute; wait Retry-After seconds",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "The chat provider failed; the detail is redacted"
+          }
+        },
+        "security": [
+          {
+            "DeviceToken": []
+          }
+        ],
+        "summary": "Send a message to the chat assistant",
+        "tags": [
+          "chat"
+        ]
+      }
+    },
+    "/v1/chat/context-preview": {
+      "get": {
+        "description": "The redacted `context` the next message would carry, and the opt-ins that shaped it.\n\nNothing is sent to a provider. Loopback only: a paired phone gets 403, because the context is\nthe user's agenda. Works while chat is off (`enabled` false), so the user can look before\nopting in.",
+        "operationId": "get_context_preview_v1_chat_context_preview_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatContextPreview"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Chat is off, or there is no such conversation"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Chat is on but its provider setting is unusable"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Too many messages in the last minute; wait Retry-After seconds",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "The chat provider failed; the detail is redacted"
+          }
+        },
+        "security": [
+          {
+            "DeviceToken": []
+          }
+        ],
+        "summary": "The exact context chat would send",
+        "tags": [
+          "chat"
+        ]
+      }
+    },
+    "/v1/chat/{conversation_id}": {
+      "delete": {
+        "description": "Drop the conversation from memory, also while chat is off. 404 when there is none.",
+        "operationId": "delete_chat_v1_chat__conversation_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "conversation_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,64}$",
+              "title": "Conversation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "DeviceToken": []
+          }
+        ],
+        "summary": "Forget a conversation",
+        "tags": [
+          "chat"
         ]
       }
     },

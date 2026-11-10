@@ -10,6 +10,7 @@ from starlette.staticfiles import StaticFiles
 
 from command_center.api import (
     agenda,
+    chat_routes,
     geocode_routes,
     health,
     items,
@@ -74,6 +75,7 @@ def create_app(
         agenda.router,
         settings.router,
         geocode_routes.router,
+        chat_routes.router,
         items.router,
         sync.router,
         summary_routes.router,

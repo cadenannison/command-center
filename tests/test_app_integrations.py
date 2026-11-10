@@ -23,7 +23,15 @@ async def test_the_container_lists_gemini_in_settings_but_not_in_sync(settings: 
 
     listed = [item.source for item in await container.settings.status()]
 
-    assert listed == ["canvas", "apple_calendar", "learningsuite", "gmail", "weather", "gemini"]
+    assert listed == [
+        "canvas",
+        "apple_calendar",
+        "learningsuite",
+        "gmail",
+        "weather",
+        "gemini",
+        "chat",
+    ]
     assert "gemini" not in container.sync.sources()
 
 
@@ -34,9 +42,13 @@ async def test_the_default_container_still_has_no_summary_with_the_key_entry_in_
 
 
 def test_the_web_form_of_every_integration_is_credential_only(settings: Settings) -> None:
-    assert set(build_integrations(settings)) == {"gemini"}
+    assert set(build_integrations(settings)) == {"gemini", "chat"}
     assert SOURCE_FORMS["gemini"].credential_only is True
-    assert [name for name, form in SOURCE_FORMS.items() if form.credential_only] == ["gemini"]
+    assert [name for name, form in SOURCE_FORMS.items() if form.credential_only] == [
+        "gemini",
+        "chat",
+    ]
+    assert SOURCE_FORMS["chat"].credential_only is True
 
 
 def test_the_gemini_integration_is_the_adapters_class(settings: Settings) -> None:

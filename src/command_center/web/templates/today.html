@@ -5,12 +5,13 @@
 <div class="page-head"><h1>{{ view.title }}</h1>
 <span class="pager"><a href="/?date={{ view.previous.isoformat() }}">Previous</a><a href="/">Today</a><a href="/?date={{ view.next.isoformat() }}">Next</a></span></div>
 {% include "_summary.html" %}
+{% if nt %}{% include "_new_task.html" %}{% endif %}
 <section class="panel" aria-labelledby="agenda-h"><h2 id="agenda-h">Agenda</h2>
 {{ rows(view.agenda, "Nothing scheduled.") }}</section>
 <section class="panel" aria-labelledby="weather-h"><h2 id="weather-h">Weather</h2>
 {% if view.weather %}<div class="weather">{% for w in view.weather %}<span><span class="when">{{ w.when }}</span> {{ w.title }}</span>{% endfor %}</div>
 {% else %}<p class="muted">No forecast yet.</p>{% endif %}
-<p class="attribution"><a href="https://open-meteo.com/" rel="noopener noreferrer">Weather data by Open-Meteo.com</a></p>
+<p class="attribution"><a href="https://open-meteo.com/" rel="noopener noreferrer">Weather data by Open-Meteo.com</a> (<a href="https://open-meteo.com/en/licence" rel="noopener noreferrer">CC BY 4.0</a>) · <a href="https://open-meteo.com/en/terms" rel="noopener noreferrer">Open-Meteo terms</a></p>
 </section>
 <section class="panel" aria-labelledby="attention-h"><h2 id="attention-h">Needs attention</h2>
 {{ rows(view.attention, "Nothing needs attention.") }}</section>

@@ -36,3 +36,15 @@ Status is one of `proposed` (written down, not yet decided), `accepted` (we will
   `tests: modify`).
   ## Hyperlinks to all assignments
   
+
+## Chat: save conversations
+- Status: proposed
+- Why: chats are in memory only (20 turns, 20 conversations) and are forgotten on restart; the card allowed a "save chats" setting, default off (decision 0166).
+- Idea: a conversation table in the ledger store, a `chat.save` app setting (default off), and a delete that clears both memory and disk. No UI control yet.
+- Touches: `storage/`, `services/chat.py`, `core/ports.py` (a store port), the chat contracts.
+
+## Summaries and chat: unify the providers
+- Status: proposed
+- Why: `SummaryProvider` and `ChatProvider` are separate ports with separate adapters (Ollama twice, Gemini twice) (decision 0167).
+- Idea: build the summary providers on `ChatProvider` (one prompt in, one text out) once both are stable, keeping the summary tests unchanged.
+- Touches: `adapters/summary_ollama.py`, `adapters/summary_gemini.py`, `services/summary.py`, `core/ports.py`.

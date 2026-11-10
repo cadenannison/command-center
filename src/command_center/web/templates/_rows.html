@@ -1,12 +1,49 @@
+{% macro badge(r) %}{% if r.reason %}<span class="why" title="{{ r.reason }}">{% endif %}{% if r.priority %}<span class="prio" style="--p:{{ r.priority }}" title="Priority {{ r.priority }} of 10"><span class="visually-hidden">Priority </span>{{ r.priority }}</span>{% else %}<span class="prio none" title="No priority: done or ended"><span class="visually-hidden">No priority</span><span aria-hidden="true">–</span></span>{% endif %}{% if r.reason %}</span>{% endif %}{% endmacro %}
+{% macro details(r, message, ok, opened, typed_note) %}
+{% set it = r.item %}
+<details class="more"{% if opened %} open{% endif %}>
+<summary>Details{% if it.has_note %} · has note{% endif %}</summary>
+{% if r.reason %}<p class="reason"><strong>Why this priority:</strong> {{ r.reason }}</p>{% endif %}
+<form class="note-form" hx-put="/items/{{ it.item_id }}/notes?{{ it.query }}" hx-target="closest li" hx-swap="outerHTML" hx-disabled-elt="find button">
+<label for="note-{{ it.row_id }}">Note</label>
+<textarea id="note-{{ it.row_id }}" name="text" rows="3" maxlength="4000">
+{{ typed_note if typed_note is not none else it.note }}</textarea>
+<div class="actions"><button type="submit">Save note</button>
+<button type="button" class="danger" hx-delete="/items/{{ it.item_id }}/notes?{{ it.query }}" hx-target="closest li" hx-swap="outerHTML" hx-disabled-elt="this">Delete note</button></div>
+</form>
+{% if it.task %}{% set t = it.task %}
+<form class="task-form" hx-patch="/items/{{ it.item_id }}?{{ it.query }}" hx-target="closest li" hx-swap="outerHTML" hx-disabled-elt="find button">
+<label for="title-{{ it.row_id }}">Task title</label>
+<input id="title-{{ it.row_id }}" name="title" value="{{ t.title }}" maxlength="200" required>
+<label for="date-{{ it.row_id }}">Due date</label>
+<input id="date-{{ it.row_id }}" name="due_date" type="date" value="{{ t.due_date }}" required>
+<label for="time-{{ it.row_id }}">Due time</label>
+<input id="time-{{ it.row_id }}" name="due_time" type="time" value="{{ t.due_time }}" required>
+<label for="label-{{ it.row_id }}">Course label (optional)</label>
+<input id="label-{{ it.row_id }}" name="label" value="{{ t.label }}" maxlength="80">
+<div class="actions"><button type="submit">Save task</button>
+<button type="button" class="danger" hx-delete="/items/{{ it.item_id }}?{{ it.query }}" hx-target="closest li" hx-swap="outerHTML" hx-confirm="Delete this task with its note?">Delete task</button></div>
+</form>
+{% endif %}
+<p class="flash{% if not ok %} bad{% endif %}" role="status" aria-live="polite">{{ message }}</p>
+</details>
+{% endmacro %}
+{% macro row(r, message="", ok=True, opened=False, typed_note=None) %}
+{% set it = r.item %}
+<li class="row kind-{{ r.kind }}{% if r.urgent %} urgent{% endif %}{% if it and it.done %} done{% endif %}"{% if it %} id="{{ it.row_id }}"{% endif %}>
+<span class="when">{{ r.when }}</span>
+<span class="title"><span class="label">{% if r.link %}<a href="{{ r.link }}" target="_blank" rel="noopener noreferrer">{{ r.title }}</a>{% else %}{{ r.title }}{% endif %}</span>{% if r.status %} <span class="muted">({{ r.status }})</span>{% endif %}{% if it and it.task and it.task.label %} <span class="chip chip-label" title="Course label">{{ it.task.label }}</span>{% endif %}{% if it and it.has_note %} <span class="chip chip-note" title="This item has a note">note</span>{% endif %}
+{% if it %}{{ details(r, message, ok, opened, typed_note) }}{% endif %}</span>
+{% if it %}<span class="acts">
+{% if it.done %}{% if it.can_undo %}<button type="button" class="mini secondary" hx-delete="/items/{{ it.item_id }}/done?{{ it.query }}" hx-target="closest li" hx-swap="outerHTML" hx-disabled-elt="this" aria-label="Undo check-off: {{ r.title }}">Undo</button>{% else %}<span class="chip" title="The source reports this done">done</span>{% endif %}
+{% else %}<button type="button" class="mini" hx-post="/items/{{ it.item_id }}/done?{{ it.query }}" hx-target="closest li" hx-swap="outerHTML" hx-disabled-elt="this" aria-label="Check off: {{ r.title }}">Done</button>{% endif %}
+{{ badge(r) }}</span>{% else %}{{ badge(r) }}{% endif %}
+</li>
+{% endmacro %}
 {% macro rows(items, empty) %}
 {% if items %}
 <ul class="rows">
-{% for r in items %}
-<li class="row kind-{{ r.kind }}{% if r.urgent %} urgent{% endif %}">
-<span class="when">{{ r.when }}</span>
-<span class="title">{% if r.link %}<a href="{{ r.link }}" target="_blank" rel="noopener noreferrer">{{ r.title }}</a>{% else %}{{ r.title }}{% endif %}{% if r.status %} <span class="muted">({{ r.status }})</span>{% endif %}</span>
-{% if r.priority %}<span class="prio" style="--p:{{ r.priority }}" title="Priority {{ r.priority }} of 10"><span class="visually-hidden">Priority </span>{{ r.priority }}</span>{% else %}<span class="prio none" title="No priority: done or ended"><span class="visually-hidden">No priority</span><span aria-hidden="true">–</span></span>{% endif %}
-</li>
+{% for r in items %}{{ row(r) }}
 {% endfor %}
 </ul>
 {% else %}<p class="muted">{{ empty }}</p>{% endif %}

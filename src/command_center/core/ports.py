@@ -4,6 +4,7 @@ from collections.abc import Collection, Mapping, Sequence
 from datetime import date, datetime
 from typing import Literal, Protocol
 
+from command_center.core.chat import ChatMessage
 from command_center.core.geocode import GeocodeCandidate
 from command_center.core.jobs import DeadLetter, DeadReport, Job, SyncReport
 from command_center.core.ledger import ItemMark, LedgerEntry
@@ -197,6 +198,23 @@ class SummaryProvider(Protocol):
 
     async def summarize(self, prompt: str) -> DailySummary:
         """Return the summary for prompt; raises SummaryRateLimited or SummaryProviderError."""
+        ...
+
+
+class ChatProvider(Protocol):
+    """One AI backend that answers a chat. Read-only: it is given no tools."""
+
+    @property
+    def name(self) -> str:
+        """Stable provider name, for example "ollama"."""
+        ...
+
+    async def complete(self, messages: Sequence[ChatMessage], system: str, max_tokens: int) -> str:
+        """Return the assistant's reply to messages under system.
+
+        Raises ChatRateLimited or ChatProviderError. Messages are user/assistant turns only; the
+        system string is the only trusted text.
+        """
         ...
 
 

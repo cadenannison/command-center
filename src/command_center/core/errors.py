@@ -30,3 +30,14 @@ class SummaryProviderError(Exception):
 
 class SummaryRateLimited(SummaryProviderError):  # noqa: N818  (name fixed by the task card)
     """The summary provider rejected the call for rate or quota reasons; retry later."""
+
+
+class ChatProviderError(Exception):
+    """A chat provider failed (unreachable, bad key, malformed output).
+
+    The message never carries a secret, the key or the prompt.
+    """
+
+
+class ChatRateLimited(ChatProviderError):  # noqa: N818  (name fixed by the task card)
+    """The chat provider rejected the call for rate or quota reasons; retry later."""

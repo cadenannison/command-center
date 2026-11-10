@@ -4,7 +4,8 @@ No I/O. A phone is any non-loopback request (decision 0057, item 5; decision 006
 and may `POST /v1/sync`. Everything else is refused, so a route added tomorrow is denied for a
 phone until someone lists it here (`tests/test_remote_policy.py` fails until it is classified).
 The item writes (`POST /v1/items`, `PATCH`/`DELETE /v1/items/{id}`, the `done` and `notes`
-routes; decision 0126) are therefore loopback-only: they are not in `REMOTE_WRITES`.
+routes; decision 0126) are therefore loopback-only: they are not in `REMOTE_WRITES`. So are the
+chat routes (`POST /v1/chat`, `DELETE /v1/chat/{id}`; the context preview is a denied read).
 """
 
 from http import HTTPStatus
@@ -22,8 +23,9 @@ JSON_ONLY_PREFIX = "/v1/"
 JSON_ONLY_EXEMPT = frozenset({"/v1/pair", "/v1/pair/refresh"})
 
 
-# Reads a phone may not make: the Mac's own web UI uses them (decision 0180). Any safe method.
-REMOTE_DENIED_READS = frozenset({"/v1/geocode"})
+# Reads a phone may not make: the Mac's own web UI uses them (decision 0180), or they show what
+# would be sent to an AI provider (the chat context, decision 0165). Any safe method.
+REMOTE_DENIED_READS = frozenset({"/v1/geocode", "/v1/chat/context-preview"})
 
 
 def remote_may_call(method: str, path: str) -> bool:

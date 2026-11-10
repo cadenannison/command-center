@@ -10,6 +10,7 @@ from datetime import date
 
 from command_center.core.ledger import (
     HistoryDay,
+    ItemMark,
     NoteInput,
     TaskInput,
     TaskPatch,
@@ -87,6 +88,12 @@ class ItemService:
         """The note text of each given item that has one."""
         marks = await asyncio.to_thread(self._ledger.marks, item_ids)
         return {item: mark.note for item, mark in marks.items() if mark.note is not None}
+
+    async def marks(self, item_ids: list[str]) -> dict[str, ItemMark]:
+        """The note text and check-off of each given item that has either."""
+        if not item_ids:
+            return {}
+        return await asyncio.to_thread(self._ledger.marks, item_ids)
 
     async def create_task(self, task: TaskInput) -> Event:
         """Store a new local task and return it as the lists show it."""

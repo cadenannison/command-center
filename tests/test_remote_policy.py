@@ -4,13 +4,20 @@ The route table below is checked against the app's real routes in both direction
 route without deciding what a phone may do with it fails this file (decision 0060).
 """
 
+from collections.abc import Iterator
+from dataclasses import replace
+from pathlib import Path
 from typing import Any
 
 import pytest
+from fastapi.testclient import TestClient
 
-from auth_rig import REMOTE, AuthRig, make_auth_rig
+from auth_rig import BASE_URL, REMOTE, AuthRig, make_auth_rig
+from command_center.api import create_app
 from command_center.api.policy import REMOTE_WRITES, refusal_status, remote_may_call
+from ledger_support import open_ledger_rig
 from route_support import Endpoint, walk
+from sink_support import open_engine
 
 # What the table can say about a route for a phone holding a valid access token.
 READ = "read"  # a GET that changes nothing: served
@@ -33,6 +40,7 @@ POLICY: dict[tuple[str, str], str] = {
     ("GET", "/"): READ,
     ("GET", "/week"): READ,
     ("GET", "/month"): READ,
+    ("GET", "/history"): READ,  # the page of what /v1/history already serves a phone (0153)
     ("GET", "/settings"): READ,
     ("GET", "/settings/{source}/status"): READ,
     ("GET", "/pair"): HIDDEN,
@@ -44,6 +52,9 @@ POLICY: dict[tuple[str, str], str] = {
     # the one write
     ("POST", "/v1/sync"): SYNC,
     # everything else is refused for a phone
+    ("POST", "/v1/chat"): DENIED,  # chat sends the agenda to a provider: loopback only (0165)
+    ("GET", "/v1/chat/context-preview"): DENIED,
+    ("DELETE", "/v1/chat/{conversation_id}"): DENIED,
     ("GET", "/v1/geocode"): DENIED,  # a read, but only the Mac's own web UI may use it (0180)
     ("GET", "/v1/history"): READ,  # what was done and when, with notes (0123, 0126)
     ("POST", "/v1/items"): DENIED,  # the item writes are loopback-only (0126)
@@ -59,6 +70,13 @@ POLICY: dict[tuple[str, str], str] = {
     ("DELETE", "/v1/settings/{source}"): DENIED,
     ("PUT", "/settings/{source}"): DENIED,
     ("DELETE", "/settings/{source}"): DENIED,
+    ("POST", "/items/{item_id}/done"): DENIED,  # the web UI's item writes follow 0126
+    ("DELETE", "/items/{item_id}/done"): DENIED,
+    ("PUT", "/items/{item_id}/notes"): DENIED,
+    ("DELETE", "/items/{item_id}/notes"): DENIED,
+    ("PATCH", "/items/{item_id}"): DENIED,
+    ("DELETE", "/items/{item_id}"): DENIED,
+    ("POST", "/tasks"): DENIED,
     ("POST", "/pair/code"): DENIED,
     ("POST", "/summary/settings"): DENIED,  # the opt-in switch is the Mac's own (0112)
     ("POST", "/summary/generate"): DENIED,  # it calls the provider, so only the Mac may (0113)
@@ -66,8 +84,19 @@ POLICY: dict[tuple[str, str], str] = {
 
 
 @pytest.fixture
-def rig() -> AuthRig:
-    return make_auth_rig()
+def rig(tmp_path: Path) -> Iterator[AuthRig]:
+    # With an item service, so GET /history is served; without one it is a 404 for everyone.
+    for engine in open_engine("sqlite", tmp_path):
+        base = make_auth_rig()
+        container = replace(base.container, items=open_ledger_rig(engine).items)
+        app = create_app(container, remote_hosts=(REMOTE,))
+        yield replace(
+            base,
+            app=app,
+            container=container,
+            local=TestClient(app, base_url="http://localhost"),
+            remote=TestClient(app, base_url=BASE_URL),
+        )
 
 
 @pytest.fixture
@@ -167,6 +196,15 @@ def test_a_phone_may_read_and_sync(rig: AuthRig, endpoints: list[Endpoint]) -> N
             # a web page the phone may read must be served, not the middleware's JSON 404
             assert response.status_code == 200, (endpoint, response.status_code)
     assert rig.remote.post("/v1/sync", headers=headers).status_code == 200
+
+
+def test_a_paired_phone_gets_the_history_page_when_the_item_service_is_present(
+    rig: AuthRig,
+) -> None:
+    headers = rig.bearer(rig.pair_phone().access_token)
+
+    assert rig.remote.get("/history", headers=headers).status_code == 200
+    assert rig.local.get("/history").status_code == 200
 
 
 def test_the_pairing_page_is_hidden_from_a_phone_by_the_page_itself(rig: AuthRig) -> None:

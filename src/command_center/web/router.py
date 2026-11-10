@@ -4,6 +4,8 @@ from fastapi import APIRouter, Depends, Request
 
 from command_center.services.container import Container
 from command_center.web.csrf import new_token, require_csrf
+from command_center.web.history import history_router
+from command_center.web.item_routes import item_router
 from command_center.web.pages import pages_router
 from command_center.web.pair_routes import pair_router
 from command_center.web.render import Renderer
@@ -35,4 +37,6 @@ def create_router(
     router.include_router(settings_router(get_container, renderer))
     router.include_router(pair_router(get_container, renderer))
     router.include_router(summary_router(get_container, renderer))
+    router.include_router(item_router(get_container, renderer))
+    router.include_router(history_router(get_container, renderer))
     return router

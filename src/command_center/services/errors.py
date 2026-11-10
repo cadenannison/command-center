@@ -81,3 +81,50 @@ def safe_message(message: str) -> str:
     Every message a service keeps or returns for display goes through it (decision 0052).
     """
     return trim(redact(message), _MESSAGE_LIMIT)
+
+
+class InvalidChatSettingError(ValueError):
+    """A chat setting is refused (an unknown kind, a missing model, a server address that is not
+    allowed). The message is fixed text: it never echoes the address, which may hold credentials.
+    """
+
+
+class InvalidChatMessageError(ValueError):
+    """A chat message is empty or too long. The message never echoes the text."""
+
+
+class ChatDisabledError(Exception):
+    """Chat is off (the default). Nothing was built, so nothing was sent anywhere."""
+
+    def __init__(self) -> None:
+        super().__init__("Chat is off")
+
+
+class ChatNotConfiguredError(Exception):
+    """Chat is on but its provider setting cannot be used. The message is fixed text."""
+
+
+class ChatConversationNotFoundError(Exception):
+    """No live conversation has this id (never started, deleted, or the app restarted)."""
+
+    def __init__(self) -> None:
+        super().__init__("No such conversation")
+
+
+class ChatRateLimitedError(Exception):
+    """Too many chat messages in the last minute; nothing was sent to the provider."""
+
+    def __init__(self, retry_after_seconds: int) -> None:
+        super().__init__(f"Too many chat messages; try again in {retry_after_seconds} seconds")
+        self.retry_after_seconds = retry_after_seconds
+
+
+class ChatUnavailableError(Exception):
+    """The chat provider could not answer. `reason` is `rate_limited` or `failed`.
+
+    The message is redacted fixed text; the provider's own text never reaches a caller.
+    """
+
+    def __init__(self, reason: str, detail: str) -> None:
+        super().__init__(detail)
+        self.reason = reason

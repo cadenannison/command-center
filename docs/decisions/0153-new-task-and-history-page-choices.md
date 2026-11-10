@@ -1,0 +1,10 @@
+# 0153. New task and History page choices
+
+Status: accepted
+
+Context: Task B2 adds a New task form to Today, Week and Month, and a History page. The ledger (decisions 0120 to 0126) already stores local tasks and answers `ItemService.history`.
+Decision: (1) The form's due date and time are read in the settings timezone and stored as an instant (`web/task_form.py`, pure; the zone comes in). A time skipped by a clock change lands an hour later. (2) A good form answers `HX-Redirect` to the Today page of the due day, where the task is in the agenda; a bad one re-renders the panel open, with what was typed and one fixed message, never the input. (3) Only local tasks have Edit and Delete; a synced item answers 409 and an unknown id 404. (4) The History page is one day at a time, `GET /history?date=YYYY-MM-DD` (default today), from `ItemService.history(day, day)`, with previous and next links. Its groups are "Completed by you", "Completed at the source" and "Disappeared from its source", each with the time, the source ("You" for local tasks) and the note, escaped; a source item that was later reopened says so. Links that are not http(s) are not made clickable. (5) It is 404 without an item service. (6) For a phone, `GET /history` is a read like the other pages; every web item write is refused with 404, like the other web writes (decisions 0060, 0126). Rows for the routes are in `tests/test_remote_policy.py`.
+Alternative: Redirect to the page the form was on; a date-range History page; let a phone check items off from the web UI.
+Reason: Going to the due day shows the user that the task landed; a one-day page matches how the ledger groups its data and keeps the page short; the phone's scope is unchanged until the mobile app has a conflict rule (0126).
+Where: `src/command_center/web/task_form.py`, `item_routes.py`, `history.py`, `templates/history.html`, `_new_task.html`, `tests/test_web_tasks.py`, `tests/test_web_history.py`, `tests/test_task_form.py`, `tests/test_web_items_remote.py`.
+Revisit when: Users ask for a week of history, or the phone may write.

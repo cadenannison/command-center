@@ -34,6 +34,7 @@ class SourceForm:
     note: str = ""
     sign_in_wait: bool = False  # connect blocks on a browser sign-in and can take minutes
     credential_only: bool = False  # an API key: no sync, no items, so no sync state to show
+    city_search: bool = False  # the card has a "Find a city" box that fills its two coordinates
 
 
 def _field(source: str, key: str, label: str, *, multiline: bool = False, hint: str = "") -> Field:
@@ -74,11 +75,17 @@ SOURCE_FORMS: dict[str, SourceForm] = {
             _field("weather", "latitude", "Latitude", hint="40.2338"),
             _field("weather", "longitude", "Longitude"),
         ),
+        city_search=True,
     ),
     "gemini": SourceForm(
         "Gemini summaries",
         (_field("gemini", "api_key", "API key"),),
         note=GEMINI_CAVEAT,
+        credential_only=True,
+    ),
+    "chat": SourceForm(
+        "Chat provider key",
+        (_field("chat", "api_key", "API key"),),
         credential_only=True,
     ),
 }

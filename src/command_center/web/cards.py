@@ -64,6 +64,7 @@ class CardView:
     can_sync: bool = False
     can_test: bool = False
     can_save_unverified: bool = False
+    city_search: bool = False
 
     @property
     def keep_typed(self) -> bool:
@@ -132,4 +133,5 @@ def card_view(
         can_sync=connected and not form.credential_only,
         can_test=connected,
         can_save_unverified=offer_unverified,
+        city_search=form.city_search,
     )

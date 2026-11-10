@@ -59,6 +59,11 @@ app does not by default): one that is not the server's own Host is refused with 
 - The writes (`POST /v1/items`, `PATCH`/`DELETE /v1/items/{id}`, `POST`/`DELETE .../done`, `PUT`/`DELETE .../notes`) are loopback-only: a paired phone gets 403 (decision 0126). Do not build check-off on the phone yet.
 - Each history entry has `reopened` (bool, default false; additive, decision 0130): true on a source entry when the source later reported the item open again. The entry stays on the day it was completed, so show it as "later reopened"; the agenda shows that item as open. One item can have several entries (decision 0131): the source completing it twice gives two source entries on their own days, and your check-off plus the source's completion give one entry in `done_by_you` and one in `done_by_source`. Do not assume `item_id` is unique in a history response. Ignore unknown fields.
 - History is not forever: disconnecting a source deletes that source's history and notes (decision 0127), like its events. A removed item (it left its source without being done) is listed as `gone`, never as done.
+- The Mac's web UI got check-off, notes, a History page and a New task form (decisions 0150-0153). **No API change.** Tasks made there are the same `kind: "task"`, source `local` events above. The "Why this priority" sentence is computed in the web layer and is not in any API response; the phone shows the number only.
+
+## Chat is Mac-only (additive; decisions 0160-0169)
+`POST /v1/chat`, `GET /v1/chat/context-preview` and `DELETE /v1/chat/{conversation_id}` are in `openapi.json` but a paired phone gets 403 on all three, the preview included, because it returns the user's agenda text (decision 0165). Do not build a chat screen against them. They answer 404 while chat is off.
+`GET /v1/settings` also lists a `chat` source (the API key for an OpenAI-compatible server, `keys: {}` until set, `sync: null`; decision 0170). Show it like `gemini`, or ignore it.
 
 ## `DELETE /v1/settings/{source}` also deletes the source's events
 Disconnecting a source removes its stored credentials, **its stored events**, its item history and notes (decision 0127) and its sync state, so its

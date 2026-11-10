@@ -9,6 +9,10 @@ from zoneinfo import ZoneInfo
 
 from fastapi import FastAPI
 
+from command_center.adapters.chat_ollama import DEFAULT_BASE_URL as OLLAMA_CHAT_URL
+from command_center.adapters.chat_ollama import DEFAULT_MODEL as OLLAMA_CHAT_MODEL
+from command_center.adapters.chat_ollama import OllamaChatProvider
+from command_center.adapters.chat_openai import ChatKeyIntegration, OpenAICompatibleChatProvider
 from command_center.adapters.ical_diagnose import diagnose_feeds
 from command_center.adapters.ical_diagnose_report import render
 from command_center.adapters.ical_feed import SOURCE_NAME as LEARNINGSUITE
@@ -18,7 +22,14 @@ from command_center.adapters.log_redaction import install_query_redaction
 from command_center.adapters.queue_redis import RedisStreamsQueue, source_queue_prefix
 from command_center.adapters.secret_backend import build_secret_store
 from command_center.adapters.source_registry import build_source_adapters
-from command_center.adapters.summary_gemini import GeminiIntegration, GeminiSummaryProvider
+from command_center.adapters.summary_gemini import (
+    DEFAULT_MODEL as GEMINI_MODEL,
+)
+from command_center.adapters.summary_gemini import (
+    GeminiChatProvider,
+    GeminiIntegration,
+    GeminiSummaryProvider,
+)
 from command_center.adapters.summary_ollama import OllamaSummaryProvider
 from command_center.adapters.system_clock import SystemClock
 from command_center.adapters.system_ids import UuidIdSource
@@ -29,6 +40,7 @@ from command_center.api import create_app as create_api_app
 from command_center.config import Settings
 from command_center.core.errors import SecretStoreError
 from command_center.core.ports import (
+    ChatProvider,
     Clock,
     EventStore,
     IntegrationAdapter,
@@ -40,6 +52,8 @@ from command_center.core.ports import (
 )
 from command_center.core.resilience import DEFAULT_RETRY_POLICY
 from command_center.services.agenda import AgendaService
+from command_center.services.chat import ChatService
+from command_center.services.chat_settings import ChatConfig, ChatDefaults, ChatSettings
 from command_center.services.container import Container
 from command_center.services.geocode import GeocodeService
 from command_center.services.horizon import horizon_window
@@ -75,7 +89,24 @@ def build_integrations(settings: Settings) -> dict[str, IntegrationAdapter]:
         gemini = GeminiIntegration(model=settings.summary_model)
     else:
         gemini = GeminiIntegration()
-    return {gemini.name: gemini}
+    integrations: dict[str, IntegrationAdapter] = {gemini.name: gemini}
+    chat_key = ChatKeyIntegration()
+    integrations[chat_key.name] = chat_key
+    return integrations
+
+
+def build_chat_provider(secrets: SecretStore, config: ChatConfig) -> ChatProvider:
+    """The chat provider for a validated config. Keys are read from `secrets` on every call."""
+    if config.kind == "ollama":
+        return OllamaChatProvider(
+            base_url=config.base_url or OLLAMA_CHAT_URL, model=config.model or OLLAMA_CHAT_MODEL
+        )
+    if config.kind == "openai_compatible":
+        # ChatSettings refuses an OpenAI-compatible config without an address and a model.
+        return OpenAICompatibleChatProvider(
+            secrets, base_url=config.base_url or "", model=config.model or ""
+        )
+    return GeminiChatProvider(secrets, model=config.model or GEMINI_MODEL)
 
 
 def build_summary_provider(
@@ -199,6 +230,23 @@ def build_container(settings: Settings | None = None) -> Container:
         default_provider=settings.summary_provider,
         forget_today=lambda: summary_store.delete(agenda.today()),
     )
+    items = ItemService(ledger, agenda, clock, UuidIdSource())
+    chat = ChatService(
+        ChatSettings(
+            create_app_setting_store(settings.database_url),
+            ChatDefaults(
+                enabled=settings.chat_enabled,
+                kind=settings.chat_provider,
+                base_url=settings.chat_base_url,
+                model=settings.chat_model,
+            ),
+        ),
+        agenda,
+        items,
+        lambda config: build_chat_provider(secrets, config),
+        clock,
+        UuidIdSource(),
+    )
     return Container(
         sync=sync,
         agenda=agenda,
@@ -208,7 +256,8 @@ def build_container(settings: Settings | None = None) -> Container:
         pairing=build_pairing(settings, clock),
         close=close,
         geocode=GeocodeService(OpenMeteoGeocoder(), clock),
-        items=ItemService(ledger, agenda, clock, UuidIdSource()),
+        items=items,
+        chat=chat,
     )
 
 

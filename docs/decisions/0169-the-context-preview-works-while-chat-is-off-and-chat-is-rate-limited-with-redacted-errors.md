@@ -1,0 +1,10 @@
+# 0169. The preview works while chat is off; chat is rate limited and its errors are redacted
+
+Status: accepted, except that a provider 429 is a 502 (corrected by 0171)
+
+Context: The user should see what would be sent before opting in. A chat call costs money or CPU and a provider error can echo the message, the context or a key.
+Decision: `GET /v1/chat/context-preview` answers while chat is off and says `enabled: false`; it builds the same text a message would send (agenda, plus history and notes when opted in) and sends nothing. `POST /v1/chat` answers 404 while chat is off, and nothing leaves the machine. `DELETE /v1/chat/{id}` still works while chat is off, so the user can clear what is in memory after opting out. A message that waited for the conversation lock re-reads the enabled flag and the config after it gets the lock, so an opt-out made while it waited is honoured, and the provider block is read and written under one lock so a key never meets a half-changed address. A global limit of 10 messages per 60 seconds counts every attempt, answered or not, and answers 429 with `Retry-After`; it is checked before the context is built or the provider is called. Errors: 409 when the provider is not configured or its address fails the guard, 429 for the limit or a provider 429, 502 for any other provider failure, all with a fixed redacted sentence (`safe_message`); the provider's body, the message, the context and the key are never in a response or a log line (the log has the provider name, a reason code and the exception class). Every chat response has `Cache-Control: no-store`.
+Alternative: A preview that 404s while off (the user could not look before choosing); a per-client limit (loopback is one user; a limit per connection would not bound spend).
+Reason: Looking is free and safe, sending is not.
+Where: `src/command_center/api/chat_routes.py`, `services/chat.py`, `services/errors.py`; `tests/test_chat_routes.py`, `tests/test_chat_service.py`.
+Revisit when: The chat UI streams replies; the limit then counts streams and the errors move to events.

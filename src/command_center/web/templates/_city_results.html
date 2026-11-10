@@ -1,0 +1,9 @@
+{% from "_field.html" import single_input %}
+{% if places %}<ul class="cities" aria-label="Matching places">
+{% for p in places %}<li><span>{{ p.label }}{% if p.detail %}<span class="muted"> — {{ p.detail }}</span>{% endif %}</span>
+<button type="button" class="secondary" hx-put="/settings/{{ source }}" hx-vals='{{ p.vals|tojson }}' hx-target="#city-results-{{ source }}" hx-swap="innerHTML" hx-disabled-elt="this">Use these coordinates</button></li>
+{% endfor %}</ul>
+<p class="hint">Pick the right place. Nothing is saved until you press Connect.</p>
+{% else %}<p class="flash{% if not ok %} bad{% endif %}">{{ message }}</p>{% endif %}
+{% if card %}{% for f in card.fields %}{{ single_input(card, f, oob=True) }}
+{% endfor %}{% endif %}

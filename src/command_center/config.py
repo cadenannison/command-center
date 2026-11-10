@@ -55,6 +55,12 @@ class Settings(BaseSettings):
     # None lets the chosen provider's adapter apply its own default model.
     summary_model: str | None = None
     summary_include_email: bool = False
+    # AI chat is opt-in and read-only (decision 0160). These are the defaults for a user who has not
+    # saved the matching stored setting; the address is checked by the URL guard when it is used.
+    chat_enabled: bool = False
+    chat_provider: Literal["gemini", "ollama", "openai_compatible"] = "gemini"
+    chat_base_url: str | None = Field(default=None, repr=False)  # a LAN address is private
+    chat_model: str | None = None
     # Hosts other than loopback that may reach the API (the tailnet name Tailscale Serve answers
     # on). Each one needs a device token (decision 0057). Comma separated in CC_ALLOWED_HOSTS.
     allowed_hosts: Annotated[tuple[str, ...], NoDecode] = ()

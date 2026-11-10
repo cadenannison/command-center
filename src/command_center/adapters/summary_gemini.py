@@ -5,14 +5,17 @@ text: never the API key, the prompt or the SDK's own message.
 """
 
 import asyncio
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 
 import httpx
 from google import genai
 from google.genai import errors, types
 from pydantic import ValidationError
 
+from command_center.core.chat import ChatMessage
 from command_center.core.errors import (
+    ChatProviderError,
+    ChatRateLimited,
     SecretStoreError,
     SummaryProviderError,
     SummaryRateLimited,
@@ -88,16 +91,21 @@ class GeminiSummaryProvider:
         return _parse(response.text)
 
     async def _api_key(self) -> str:
-        try:
-            creds = await asyncio.to_thread(self._secrets.get, SECRET_SOURCE)
-        except SecretStoreError:
-            msg = "secret store unavailable"
-            raise SummaryProviderError(msg) from None
-        key = creds.get(SECRET_KEY)
-        if not key:
-            msg = "Gemini API key is not set"
-            raise SummaryProviderError(msg)
-        return key
+        return await _read_key(self._secrets, SummaryProviderError)
+
+
+async def _read_key(secrets: SecretStore, fail: type[Exception]) -> str:
+    """The stored Gemini key; `fail` (a provider error class) is raised with fixed text."""
+    try:
+        creds = await asyncio.to_thread(secrets.get, SECRET_SOURCE)
+    except SecretStoreError:
+        msg = "secret store unavailable"
+        raise fail(msg) from None
+    key = creds.get(SECRET_KEY)
+    if not key:
+        msg = "Gemini API key is not set"
+        raise fail(msg)
+    return key
 
 
 def _translate(code: int) -> SummaryProviderError:
@@ -106,6 +114,68 @@ def _translate(code: int) -> SummaryProviderError:
     if code in _REJECTED_KEY:
         return SummaryProviderError("Gemini rejected the API key")
     return SummaryProviderError(f"Gemini request failed ({code})")
+
+
+class GeminiChatProvider:
+    """ChatProvider over the Gemini API: the system prompt is the system instruction.
+
+    The key is read on every call, like the summary provider's. Failures are fixed text.
+    """
+
+    def __init__(
+        self,
+        secrets: SecretStore,
+        *,
+        model: str = DEFAULT_MODEL,
+        client_factory: Callable[[str], genai.Client] = _default_client,
+    ) -> None:
+        self._secrets = secrets
+        self._model = model
+        self._client_factory = client_factory
+
+    @property
+    def name(self) -> str:
+        return "gemini"
+
+    async def complete(self, messages: Sequence[ChatMessage], system: str, max_tokens: int) -> str:
+        client = self._client_factory(await _read_key(self._secrets, ChatProviderError))
+        contents = [
+            types.Content(
+                role="user" if message.role == "user" else "model",
+                parts=[types.Part(text=message.content)],
+            )
+            for message in messages
+        ]
+        config = types.GenerateContentConfig(
+            system_instruction=system, max_output_tokens=max_tokens
+        )
+        try:
+            response = await client.aio.models.generate_content(  # pyright: ignore[reportUnknownMemberType]  (SDK's own partly-unknown overloads)
+                model=self._model, contents=contents, config=config
+            )
+        except errors.APIError as exc:
+            raise _translate_chat(exc.code) from None
+        except errors.UnknownApiResponseError:
+            msg = "Gemini returned a malformed response"
+            raise ChatProviderError(msg) from None
+        except httpx.HTTPError:
+            msg = "Gemini is unreachable"
+            raise ChatProviderError(msg) from None
+        finally:
+            await client.aio.aclose()
+            client.close()
+        if not response.text:
+            msg = "Gemini returned no text"
+            raise ChatProviderError(msg)
+        return response.text
+
+
+def _translate_chat(code: int) -> ChatProviderError:
+    if code == _RATE_LIMITED:
+        return ChatRateLimited("Gemini rate limit or quota reached")
+    if code in _REJECTED_KEY:
+        return ChatProviderError("Gemini rejected the API key")
+    return ChatProviderError(f"Gemini request failed ({code})")
 
 
 def _parse(text: str | None) -> DailySummary:

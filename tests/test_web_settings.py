@@ -91,7 +91,7 @@ def test_secret_textareas_are_masked(rig: WebRig, source: str) -> None:
 def test_cards_only_ask_for_their_own_fields(rig: WebRig) -> None:
     weather = card(rig.client.get("/settings").text, "weather")
 
-    assert re.findall(r'name="(\w+)"', weather) == ["latitude", "longitude"]
+    assert re.findall(r'name="(\w+)"', weather) == ["city", "latitude", "longitude"]
 
 
 def test_a_secret_input_is_never_prefilled(rig: WebRig) -> None:
