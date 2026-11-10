@@ -34,6 +34,12 @@ _RESPONSES: dict[int | str, dict[str, object]] = {
     },
     502: {"model": ErrorBody, "description": "The chat provider failed; the detail is redacted"},
 }
+# The preview never calls a provider, so it has no 429 or 502; it works while chat is off, so its
+# 404 means chat is not wired into this server at all (decision 0169).
+_PREVIEW_RESPONSES: dict[int | str, dict[str, object]] = {
+    404: {"model": ErrorBody, "description": "Chat is not wired into this server"},
+    409: _RESPONSES[409],
+}
 
 
 class ChatRequest(BaseModel):
@@ -91,7 +97,7 @@ async def post_chat(container: ContainerDep, body: ChatRequest, response: Respon
 @router.get(
     "/chat/context-preview",
     summary="The exact context chat would send",
-    responses={**NOT_FOUND, **_RESPONSES},
+    responses=_PREVIEW_RESPONSES,
 )
 async def get_context_preview(container: ContainerDep, response: Response) -> ChatContextPreview:
     """The redacted `context` the next message would carry, and the opt-ins that shaped it.

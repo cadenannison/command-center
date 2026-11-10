@@ -14,6 +14,7 @@ from urllib.parse import urlsplit
 
 import httpx
 
+from command_center.adapters.http_cap import MAX_REPLY_BYTES, ReplyTooLarge, read_capped
 from command_center.adapters.net_guard import ensure_public_host
 from command_center.core.errors import ChatProviderError, ChatRateLimited, TransientError
 from command_center.core.urlcheck import require_chat_base_url
@@ -21,7 +22,6 @@ from command_center.core.urlcheck import require_chat_base_url
 # A local model on a laptop can take a while; a hung server must still end.
 TIMEOUT_SECONDS = 120.0
 LOOKUP_TIMEOUT_SECONDS = 5.0
-MAX_REPLY_BYTES = 1_048_576  # about 1 MB: the reply cap (decision 0222)
 _BUSY = frozenset({429, 503})
 _REJECTED_KEY = frozenset({401, 403})
 _NOT_FOUND = 404
@@ -150,19 +150,13 @@ async def post_json(
 async def _read_capped(name: str, response: httpx.Response) -> bytes:
     """The decoded body, or ChatProviderError once it is (or says it will be) over the cap.
 
-    The count is of decoded bytes, so a compressed reply is stopped at the cap too, give or take
-    one network read: a read is decoded whole before it is counted, so a hostile gzip can overshoot
-    by that read's expansion (about 1000 to 1, from 64 KiB), not by the reply's (decision 0222).
+    The cap and its counting are shared with the city search (`http_cap`, decisions 0222, 0246).
+    The limit is read here, at call time, so a test can lower `MAX_REPLY_BYTES` on this module.
     """
-    declared = response.headers.get("content-length", "")
-    if declared.isdigit() and int(declared) > MAX_REPLY_BYTES:
-        raise _too_large(name)
-    body = bytearray()
-    async for chunk in response.aiter_bytes():
-        body.extend(chunk)
-        if len(body) > MAX_REPLY_BYTES:
-            raise _too_large(name)
-    return bytes(body)
+    try:
+        return await read_capped(response, MAX_REPLY_BYTES)
+    except ReplyTooLarge:
+        raise _too_large(name) from None
 
 
 def _too_large(name: str) -> ChatProviderError:

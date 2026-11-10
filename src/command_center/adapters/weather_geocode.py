@@ -10,6 +10,7 @@ import logging
 import httpx
 from pydantic import BaseModel, ConfigDict, ValidationError
 
+from command_center.adapters.http_cap import ReplyTooLarge, read_capped
 from command_center.core.errors import FatalError, TransientError
 from command_center.core.geocode import MAX_CANDIDATES, GeocodeCandidate
 
@@ -69,26 +70,48 @@ class OpenMeteoGeocoder:
         }
         try:
             if self._client is not None:
-                response = await self._client.get(URL, params=params, timeout=TIMEOUT_SECONDS)
+                raw = await self._fetch(self._client, params)
             else:
-                async with httpx.AsyncClient(timeout=TIMEOUT_SECONDS) as client:
-                    response = await client.get(URL, params=params)
+                # trust_env=False: a proxy in the environment must not see the typed city (0246).
+                async with httpx.AsyncClient(timeout=TIMEOUT_SECONDS, trust_env=False) as client:
+                    raw = await self._fetch(client, params)
         except httpx.HTTPError:
             msg = "Open-Meteo city search is unreachable"
             raise TransientError(msg) from None
-        return _candidates(_parse(response))
+        return _candidates(_parse(raw))
+
+    @staticmethod
+    async def _fetch(client: httpx.AsyncClient, params: dict[str, str | int]) -> bytes:
+        """The reply body, read as a stream and capped (the cap is shared with chat, 0246).
+
+        The status is decided before the body is read, so an error page is never buffered.
+        """
+        try:
+            async with client.stream(
+                "GET", URL, params=params, timeout=TIMEOUT_SECONDS
+            ) as response:
+                _check_status(response.status_code)
+                return await read_capped(response)
+        except ReplyTooLarge:
+            msg = "Open-Meteo city search sent a reply that is too large"
+            raise FatalError(msg) from None
+        except httpx.DecodingError:  # a body that does not match its content-encoding
+            msg = "Open-Meteo city search returned an unexpected response"
+            raise FatalError(msg) from None
 
 
-def _parse(response: httpx.Response) -> _Reply:
-    status = response.status_code
+def _check_status(status: int) -> None:
     if status == _TOO_MANY or status >= _SERVER_ERROR:
         msg = f"Open-Meteo city search is unavailable ({status})"
         raise TransientError(msg)
     if status != _OK:
         msg = f"Open-Meteo rejected the city search ({status})"
         raise FatalError(msg)
+
+
+def _parse(raw: bytes) -> _Reply:
     try:
-        return _Reply.model_validate_json(response.content)
+        return _Reply.model_validate_json(raw)
     except ValidationError:
         msg = "Open-Meteo city search returned an unexpected response"
         raise FatalError(msg) from None

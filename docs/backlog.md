@@ -66,3 +66,14 @@ Status is one of `proposed` (written down, not yet decided), `accepted` (we will
 - Why: the global error listener is inline in `base.html`, and the chat page's New chat button carries inline `hx-on` handlers (decision 0203); a Content-Security-Policy would block both.
 - Idea: move the listener to `web/static/cc.js` loaded after htmx and replace the `hx-on` handlers with a listener there; `test_pages_load_nothing_from_outside` then lists the second script.
 - Touches: `templates/base.html`, `templates/_htmx_errors.js`, `templates/_chat_parts.html`, `tests/test_web_pages.py` (the task card must say `tests: modify`).
+
+## Pairing: purge superseded refresh rows after the reuse-detection window (about 96 rows a day per device)
+- Status: proposed
+- Why: every refresh rotates the device's refresh credential and keeps the superseded row so a reused token can be detected, so rows pile up at about 96 a day per device (one refresh before each 15-minute access token ends).
+- Idea: delete a superseded refresh row once the reuse-detection window has passed, in the same transaction as a refresh or in a periodic purge, with the window and the batch size named in the code; a test shows a reuse inside the window still revokes the device and a reuse after it is only refused.
+- Touches: `storage/sqlite_devices.py`, `services/pairing.py`, `docs/contracts/storage.md`, a new decision.
+
+## Gemini key check: catch unknown exceptions and close the client safely
+- Status: proposed
+- Why: `GeminiIntegration.validate` re-raises an exception it does not recognise (its text may hold the key, and `SettingsService._check` catches only `AuthExpired`, `TransientError` and `FatalError`, so it becomes a 500), and its `finally` closes the client with a bare `aclose()`/`close()` rather than `_close`.
+- Idea: end `validate` with a fixed-text `FatalError` that logs only the class name, and close through `_close`; a test with an arbitrary exception carrying a needle. See decision 0245.

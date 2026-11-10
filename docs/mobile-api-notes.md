@@ -37,8 +37,10 @@ Mac's `CC_ALLOWED_HOSTS` is refused before anything else. A sleeping Mac is unre
 
 ## What a paired phone may do (decision 0060)
 Scoped by default deny on the method:
-- **Allowed:** every GET (`/v1/events`, `/v1/agenda/{period}`, `/v1/attention`, `/v1/summary`,
-  `/v1/settings`, `/v1/devices`), `POST /v1/sync`, and the pairing calls.
+- **Allowed:** every GET except the two below (`/v1/events`, `/v1/agenda/{period}`, `/v1/attention`,
+  `/v1/summary`, `/v1/history`, `/v1/settings`, `/v1/devices`), `POST /v1/sync`, and the pairing calls.
+- **Refused, 403, though they are GETs:** `GET /v1/geocode` (the Mac's city search, decision 0182) and
+  `GET /v1/chat/context-preview` (it returns the user's agenda text, decision 0165).
 - **Refused, 403:** `PUT /v1/settings/{source}` and `DELETE /v1/settings/{source}` (connecting or
   disconnecting a source) and `DELETE /v1/devices/{id}` (revoking a device). The user does those on the Mac.
 - A request with no valid token is 401 whatever the route (except the three open routes above), so the
@@ -62,7 +64,7 @@ app does not by default): one that is not the server's own Host is refused with 
 - The Mac's web UI got check-off, notes, a History page and a New task form (decisions 0150-0153). **No API change.** Tasks made there are the same `kind: "task"`, source `local` events above. The "Why this priority" sentence is computed in the web layer and is not in any API response; the phone shows the number only.
 
 ## Chat is Mac-only (additive; decisions 0160-0169)
-`POST /v1/chat`, `GET /v1/chat/context-preview` and `DELETE /v1/chat/{conversation_id}` are in `openapi.json` but a paired phone gets 403 on all three, the preview included, because it returns the user's agenda text (decision 0165). Do not build a chat screen against them. They answer 404 while chat is off.
+`POST /v1/chat`, `GET /v1/chat/context-preview` and `DELETE /v1/chat/{conversation_id}` are in `openapi.json` but a paired phone gets 403 on all three, the preview included, because it returns the user's agenda text (decision 0165). Do not build a chat screen against them. While chat is off `POST /v1/chat` answers 404; the preview still works and returns `enabled: false` (decision 0169), and `DELETE` still works. Only a server with no chat wired at all answers 404 on the preview.
 `GET /v1/settings` also lists a `chat` source (the API key for an OpenAI-compatible server, `keys: {}` until set, `sync: null`; decision 0170). Show it like `gemini`, or ignore it.
 
 ## `DELETE /v1/settings/{source}` also deletes the source's events
@@ -81,9 +83,16 @@ with the next sync, not instantly: `PUT` returns `sync.status` `syncing` and the
 | 403 | `{"detail": "A paired phone may not do this"}` | a write outside the phone's scope |
 | 403 | `{"detail": "Cross-site requests are not allowed"}` | a write with a foreign `Origin` or `Sec-Fetch-Site: cross-site` |
 | 404 | `{"detail": "..."}` (`ErrorBody`) | unknown source, unknown device, `Summaries are off`, `Pairing is not available` |
+| 409 | `ErrorBody` | `POST /v1/chat` and `GET /v1/chat/context-preview`: the chat provider setting is unusable; `PATCH`/`DELETE /v1/items/{id}`: the item is not a local task |
 | 415 | `{"detail": "Content-Type must be application/json"}` | a write with another or a missing Content-Type (a declared wrong type on `/v1/pair*` is 422) |
 | 422 | `{"detail": [{"loc": [...], "msg": "...", "type": "..."}]}` (`ValidationErrorBody`) | a bad parameter or body; the submitted value is never echoed |
-| 429 | `ErrorBody` plus `Retry-After` (seconds) | pairing locked |
+| 429 | `ErrorBody` plus `Retry-After` (seconds) | pairing locked (`/v1/pair`, `/v1/pair/refresh`); more than 10 chat messages (`POST /v1/chat`) or 10 city searches (`GET /v1/geocode`) in a minute. Only the local limit is a 429: a provider's own 429 is a 502 (decision 0171) |
+| 502 | `ErrorBody` | `POST /v1/chat`: the chat provider failed; `GET /v1/geocode`: Open-Meteo could not answer. The detail is fixed, redacted text |
+
+A paired phone cannot reach the routes behind the 409, 429 (chat, city search) and 502 rows above: the
+policy answers it with the 403 first (`/v1/chat*`, `/v1/geocode`, item writes), so a phone sees those
+three only on the pairing routes (429) and never on the others. They are listed because they are in
+`openapi.json`, and the local browser gets them.
 
 Not errors: a rejected credential on `PUT /v1/settings/{source}` is **200 with `ok: false`** and a short
 message, and a source that fails to sync is a `SyncState` with status `error` or `reconnect`, never an

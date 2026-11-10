@@ -1,6 +1,6 @@
 # 0225. Chat calls ignore proxy settings in the environment
 
-Status: accepted
+Status: accepted; extended to the other outbound paths by 0246 (this record covers only chat_http.post_json)
 
 Context: httpx trusts the environment by default: `HTTP_PROXY`, `ALL_PROXY` and (on macOS) the System Settings proxy route a request through a proxy. For an http address a proxy receives the whole request in clear text, `Authorization` header and agenda included, even for `http://localhost:...`, which `may_send_key` allows (0220). A proxy also chooses where to connect, so it skips every address check in `checked_base_url` (0160, 0221). Found by the review of Task Y; the second effect is older than this task.
 Decision: `chat_http.post_json` builds its client with `trust_env=False`, so neither provider uses a proxy from the environment or the system. As a side effect httpx also stops reading `SSL_CERT_FILE` and `SSL_CERT_DIR` for these calls and verifies with its bundled CA list. A test sets proxy variables and asserts the client was built with `trust_env=False`.

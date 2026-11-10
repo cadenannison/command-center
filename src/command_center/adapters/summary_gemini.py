@@ -7,8 +7,8 @@ text: never the API key, the prompt or the SDK's own message.
 import asyncio
 import logging
 from collections.abc import Callable, Mapping, Sequence
+from typing import Any
 
-import httpx
 from google import genai
 from google.genai import errors, types
 from pydantic import ValidationError
@@ -42,7 +42,11 @@ _SERVER_ERROR = 500
 
 
 def _default_client(api_key: str, *, timeout_ms: int = _TIMEOUT_MS) -> genai.Client:
-    return genai.Client(api_key=api_key, http_options=types.HttpOptions(timeout=timeout_ms))
+    # trust_env=False: the SDK's httpx clients would otherwise read HTTP_PROXY and the system proxy
+    # and send the key and the prompt through it (decision 0246). The timeout stays per request.
+    no_env: dict[str, Any] = {"trust_env": False}
+    options = types.HttpOptions(timeout=timeout_ms, client_args=no_env, async_client_args=no_env)
+    return genai.Client(api_key=api_key, http_options=options)
 
 
 def _validation_client(api_key: str) -> genai.Client:
@@ -69,15 +73,19 @@ class GeminiSummaryProvider:
 
     async def summarize(self, prompt: str) -> DailySummary:
         api_key = await self._api_key()
-        client = self._client_factory(api_key)
-        config = types.GenerateContentConfig(
-            response_mime_type="application/json",
-            response_schema=DailySummary,
-        )
         try:
+            client = self._client_factory(api_key)
+        except Exception as exc:  # noqa: BLE001  (the SDK's own text can hold the key)
+            raise _summary_failed(exc) from None
+        try:
+            config = types.GenerateContentConfig(
+                response_mime_type="application/json",
+                response_schema=DailySummary,
+            )
             response = await client.aio.models.generate_content(  # pyright: ignore[reportUnknownMemberType]  (SDK's own partly-unknown overloads)
                 model=self._model, contents=prompt, config=config
             )
+            text = response.text
         except errors.APIError as exc:
             raise _translate(exc.code) from None
         except errors.UnknownApiResponseError:
@@ -85,13 +93,14 @@ class GeminiSummaryProvider:
             # own message embeds the raw body, so it is dropped.
             msg = "Gemini returned a malformed response"
             raise SummaryProviderError(msg) from None
-        except httpx.HTTPError:
-            msg = "Gemini is unreachable"
-            raise SummaryProviderError(msg) from None
+        except Exception as exc:  # noqa: BLE001  (the SDK's own text can hold the key or the prompt)
+            if _is_http_error(exc):
+                msg = "Gemini is unreachable"
+                raise SummaryProviderError(msg) from None
+            raise _summary_failed(exc) from None
         finally:
-            await client.aio.aclose()
-            client.close()
-        return _parse(response.text)
+            await _close(client)
+        return _parse(text)
 
     async def _api_key(self) -> str:
         return await _read_key(self._secrets, SummaryProviderError)
@@ -109,6 +118,28 @@ async def _read_key(secrets: SecretStore, fail: type[Exception]) -> str:
         msg = "Gemini API key is not set"
         raise fail(msg)
     return key
+
+
+def _is_http_error(exc: BaseException) -> bool:
+    """A network failure from the SDK's HTTP layer, whichever library it runs on.
+
+    The SDK defaults to httpx2, whose `HTTPError` is not a subclass of httpx's, and falls back to
+    httpx or aiohttp. The class is matched by name so this module needs no httpx2 dependency
+    (decision 0245).
+    """
+    return any(
+        cls.__name__ == "HTTPError" and cls.__module__.split(".")[0] in {"httpx", "httpx2"}
+        for cls in type(exc).__mro__
+    )
+
+
+def _summary_failed(exc: Exception) -> SummaryProviderError:
+    """Fixed text for an exception nothing above recognised; only its class name is logged."""
+    logger.warning(
+        "Gemini summary request failed",
+        extra={"reason": "gemini_summary_failed", "error_class": type(exc).__name__},
+    )
+    return SummaryProviderError("Gemini request failed")
 
 
 def _translate(code: int) -> SummaryProviderError:
@@ -166,10 +197,10 @@ class GeminiChatProvider:
         except errors.UnknownApiResponseError:
             msg = "Gemini returned a malformed response"
             raise ChatProviderError(msg) from None
-        except httpx.HTTPError:
-            msg = "Gemini is unreachable"
-            raise ChatProviderError(msg) from None
-        except Exception:  # noqa: BLE001  (the SDK's own text can hold the system prompt)
+        except Exception as exc:  # noqa: BLE001  (the SDK's own text can hold the system prompt)
+            if _is_http_error(exc):
+                msg = "Gemini is unreachable"
+                raise ChatProviderError(msg) from None
             raise _failed() from None
         finally:
             await _close(client)
@@ -259,9 +290,11 @@ class GeminiIntegration:
         except errors.UnknownApiResponseError:
             msg = "Gemini returned a malformed response"
             raise TransientError(msg) from None
-        except httpx.HTTPError:
-            msg = "Gemini is unreachable"
-            raise TransientError(msg) from None
+        except Exception as exc:
+            if _is_http_error(exc):
+                msg = "Gemini is unreachable"
+                raise TransientError(msg) from None
+            raise
         finally:
             await client.aio.aclose()
             client.close()

@@ -13,3 +13,9 @@ docs
 **/__pycache__
 .env
 .env.*
+
+compose.env
+*.env
+
+compose.env
+*.env

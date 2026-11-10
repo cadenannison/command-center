@@ -4,6 +4,7 @@ Talks to a fixed local endpoint over httpx in JSON mode. Failures become
 core.errors.SummaryProviderError / SummaryRateLimited with fixed messages.
 """
 
+import logging
 from typing import cast
 
 import httpx
@@ -11,6 +12,8 @@ from pydantic import ValidationError
 
 from command_center.core.errors import SummaryProviderError, SummaryRateLimited
 from command_center.core.summary import DailySummary
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_BASE_URL = "http://localhost:11434"
 DEFAULT_MODEL = "llama3.2"
@@ -35,13 +38,21 @@ class OllamaSummaryProvider:
     async def summarize(self, prompt: str) -> DailySummary:
         payload = {"model": self._model, "prompt": prompt, "format": "json", "stream": False}
         try:
-            async with httpx.AsyncClient(timeout=_TIMEOUT_SECONDS) as client:
+            # trust_env=False: a proxy in the environment must not carry the prompt (0246).
+            async with httpx.AsyncClient(timeout=_TIMEOUT_SECONDS, trust_env=False) as client:
                 response = await client.post(f"{self._base_url}/api/generate", json=payload)
         except httpx.TimeoutException:
             msg = "Ollama timed out"
             raise SummaryProviderError(msg) from None
         except httpx.HTTPError:
             msg = "Ollama is unreachable; is it running?"
+            raise SummaryProviderError(msg) from None
+        except Exception as exc:  # noqa: BLE001  (a library's own text can hold the prompt)
+            logger.warning(
+                "Ollama summary request failed",
+                extra={"reason": "ollama_summary_failed", "error_class": type(exc).__name__},
+            )
+            msg = "Ollama request failed"
             raise SummaryProviderError(msg) from None
         _check_status(response)
         return _parse(response)

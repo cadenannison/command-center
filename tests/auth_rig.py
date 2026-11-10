@@ -2,6 +2,7 @@
 
 import re
 from dataclasses import dataclass, replace
+from typing import Final, cast
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -16,6 +17,7 @@ from pairing_support import FakeTokenSource, InMemoryDeviceStore
 from web_rig import make_rig
 
 REMOTE = "mac.tail1234.ts.net"
+KEEP: Final = object()  # make_auth_rig's `items` default: keep the web rig's own (decision 0248)
 BASE_URL = f"https://{REMOTE}"
 
 
@@ -49,12 +51,18 @@ def make_auth_rig(
     *,
     base_url: str | None = BASE_URL,
     remote_hosts: tuple[str, ...] = (REMOTE,),
-    items: ItemService | None = None,
+    items: ItemService | object | None = KEEP,
 ) -> AuthRig:
+    """The app over fakes. `items` replaces the web rig's item service only when it is passed.
+
+    Pass `items=None` to remove it on purpose; leave it out to keep whatever `make_rig` built.
+    """
     web = make_rig(("canvas",))
     store = InMemoryDeviceStore()
     service = PairingService(store, FakeTokenSource(), web.clock, base_url=base_url)
-    container = replace(web.container, pairing=service, items=items)
+    container = replace(web.container, pairing=service)
+    if items is not KEEP:
+        container = replace(container, items=cast("ItemService | None", items))
     app = create_app(container, remote_hosts=remote_hosts)
     return AuthRig(
         app=app,

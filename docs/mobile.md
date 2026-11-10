@@ -7,8 +7,9 @@ The phone talks to the same API as the web UI, through your tailnet. Nothing is 
 
 ## What the phone can do
 A paired phone is read-only, plus one write:
-- **Allowed:** every GET (`/v1/events`, `/v1/agenda/...`, `/v1/attention`, `/v1/summary`, `/v1/settings` status, `/v1/devices`), `POST /v1/sync`, and the pairing calls themselves.
-- **Refused with 403:** connecting or deleting a source (`PUT`/`DELETE /v1/settings/{source}`) and revoking a device (`DELETE /v1/devices/{id}`). Do those on the Mac. The web UI's own writes (the settings forms, making a pairing code) are not reachable from the phone either (404).
+- **Allowed:** every GET except two (`/v1/events`, `/v1/agenda/...`, `/v1/attention`, `/v1/summary`, `/v1/history`, `/v1/settings` status, `/v1/devices`), `POST /v1/sync`, and the pairing calls themselves.
+- **Refused with 403, though they are GETs:** `/v1/geocode` (the Mac's own city search; decision 0182) and `/v1/chat/context-preview` (it returns the agenda text that chat would send; decision 0165).
+- **Other writes refused with 403:** connecting or deleting a source (`PUT`/`DELETE /v1/settings/{source}`) and revoking a device (`DELETE /v1/devices/{id}`). Do those on the Mac. The web UI's own writes (the settings forms, making a pairing code) are not reachable from the phone either (404).
 - Every write is JSON: send `Content-Type: application/json` on any body, or 415 (`/v1/pair` and `/v1/pair/refresh` answer a wrong declared type with 422). A write with no body (`POST /v1/sync`) needs no Content-Type. Do not send an `Origin` header (a native app does not): one that is not the server's own Host is refused with 403.
 - Without a token the answer is 401 whatever the route.
 A new write the phone needs is a change to `api/policy.py` and a decision record; it is not available by default (decision 0060).

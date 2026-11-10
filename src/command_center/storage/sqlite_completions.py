@@ -131,8 +131,11 @@ def ensure_completions_table(engine: Engine) -> None:
                 # pysqlite does not open a transaction before DDL (see ensure_state_schema).
                 connection.exec_driver_sql("BEGIN")
             # checkfirst=False: a lost race must fail at CREATE, never skip it and still backfill.
+            # The name is a literal because tests/test_schema_guard.py accepts nothing else (0247).
             CompletionRow.metadata.create_all(
-                connection, tables=[CompletionRow.metadata.tables[table]], checkfirst=False
+                connection,
+                tables=[CompletionRow.metadata.tables["item_completions"]],
+                checkfirst=False,
             )
             connection.execute(_BACKFILL)
     except DBAPIError:
