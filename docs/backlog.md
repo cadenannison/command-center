@@ -48,3 +48,9 @@ Status is one of `proposed` (written down, not yet decided), `accepted` (we will
 - Why: `SummaryProvider` and `ChatProvider` are separate ports with separate adapters (Ollama twice, Gemini twice) (decision 0167).
 - Idea: build the summary providers on `ChatProvider` (one prompt in, one text out) once both are stable, keeping the summary tests unchanged.
 - Touches: `adapters/summary_ollama.py`, `adapters/summary_gemini.py`, `services/summary.py`, `core/ports.py`.
+
+## Check-off: retry once on a Postgres deadlock
+- Status: proposed (decision 0233: the sync's locking stays as it is)
+- Why: on Postgres a check-off on an item stored outside a running sync's window can deadlock with that sync; the sync is redelivered, but the check-off shows a server error (`_tolerating_concurrent_writes` catches only `IntegrityError`).
+- Idea: retry the check-off once when Postgres reports a deadlock (a named failure class, a cap of one retry, a logged reason), and add a two-connection test for the interleaving that runs in the CI integration job, where Postgres is available.
+- Touches: `storage/sqlite_items.py` (`_tolerating_concurrent_writes`), a new test beside `tests/test_ledger_races.py`.

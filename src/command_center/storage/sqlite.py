@@ -15,6 +15,7 @@ from sqlalchemy import (
     delete,
     or_,
     select,
+    update,
 )
 from sqlalchemy.engine import CursorResult, make_url
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
@@ -140,8 +141,9 @@ def replace_events(  # noqa: PLR0913, PLR0917
             raise ValueError(msg)
     distinct = {event.id: event for event in events}
     in_window = (_EventRow.user_id == user_id, _EventRow.source == source, _matches_window(window))
-    # Lock the event rows before record_sync touches ledger rows: a check-off locks event then
-    # ledger row, so both orders agree and cannot deadlock on Postgres (decision 0128).
+    # Lock the window's event rows before record_sync touches ledger rows: a check-off locks event
+    # then ledger row, so for these rows both orders agree. Incoming events outside the window are
+    # not locked here (decisions 0128, 0233).
     stored = select(_EventRow).where(*in_window).with_for_update()
     prior = [_to_seen(row) for row in session.scalars(stored)]
     record_sync(session, source, user_id, prior, list(distinct.values()), observed_at)
@@ -188,6 +190,29 @@ def read_event(session: Session, item_id: str, user_id: str, *, lock: bool = Fal
 def write_event(session: Session, event: Event) -> None:
     """Insert or replace one event inside the caller's transaction."""
     session.merge(_to_row(event))
+
+
+def update_local_event(session: Session, event: Event) -> bool:
+    """Change a stored event of the same key and source; False, writing nothing, if it is gone.
+
+    An UPDATE never inserts, so a delete that committed first stays a delete (decision 0231).
+    """
+    changed = _to_row(event)
+    values = {
+        column.key: getattr(changed, column.key)
+        for column in _EventRow.__table__.columns
+        if column.key not in {"user_id", "id", "source"}
+    }
+    statement = (
+        update(_EventRow)
+        .where(
+            _EventRow.user_id == event.user_id,
+            _EventRow.id == event.id,
+            _EventRow.source == event.source,
+        )
+        .values(**values)
+    )
+    return cast("CursorResult[Any]", session.execute(statement)).rowcount > 0
 
 
 def delete_local_event(session: Session, item_id: str, user_id: str, source: str) -> bool:

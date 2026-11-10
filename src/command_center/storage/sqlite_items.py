@@ -32,6 +32,7 @@ from command_center.storage.sqlite import (
     delete_local_event,
     ensure_event_schema,
     read_event,
+    update_local_event,
     write_event,
 )
 from command_center.storage.sqlite_completions import (
@@ -197,6 +198,13 @@ class SqliteItemLedger:
             raise ValueError(msg)
         with self._sessions.begin() as session:
             write_event(session, event)
+
+    def update_local(self, event: Event) -> bool:
+        if not is_local(event):
+            msg = f"Event {event.id} is not a local task"
+            raise ValueError(msg)
+        with self._sessions.begin() as session:
+            return update_local_event(session, event)
 
     def remove_local(self, item_id: str, *, user_id: str = "local") -> bool:
         with self._sessions.begin() as session:

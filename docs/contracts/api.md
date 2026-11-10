@@ -36,7 +36,7 @@ REST under `/v1`, bound to 127.0.0.1. `docs/generated/openapi.json` (and `api-re
 
 ## Chat
 Loopback only for a paired phone (403; decision 0165). Every response has `Cache-Control: no-store`.
-- `POST /v1/chat` `{message (1 to 2000 characters), conversation_id?}` -> `{reply, conversation_id}`. 404 chat is off or the conversation is unknown, 409 not configured or the provider address is refused, 429 rate limited (10 per minute; `Retry-After`), 502 the provider failed. Error text is fixed and redacted.
+- `POST /v1/chat` `{message (1 to 2000 characters), conversation_id?}` -> `{reply, conversation_id}`. 404 chat is off or the conversation is unknown, 409 not configured or the provider address is refused, 429 rate limited (10 per minute; `Retry-After`), 502 the provider failed (including a reply over 1 MiB, a stored key that may not be sent over plain http to a non-loopback address, and any exception the provider's SDK raises that is not otherwise recognised: that last one is always the text `The chat provider failed: the request could not be completed`, never a 500). Error text is fixed and redacted (decisions 0220, 0222, 0223).
 - `GET /v1/chat/context-preview` -> `{enabled, include_history, include_notes, context}`: exactly the redacted context a message would carry. Works while chat is off. 409 when the provider setting is unusable.
 - `DELETE /v1/chat/{conversation_id}` -> 204, also while chat is off; 404 unknown; 422 for an id that is not 1 to 64 letters, digits, `_` or `-`.
 Read the generated reference for fields. Decisions 0160-0169.

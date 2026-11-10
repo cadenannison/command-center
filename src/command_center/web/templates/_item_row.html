@@ -1,1 +1,1 @@
-{% from "_rows.html" import row %}{% if r %}{{ row(r, message, ok, opened, typed_note) }}{% endif %}{% for c in drop %}<li id="row-{{ c }}-{{ item_id }}" hx-swap-oob="delete"></li>{% endfor %}
+{% from "_rows.html" import row with context %}{% if r %}{{ row(r, message, ok, opened, typed_note) }}{% endif %}{% for c in drop %}<li id="row-{{ c }}-{{ item_id }}" hx-swap-oob="delete"></li>{% endfor %}

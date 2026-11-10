@@ -63,14 +63,24 @@ def test_a_phone_is_refused_every_chat_route_and_nothing_is_sent(
     assert chat.built == []
 
 
-@pytest.mark.parametrize(("method", "path", "body"), CHAT_ROUTES[:2])
-def test_the_mac_itself_may_use_chat_and_read_the_preview(
-    rig: AuthRig, method: str, path: str, body: dict[str, str] | None
+def test_the_mac_itself_may_use_chat_and_gets_the_reply_and_a_conversation(
+    rig: AuthRig, chat: ChatRig
 ) -> None:
-    response = rig.local.request(method, path, json=body)
+    response = rig.local.post("/v1/chat", json={"message": "hi"})
 
     assert response.status_code == 200
-    assert "Agenda-title-needle" in response.text or method == "POST"
+    body = response.json()
+    assert body["reply"] == "A reply"
+    assert isinstance(body["conversation_id"], str)
+    assert body["conversation_id"] != ""
+    assert len(chat.provider.calls) == 1
+
+
+def test_the_mac_itself_may_read_the_preview(rig: AuthRig) -> None:
+    response = rig.local.get("/v1/chat/context-preview")
+
+    assert response.status_code == 200
+    assert "Agenda-title-needle" in response.json()["context"]
 
 
 def test_the_policy_function_denies_the_preview_and_every_chat_write() -> None:

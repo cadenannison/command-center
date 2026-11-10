@@ -1,11 +1,11 @@
 {% extends "base.html" %}
-{% from "_rows.html" import rows %}
+{% from "_rows.html" import rows with context %}
 {% block title %}Today · Command Center{% endblock %}
 {% block content %}
 <div class="page-head"><h1>{{ view.title }}</h1>
 <span class="pager"><a href="/?date={{ view.previous.isoformat() }}">Previous</a><a href="/">Today</a><a href="/?date={{ view.next.isoformat() }}">Next</a></span></div>
 {% include "_summary.html" %}
-{% if nt %}{% include "_new_task.html" %}{% endif %}
+{% if nt and loopback %}{% include "_new_task.html" %}{% endif %}
 <section class="panel" aria-labelledby="agenda-h"><h2 id="agenda-h">Agenda</h2>
 {{ rows(view.agenda, "Nothing scheduled.") }}</section>
 <section class="panel" aria-labelledby="weather-h"><h2 id="weather-h">Weather</h2>

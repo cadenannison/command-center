@@ -13,6 +13,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Any, cast
 
 from sqlalchemy import Engine, delete, inspect, select, text
+from sqlalchemy.dialects import postgresql, sqlite
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import Session
 
@@ -32,6 +33,14 @@ if TYPE_CHECKING:
     from sqlalchemy.engine import CursorResult
 
 _WEATHER = "weather"  # a forecast replaced every day is not an item that "disappeared"
+
+
+class LedgerRowVanishedError(Exception):
+    """A delete committed between a sync's insert of a ledger row and its re-read of it."""
+
+    def __init__(self, item_id: str) -> None:
+        super().__init__(f"The ledger row of item {item_id} vanished between its insert and read")
+        self.item_id = item_id
 
 
 @dataclass(frozen=True)
@@ -107,6 +116,27 @@ def row_from(
     )
 
 
+def insert_or_get(session: Session, row: LedgerRow) -> LedgerRow:
+    """Insert the row unless one with its key exists, and return the stored row either way.
+
+    A check-off can commit the same row between a sync's read and its insert; a plain `add`
+    would then clash on the key and roll the whole report back (decision 0230). On Postgres a
+    concurrent insert that has not committed yet makes this statement wait for it.
+    """
+    dialect = session.get_bind().dialect.name
+    insert = postgresql.insert if dialect == "postgresql" else sqlite.insert
+    values = {
+        column.key: getattr(row, column.key)
+        for column in LedgerRow.__table__.columns
+        if getattr(row, column.key) is not None
+    }
+    session.execute(insert(LedgerRow).values(**values).on_conflict_do_nothing())
+    stored = session.get(LedgerRow, (row.user_id, row.item_id), populate_existing=True)
+    if stored is None:  # a delete committed between our insert and this read
+        raise LedgerRowVanishedError(row.item_id)
+    return stored
+
+
 def is_empty(session: Session, row: LedgerRow) -> bool:
     """A row with no note, completion or disappearance carries nothing worth keeping."""
     return (
@@ -158,13 +188,12 @@ def record_sync(  # noqa: PLR0913, PLR0917
 
 def _mark_gone(session: Session, user_id: str, source: str, seen: Seen, at: datetime) -> None:
     row = session.get(LedgerRow, (user_id, seen.id))
-    if row is not None and has_completion(session, user_id, seen.id):
-        return
     if row is None:
         if seen.status == DONE_STATUS:
             return  # done before the ledger saw it: leaving the source is not a removal
-        row = row_from(user_id, seen.id, seen, source=source)
-        session.add(row)
+        row = insert_or_get(session, row_from(user_id, seen.id, seen, source=source))
+    if has_completion(session, user_id, seen.id):
+        return  # also a check-off that committed the row first
     row.title = seen.title
     row.gone_at = at
 
@@ -183,7 +212,7 @@ def _append_source_completion(
     if _is_done_at_source(row, latest_source_completion(session, user_id, event.id)):
         return
     if row is None:
-        session.add(row_from(user_id, event.id, event, source=source))
+        insert_or_get(session, row_from(user_id, event.id, event, source=source))
     add_completion(session, user_id, event.id, at, SOURCE)
 
 
@@ -223,6 +252,7 @@ __all__ = [
     "Seen",
     "delete_source_ledger",
     "ensure_ledger_schema",
+    "insert_or_get",
     "is_empty",
     "record_sync",
     "row_from",

@@ -33,10 +33,10 @@
 <li class="row kind-{{ r.kind }}{% if r.urgent %} urgent{% endif %}{% if it and it.done %} done{% endif %}"{% if it %} id="{{ it.row_id }}"{% endif %}>
 <span class="when">{{ r.when }}</span>
 <span class="title"><span class="label">{% if r.link %}<a href="{{ r.link }}" target="_blank" rel="noopener noreferrer">{{ r.title }}</a>{% else %}{{ r.title }}{% endif %}</span>{% if r.status %} <span class="muted">({{ r.status }})</span>{% endif %}{% if it and it.task and it.task.label %} <span class="chip chip-label" title="Course label">{{ it.task.label }}</span>{% endif %}{% if it and it.has_note %} <span class="chip chip-note" title="This item has a note">note</span>{% endif %}
-{% if it %}{{ details(r, message, ok, opened, typed_note) }}{% endif %}</span>
+{% if it and loopback %}{{ details(r, message, ok, opened, typed_note) }}{% endif %}</span>
 {% if it %}<span class="acts">
-{% if it.done %}{% if it.can_undo %}<button type="button" class="mini secondary" hx-delete="/items/{{ it.item_id }}/done?{{ it.query }}" hx-target="closest li" hx-swap="outerHTML" hx-disabled-elt="this" aria-label="Undo check-off: {{ r.title }}">Undo</button>{% else %}<span class="chip" title="The source reports this done">done</span>{% endif %}
-{% else %}<button type="button" class="mini" hx-post="/items/{{ it.item_id }}/done?{{ it.query }}" hx-target="closest li" hx-swap="outerHTML" hx-disabled-elt="this" aria-label="Check off: {{ r.title }}">Done</button>{% endif %}
+{% if it.done %}{% if loopback and it.can_undo %}<button type="button" class="mini secondary" hx-delete="/items/{{ it.item_id }}/done?{{ it.query }}" hx-target="closest li" hx-swap="outerHTML" hx-disabled-elt="this" aria-label="Undo check-off: {{ r.title }}">Undo</button>{% else %}<span class="chip" title="{{ 'The source reports this done' if loopback else 'Done' }}">done</span>{% endif %}
+{% elif loopback %}<button type="button" class="mini" hx-post="/items/{{ it.item_id }}/done?{{ it.query }}" hx-target="closest li" hx-swap="outerHTML" hx-disabled-elt="this" aria-label="Check off: {{ r.title }}">Done</button>{% endif %}
 {{ badge(r) }}</span>{% else %}{{ badge(r) }}{% endif %}
 </li>
 {% endmacro %}

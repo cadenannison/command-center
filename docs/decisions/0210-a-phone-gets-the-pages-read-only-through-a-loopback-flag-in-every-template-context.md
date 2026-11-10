@@ -1,0 +1,10 @@
+# 0210. A phone gets Today, Week, Month and History read-only, through a loopback flag in every template context
+
+Status: accepted; narrows 0150 to 0153
+
+Context: A paired phone may read the web pages (0153) but every web item write is refused with 404 (0060, 0126, 0153). The pages still drew Done, Undo, the details panel with the note box and Edit/Delete, and the New task panel for it, so every control on a phone was a dead button.
+Decision: `Renderer.render` adds `loopback` to every template context, from `web/loopback.is_loopback(request)`: a loopback Host with no proxy header (decision 0057), false for everything else, so a request nobody classified fails closed. Templates draw the controls only when it is true: the Done and Undo buttons, the whole details panel (note box, Edit task, Delete task, "Why this priority" text) and the New task panel. A phone still sees the rows, the priority badge (its reason stays in the badge tooltip), a "note" chip when the item has a note (not the note's text, which only History shows) and a "done" chip on a checked-off item. The check is made once per render, not per route, so a new page cannot forget it. The macros are imported `with context` so they can read the flag.
+Alternative: A second set of read-only templates; a `readonly` argument threaded through `views.py` into every row; hiding the controls by passing `items=None` (that would also hide History and the check-off state).
+Reason: One flag read in one place keeps the templates as the single description of a row. The route policy stays the real guard; this only stops the page from offering what the guard refuses.
+Where: `src/command_center/web/loopback.py`, `render.py`, `templates/_rows.html`, `_item_row.html`, `today.html`, `week.html`, `month.html`. Tests: `tests/test_web_phone_readonly.py`.
+Revisit when: The phone may write (0126), or a page needs a different read-only layout. Not done here, left for a later card: the nav still links Settings and Pair phone, and the summary card still draws its Enable, Save provider and Regenerate controls and its link to `/settings`, all of which a phone cannot use.

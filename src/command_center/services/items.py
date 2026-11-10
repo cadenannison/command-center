@@ -105,7 +105,8 @@ class ItemService:
         """Change the given fields of a local task."""
         stored = await self._local(item_id)
         changed = apply_task_patch(stored, patch, self._clock.now())
-        await asyncio.to_thread(self._ledger.save_local, changed)
+        if not await asyncio.to_thread(self._ledger.update_local, changed):
+            raise ItemNotFoundError(item_id)  # deleted since the read; never bring it back
         return await self.get(item_id)
 
     async def delete_task(self, item_id: str) -> None:

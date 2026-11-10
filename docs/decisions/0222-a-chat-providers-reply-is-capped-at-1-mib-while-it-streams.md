@@ -1,0 +1,10 @@
+# 0222. A chat provider's reply is capped at 1 MiB while it streams
+
+Status: accepted
+
+Context: `post_json` read the whole response before decoding it, so a hostile or runaway server (or a compressed bomb) could use unbounded memory. The reply that is used is at most 8000 characters (`MAX_REPLY_CHARS`); `max_tokens` is only a request the server may ignore.
+Decision: `chat_http.post_json` sends with `client.stream`, decides the status from the headers (an error status never reads a body), and reads at most `MAX_REPLY_BYTES` = 1,048,576 decoded bytes. A declared `Content-Length` above the cap aborts before any body is read; otherwise the read is abandoned as soon as the running total passes the cap. Either raises `ChatProviderError("<name> sent a reply that is too large")`, with no body text. The count is of decoded bytes, so a compressed reply is stopped at the cap too, give or take one network read (below). A body that is not JSON, or that nests so deeply that the parser hits the recursion limit, is the existing "malformed reply" error. Both httpx providers share the path, so both are capped.
+Alternative: Cap by `Content-Length` alone (absent on chunked replies, and wrong under compression); decompress by hand with a `max_length` (stricter, but as built one network read is decoded whole before it is counted: with deflate's best ratio of about 1000:1 a hostile 64 KiB read can briefly hold about 64 MB, which this accepts and the contract states; `Accept-Encoding: identity` would not close it, because a hostile server ignores it); a total deadline on top of the per-read 120 s timeout (a server dripping bytes can still hold a turn for a long time; not part of this task).
+Reason: The smallest change that bounds memory per reply and keeps one code path for status, size and JSON.
+Where: `src/command_center/adapters/chat_http.py` (`post_json`, `_read_capped`); `tests/test_chat_provider_hardening.py`.
+Revisit when: A provider streams tokens to the user (the cap then applies per stream), or a total deadline is wanted.

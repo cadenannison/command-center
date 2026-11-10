@@ -179,6 +179,13 @@ class ItemLedger(Protocol):
         """Insert or replace a local task; ValueError for an event that is not one."""
         ...
 
+    def update_local(self, event: Event) -> bool:
+        """Change an existing local task and never create one; False when it is gone.
+
+        ValueError for an event that is not a local task.
+        """
+        ...
+
     def remove_local(self, item_id: str, *, user_id: str = "local") -> bool:
         """Delete a local task and its ledger row; False when there is none."""
         ...

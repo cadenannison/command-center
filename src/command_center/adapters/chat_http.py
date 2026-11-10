@@ -7,6 +7,7 @@ them). Redirects are never followed, so a server cannot bounce a request to a re
 
 import asyncio
 import ipaddress
+import json
 import socket
 from collections.abc import Mapping
 from urllib.parse import urlsplit
@@ -20,6 +21,7 @@ from command_center.core.urlcheck import require_chat_base_url
 # A local model on a laptop can take a while; a hung server must still end.
 TIMEOUT_SECONDS = 120.0
 LOOKUP_TIMEOUT_SECONDS = 5.0
+MAX_REPLY_BYTES = 1_048_576  # about 1 MB: the reply cap (decision 0222)
 _BUSY = frozenset({429, 503})
 _REJECTED_KEY = frozenset({401, 403})
 _NOT_FOUND = 404
@@ -32,10 +34,11 @@ async def checked_base_url(base_url: str) -> str:
 
     The literal rules are core's (`require_chat_base_url`). A public-looking name is then resolved
     and refused unless every address is public, so a name cannot point at the LAN or the cloud
-    metadata address. A local name (`*.local`, a single-label LAN name) is resolved too, and is
-    refused when any address is link-local, metadata, unspecified, multicast or not on this
-    machine or LAN (loopback and private addresses are what it is for). The check and the
-    connection resolve the name separately, so DNS rebinding is not closed
+    metadata address. A local name (`*.local`, `*.localhost`, a single-label LAN name) is resolved
+    too, and is refused when any address is link-local, metadata, unspecified, multicast or not on
+    this machine or LAN (loopback and private addresses are what it is for). Only the exact name
+    `localhost` (not `localhost.`) is neither resolved nor checked (decision 0221). The check and
+    the connection resolve the name separately, so DNS rebinding is not closed
     (docs/contracts/adapters.md).
     """
     try:
@@ -44,12 +47,18 @@ async def checked_base_url(base_url: str) -> str:
         msg = "The chat server address is not allowed"
         raise ChatProviderError(msg) from None
     parts = urlsplit(base_url)
-    host = (parts.hostname or "").rstrip(".").lower()
+    # The exact name only: `localhost.` is a different DNS name, so it is looked up like any other.
+    if (parts.hostname or "").lower() == "localhost":
+        return base_url.rstrip("/")
+    # Classify by the name without its dot, but look up the name the request will use: the
+    # connection resolves `host.` as written, and a resolver may answer it differently.
+    asked = (parts.hostname or "").lower()
+    host = asked.rstrip(".")
     if _is_local_name(host):
-        await _require_local_addresses(host, parts.scheme)
+        await _require_local_addresses(asked, parts.scheme)
     elif _is_public_looking_name(host):
         try:
-            await ensure_public_host(host)
+            await ensure_public_host(asked)
         except TransientError:
             msg = "The chat server address could not be looked up"
             raise ChatProviderError(msg) from None
@@ -60,9 +69,9 @@ async def checked_base_url(base_url: str) -> str:
 
 
 def _is_local_name(host: str) -> bool:
-    if not host or host == "localhost" or host.endswith(".localhost"):
+    if not host:
         return False
-    if "." in host and not host.endswith(".local"):
+    if "." in host and not host.endswith(_LOCAL_SUFFIXES):
         return False
     try:
         _ = ipaddress.ip_address(host)
@@ -110,21 +119,54 @@ def _is_public_looking_name(host: str) -> bool:
 async def post_json(
     name: str, url: str, payload: Mapping[str, object], headers: Mapping[str, str]
 ) -> object:
-    """POST payload as JSON and return the decoded body; every failure is a fixed-text error."""
+    """POST payload as JSON and return the decoded body; every failure is a fixed-text error.
+
+    The status is decided from the headers alone, and the body is read as a stream and abandoned
+    once it passes MAX_REPLY_BYTES, so a hostile or runaway server cannot fill memory (0222).
+    """
     try:
-        async with httpx.AsyncClient(timeout=TIMEOUT_SECONDS, follow_redirects=False) as client:
-            response = await client.post(url, json=payload, headers=dict(headers))
+        # trust_env=False: an HTTP_PROXY or system proxy would receive the key and the agenda in
+        # clear text for an http address, and would choose the address, skipping our checks (0225).
+        async with (
+            httpx.AsyncClient(
+                timeout=TIMEOUT_SECONDS, follow_redirects=False, trust_env=False
+            ) as client,
+            client.stream("POST", url, json=payload, headers=dict(headers)) as response,
+        ):
+            _check_status(name, response.status_code)
+            raw = await _read_capped(name, response)
     except httpx.TimeoutException:
         msg = f"{name} timed out"
         raise ChatProviderError(msg) from None
     except httpx.HTTPError:
         msg = f"{name} is unreachable; is it running?"
         raise ChatProviderError(msg) from None
-    _check_status(name, response.status_code)
     try:
-        return response.json()
-    except ValueError:
+        return json.loads(raw)
+    except (ValueError, RecursionError):
         raise malformed(name) from None
+
+
+async def _read_capped(name: str, response: httpx.Response) -> bytes:
+    """The decoded body, or ChatProviderError once it is (or says it will be) over the cap.
+
+    The count is of decoded bytes, so a compressed reply is stopped at the cap too, give or take
+    one network read: a read is decoded whole before it is counted, so a hostile gzip can overshoot
+    by that read's expansion (about 1000 to 1, from 64 KiB), not by the reply's (decision 0222).
+    """
+    declared = response.headers.get("content-length", "")
+    if declared.isdigit() and int(declared) > MAX_REPLY_BYTES:
+        raise _too_large(name)
+    body = bytearray()
+    async for chunk in response.aiter_bytes():
+        body.extend(chunk)
+        if len(body) > MAX_REPLY_BYTES:
+            raise _too_large(name)
+    return bytes(body)
+
+
+def _too_large(name: str) -> ChatProviderError:
+    return ChatProviderError(f"{name} sent a reply that is too large")
 
 
 def _check_status(name: str, status: int) -> None:

@@ -7,11 +7,11 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from markupsafe import Markup
 
-from command_center.core.hosts import Exposure, classify_request
 from command_center.core.pairing import PAIRING_TTL
 from command_center.pairing.qr import pairing_payload, qr_svg
 from command_center.services.container import Container
 from command_center.services.pairing import PairingService
+from command_center.web.loopback import require_loopback
 from command_center.web.render import Renderer
 
 NOT_CONFIGURED = (
@@ -21,20 +21,9 @@ NOT_CONFIGURED = (
 _MINUTES = int(PAIRING_TTL.total_seconds() // 60)
 
 
-def _loopback_only(request: Request) -> None:
-    """404 unless the Host is loopback and the request carries no proxy header.
-
-    A tailnet client must never be able to mint a pairing code, even with a valid device token:
-    a stolen phone could otherwise pair more phones.
-    """
-    exposure = classify_request(request.headers.get("host"), request.headers.keys(), ())
-    if exposure is not Exposure.LOOPBACK:
-        raise HTTPException(status_code=404, detail="Not found")
-
-
 def pair_router(get_container: Callable[..., Container], renderer: Renderer) -> APIRouter:
     """Routes for /pair. A code is made by POST (CSRF-checked), never by a GET."""
-    router = APIRouter(dependencies=[Depends(_loopback_only)])
+    router = APIRouter(dependencies=[Depends(require_loopback)])
 
     def pairing_of(services: Container) -> PairingService:
         if services.pairing is None:

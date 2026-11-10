@@ -1,10 +1,10 @@
 {% extends "base.html" %}
-{% from "_rows.html" import rows %}
+{% from "_rows.html" import rows with context %}
 {% block title %}Month · Command Center{% endblock %}
 {% block content %}
 <div class="page-head"><h1>{{ view.title }}</h1>
 <span class="pager"><a href="/month?date={{ view.previous.isoformat() }}">Previous</a><a href="/month">This month</a><a href="/month?date={{ view.next.isoformat() }}">Next</a></span></div>
-{% if nt %}{% include "_new_task.html" %}{% endif %}
+{% if nt and loopback %}{% include "_new_task.html" %}{% endif %}
 <div class="month" role="grid" aria-label="Load by day">
 {% for name in ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"] %}<div class="dow">{{ name }}</div>{% endfor %}
 {% for week in view.weeks %}{% for c in week %}

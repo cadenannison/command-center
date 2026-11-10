@@ -9,6 +9,7 @@ from fastapi.responses import HTMLResponse
 from command_center.services.container import Container
 from command_center.web.cards import card_view
 from command_center.web.checklist import checklist_rows
+from command_center.web.loopback import require_loopback
 from command_center.web.render import Renderer
 from command_center.web.settings_actions import SettingsActions, find
 
@@ -18,7 +19,7 @@ def settings_router(get_container: Callable[..., Container], renderer: Renderer)
     router = APIRouter()
     actions = SettingsActions(renderer)
 
-    @router.get("/settings", response_class=HTMLResponse)
+    @router.get("/settings", response_class=HTMLResponse, dependencies=[Depends(require_loopback)])
     async def settings_page(
         request: Request, services: Annotated[Container, Depends(get_container)]
     ) -> HTMLResponse:
@@ -30,7 +31,11 @@ def settings_router(get_container: Callable[..., Container], renderer: Renderer)
         }
         return renderer.render(request, "settings.html", context)
 
-    @router.get("/settings/{source}/status", response_class=HTMLResponse)
+    @router.get(
+        "/settings/{source}/status",
+        response_class=HTMLResponse,
+        dependencies=[Depends(require_loopback)],
+    )
     async def source_status(
         request: Request, source: str, services: Annotated[Container, Depends(get_container)]
     ) -> HTMLResponse:

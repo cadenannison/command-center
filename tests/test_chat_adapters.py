@@ -19,7 +19,7 @@ from fakes import InMemorySecretStore
 MESSAGES = [ChatMessage(role="user", content="hi"), ChatMessage(role="assistant", content="yo")]
 SYSTEM = "the system prompt"
 OLLAMA = "http://localhost:11434/api/chat"
-BASE = "http://192.168.1.20:8080/v1"
+BASE = "https://192.168.1.20:8080/v1"  # https: a key may not cross plain http beyond loopback
 
 
 def openai(base_url: str = BASE, key: str | None = FAKE_KEY) -> OpenAICompatibleChatProvider:
@@ -253,7 +253,8 @@ async def test_localhost_and_literal_addresses_are_not_looked_up(
         return_value=completion("ok")
     )
 
-    assert await openai(base_url=f"http://{host}:8000/v1").complete(MESSAGES, SYSTEM, 9) == "ok"
+    provider = openai(base_url=f"http://{host}:8000/v1", key=None)  # no key: it may not ride http
+    assert await provider.complete(MESSAGES, SYSTEM, 9) == "ok"
     assert route.called
 
 
@@ -271,7 +272,8 @@ async def test_a_local_name_that_resolves_to_this_machine_or_lan_is_called(
         return_value=completion("ok")
     )
 
-    assert await openai(base_url=f"http://{host}:8000/v1").complete(MESSAGES, SYSTEM, 9) == "ok"
+    provider = openai(base_url=f"http://{host}:8000/v1", key=None)  # no key: it may not ride http
+    assert await provider.complete(MESSAGES, SYSTEM, 9) == "ok"
     assert route.called
 
 

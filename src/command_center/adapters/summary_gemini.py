@@ -5,6 +5,7 @@ text: never the API key, the prompt or the SDK's own message.
 """
 
 import asyncio
+import logging
 from collections.abc import Callable, Mapping, Sequence
 
 import httpx
@@ -24,6 +25,8 @@ from command_center.core.errors import (
 from command_center.core.ports import SecretStore
 from command_center.core.schema import ValidationResult
 from command_center.core.summary import DailySummary
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_MODEL = "gemini-3.5-flash-lite"
 SECRET_SOURCE = "gemini"  # noqa: S105  (a source name, not a secret)
@@ -138,21 +141,26 @@ class GeminiChatProvider:
         return "gemini"
 
     async def complete(self, messages: Sequence[ChatMessage], system: str, max_tokens: int) -> str:
-        client = self._client_factory(await _read_key(self._secrets, ChatProviderError))
-        contents = [
-            types.Content(
-                role="user" if message.role == "user" else "model",
-                parts=[types.Part(text=message.content)],
-            )
-            for message in messages
-        ]
-        config = types.GenerateContentConfig(
-            system_instruction=system, max_output_tokens=max_tokens
-        )
+        key = await _read_key(self._secrets, ChatProviderError)
         try:
+            client = self._client_factory(key)
+        except Exception:  # noqa: BLE001  (the SDK's own text can hold the key or the prompt)
+            raise _failed() from None
+        try:
+            contents = [
+                types.Content(
+                    role="user" if message.role == "user" else "model",
+                    parts=[types.Part(text=message.content)],
+                )
+                for message in messages
+            ]
+            config = types.GenerateContentConfig(
+                system_instruction=system, max_output_tokens=max_tokens
+            )
             response = await client.aio.models.generate_content(  # pyright: ignore[reportUnknownMemberType]  (SDK's own partly-unknown overloads)
                 model=self._model, contents=contents, config=config
             )
+            text = response.text
         except errors.APIError as exc:
             raise _translate_chat(exc.code) from None
         except errors.UnknownApiResponseError:
@@ -161,13 +169,37 @@ class GeminiChatProvider:
         except httpx.HTTPError:
             msg = "Gemini is unreachable"
             raise ChatProviderError(msg) from None
+        except Exception:  # noqa: BLE001  (the SDK's own text can hold the system prompt)
+            raise _failed() from None
         finally:
-            await client.aio.aclose()
-            client.close()
-        if not response.text:
+            await _close(client)
+        if not text:
             msg = "Gemini returned no text"
             raise ChatProviderError(msg)
-        return response.text
+        return text
+
+
+def _failed() -> ChatProviderError:
+    return ChatProviderError("Gemini request failed")
+
+
+async def _close(client: genai.Client) -> None:
+    """Close the SDK client. A failure here is logged by class and never replaces the outcome."""
+    try:
+        await client.aio.aclose()
+    except Exception as exc:  # noqa: BLE001
+        _log_cleanup_failure(exc)
+    try:
+        client.close()
+    except Exception as exc:  # noqa: BLE001
+        _log_cleanup_failure(exc)
+
+
+def _log_cleanup_failure(exc: Exception) -> None:
+    logger.warning(
+        "Gemini client cleanup failed",
+        extra={"reason": "gemini_cleanup", "error_class": type(exc).__name__},
+    )
 
 
 def _translate_chat(code: int) -> ChatProviderError:

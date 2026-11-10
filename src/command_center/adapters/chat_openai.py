@@ -14,6 +14,7 @@ from command_center.core.chat import ChatMessage
 from command_center.core.errors import ChatProviderError, SecretStoreError
 from command_center.core.ports import SecretStore
 from command_center.core.schema import ValidationResult
+from command_center.core.urlcheck import may_send_key
 
 SECRET_SOURCE = "chat"  # noqa: S105  (a source name, not a secret)
 SECRET_KEY = "api_key"  # noqa: S105  (a key name, not a secret)
@@ -34,7 +35,7 @@ class OpenAICompatibleChatProvider:
 
     async def complete(self, messages: Sequence[ChatMessage], system: str, max_tokens: int) -> str:
         base = await checked_base_url(self._base_url)
-        headers = await self._headers()
+        headers = await self._headers(base)
         payload = {
             "model": self._model,
             "messages": [
@@ -47,14 +48,25 @@ class OpenAICompatibleChatProvider:
         body = await post_json(_NAME, f"{base}/chat/completions", payload, headers)
         return _reply(body)
 
-    async def _headers(self) -> dict[str, str]:
+    async def _headers(self, base: str) -> dict[str, str]:
+        """The Authorization header for base, or none when no key is stored.
+
+        A stored key is refused, not dropped, for an http address that is not loopback: sending
+        the request without it would still send the agenda, and the user would not know why the
+        server answered 401 (decision 0220).
+        """
         try:
             creds = await asyncio.to_thread(self._secrets.get, SECRET_SOURCE)
         except SecretStoreError:
             msg = "secret store unavailable"
             raise ChatProviderError(msg) from None
         key = creds.get(SECRET_KEY, "").strip()
-        return {"Authorization": f"Bearer {key}"} if key else {}
+        if not key:
+            return {}
+        if not may_send_key(base):
+            msg = "The chat server key is not sent over plain http to this address; use https"
+            raise ChatProviderError(msg)
+        return {"Authorization": f"Bearer {key}"}
 
 
 class ChatKeyIntegration:

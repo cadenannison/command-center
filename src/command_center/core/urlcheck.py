@@ -93,6 +93,36 @@ def require_chat_base_url(url: str) -> str:
     return url
 
 
+def may_send_key(url: str) -> bool:
+    """True if an API key may be sent to a chat provider at url (decision 0220).
+
+    https always (the URL must still pass `require_chat_base_url`, which raises ValueError). Plain
+    http only to a loopback name or address: the exact name `localhost` (not `localhost.`),
+    127.0.0.0/8, ::1 and ::ffff:127.x. A LAN address, a single-label name, `*.local`,
+    `*.localhost` and the trailing-dot forms are not loopback:
+    a name there is whatever the local resolver or a rogue device says it is, and the key would
+    cross the network in clear text.
+    """
+    _ = require_chat_base_url(url)
+    parts, host = _split(url)
+    if parts.scheme.lower() == "https":
+        return True
+    # No rstrip: `localhost.` is a different DNS name, and a resolver may send it upstream.
+    return _is_loopback_name_or_address((host or "").lower())
+
+
+def _is_loopback_name_or_address(host: str) -> bool:
+    if host == "localhost":
+        return True
+    try:
+        address = ipaddress.ip_address(host)
+    except ValueError:
+        return False
+    if isinstance(address, ipaddress.IPv6Address) and address.ipv4_mapped is not None:
+        address = address.ipv4_mapped
+    return address.is_loopback
+
+
 def _is_local_chat_host(host: str) -> bool:
     """True for a host that may be reached over plain http; raises for an always-refused one."""
     try:

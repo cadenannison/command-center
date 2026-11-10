@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 from command_center.api import create_app
 from command_center.core.pairing import IssuedTokens
 from command_center.services.container import Container
+from command_center.services.items import ItemService
 from command_center.services.pairing import PairingService
 from fakes import FakeClock
 from pairing_support import FakeTokenSource, InMemoryDeviceStore
@@ -45,12 +46,15 @@ class AuthRig:
 
 
 def make_auth_rig(
-    *, base_url: str | None = BASE_URL, remote_hosts: tuple[str, ...] = (REMOTE,)
+    *,
+    base_url: str | None = BASE_URL,
+    remote_hosts: tuple[str, ...] = (REMOTE,),
+    items: ItemService | None = None,
 ) -> AuthRig:
     web = make_rig(("canvas",))
     store = InMemoryDeviceStore()
     service = PairingService(store, FakeTokenSource(), web.clock, base_url=base_url)
-    container = replace(web.container, pairing=service)
+    container = replace(web.container, pairing=service, items=items)
     app = create_app(container, remote_hosts=remote_hosts)
     return AuthRig(
         app=app,

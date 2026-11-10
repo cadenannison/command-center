@@ -5,15 +5,12 @@ route without deciding what a phone may do with it fails this file (decision 006
 """
 
 from collections.abc import Iterator
-from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
 import pytest
-from fastapi.testclient import TestClient
 
-from auth_rig import BASE_URL, REMOTE, AuthRig, make_auth_rig
-from command_center.api import create_app
+from auth_rig import REMOTE, AuthRig, make_auth_rig
 from command_center.api.policy import REMOTE_WRITES, refusal_status, remote_may_call
 from ledger_support import open_ledger_rig
 from route_support import Endpoint, walk
@@ -41,8 +38,8 @@ POLICY: dict[tuple[str, str], str] = {
     ("GET", "/week"): READ,
     ("GET", "/month"): READ,
     ("GET", "/history"): READ,  # the page of what /v1/history already serves a phone (0153)
-    ("GET", "/settings"): READ,
-    ("GET", "/settings/{source}/status"): READ,
+    ("GET", "/settings"): HIDDEN,  # prefilled non-secret values: the page's own check (0211)
+    ("GET", "/settings/{source}/status"): HIDDEN,
     ("GET", "/pair"): HIDDEN,
     ("GET", "/static"): READ,
     ("GET", "/openapi.json"): READ,
@@ -87,16 +84,7 @@ POLICY: dict[tuple[str, str], str] = {
 def rig(tmp_path: Path) -> Iterator[AuthRig]:
     # With an item service, so GET /history is served; without one it is a 404 for everyone.
     for engine in open_engine("sqlite", tmp_path):
-        base = make_auth_rig()
-        container = replace(base.container, items=open_ledger_rig(engine).items)
-        app = create_app(container, remote_hosts=(REMOTE,))
-        yield replace(
-            base,
-            app=app,
-            container=container,
-            local=TestClient(app, base_url="http://localhost"),
-            remote=TestClient(app, base_url=BASE_URL),
-        )
+        yield make_auth_rig(items=open_ledger_rig(engine).items)
 
 
 @pytest.fixture
@@ -203,8 +191,17 @@ def test_a_paired_phone_gets_the_history_page_when_the_item_service_is_present(
 ) -> None:
     headers = rig.bearer(rig.pair_phone().access_token)
 
-    assert rig.remote.get("/history", headers=headers).status_code == 200
-    assert rig.local.get("/history").status_code == 200
+    phone = rig.remote.get("/history", headers=headers)
+
+    assert phone.status_code == 200
+    assert "Completed by you" in phone.text  # the page itself, not the middleware's JSON 404
+
+
+def test_the_settings_pages_are_hidden_from_a_phone_by_the_page_itself(rig: AuthRig) -> None:
+    headers = rig.bearer(rig.pair_phone().access_token)
+    for path in ("/settings", "/settings/canvas/status"):
+        assert rig.remote.get(path, headers=headers).status_code == 404, path
+        assert rig.local.get(path).status_code == 200, path
 
 
 def test_the_pairing_page_is_hidden_from_a_phone_by_the_page_itself(rig: AuthRig) -> None:

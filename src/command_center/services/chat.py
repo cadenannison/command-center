@@ -52,6 +52,7 @@ MESSAGE_LIMIT = 10
 MESSAGE_WINDOW = timedelta(seconds=60)
 MAX_CONVERSATIONS = 20
 MAX_REPLY_CHARS = 8000
+_UNEXPECTED_DETAIL = "The chat provider failed: the request could not be completed"
 
 logger = logging.getLogger(__name__)
 
@@ -179,6 +180,15 @@ class ChatService:
                 extra={"reason": f"chat_{reason}", "error_class": type(exc).__name__},
             )
             raise ChatUnavailableError(reason, detail) from None
+        except Exception as exc:  # noqa: BLE001  (any other provider failure; see decision 0223)
+            # Only the class name is logged: the exception's text may hold the system prompt.
+            logger.warning(
+                "Chat provider %s failed unexpectedly",
+                provider.name,
+                extra={"reason": "chat_failed", "error_class": type(exc).__name__},
+            )
+            reason = "failed"
+            raise ChatUnavailableError(reason, _UNEXPECTED_DETAIL) from None
         text = trim(answer, MAX_REPLY_CHARS)
         if not text:
             logger.warning("Chat provider %s sent an empty reply", provider.name)
