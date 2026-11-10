@@ -62,7 +62,7 @@ async def test_a_validation_message_is_redacted(adapter: FakeAdapter) -> None:
 
 
 async def test_a_long_validation_message_is_cut_to_200_characters() -> None:
-    adapter = FakeAdapter(validation=ValidationResult(ok=False, message="x" * 500))
+    adapter = FakeAdapter(validation=ValidationResult(ok=False, message="x " * 250))
     container = make_container(adapter)
 
     result = await container.settings.connect("canvas", {"token": CRED})
@@ -72,7 +72,7 @@ async def test_a_long_validation_message_is_cut_to_200_characters() -> None:
 
 
 async def test_the_prefix_of_a_validation_failure_counts_towards_the_limit() -> None:
-    container = make_container(FakeAdapter(validate_error=FatalError("x" * 500)))
+    container = make_container(FakeAdapter(validate_error=FatalError("x " * 250)))
 
     result = await container.settings.connect("canvas", {"token": CRED})
 

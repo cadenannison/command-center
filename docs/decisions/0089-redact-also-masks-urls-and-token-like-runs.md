@@ -1,6 +1,6 @@
 # 0089. `redact` also masks http(s) URLs and token-like runs
 
-Status: accepted; extends 0011
+Status: accepted; extends 0011; partly superseded by 0240 and 0241 (the rule list and the token rule)
 
 Context: Task 4d, closing the "Not done" of 0085. `redact` removed email addresses and digit runs of six or more and nothing else, so a feed URL (an iCal link carries a secret in its path or query) or an API-token-shaped string in a title or a worker's message reached the summary provider and the stored sync message untouched. Credentials stayed out of messages because no code path put them there, not because `redact` would have found them.
 Decision: two rules added to `core/redact.py`, run in this order: (1) `http://` or `https://` (scheme case-insensitive) followed by non-whitespace becomes `[url]`; (2) emails as before; (3) a maximal run of 24 or more characters from `A-Za-z0-9_-` that contains at least one ASCII digit becomes `[token]`; (4) digit groups as before. URLs go first because they may hold `@`, digits and query tokens, and a trailing `.` or `)` is swallowed with the URL (over-redaction, as before). Emails go before tokens so an address is masked in one step. A run with no digit (an ordinary long word, a hyphenated phrase) is untouched, and so is anything shorter than 24 characters, including an ISO date. The token regex is anchored by a lookbehind so each character is read once; matching stays linear (13 adversarial timing cases in the new test file). `redact` stays idempotent: `[url]` and `[token]` contain nothing the rules match.

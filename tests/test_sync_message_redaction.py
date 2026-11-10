@@ -57,7 +57,7 @@ async def test_an_adapter_error_message_is_redacted_in_the_returned_and_remember
 
 
 async def test_a_long_message_is_cut_to_200_characters_after_redaction() -> None:
-    sync, _ = make_sync(FakeAdapter(script=[FatalError("x" * 500)]))
+    sync, _ = make_sync(FakeAdapter(script=[FatalError("word " * 100)]))
 
     state = await sync.sync("canvas")
 

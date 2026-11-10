@@ -1,6 +1,6 @@
 # 0011. Redaction scope: emails and digit groups, before trim, over-redact on purpose
 
-Status: accepted
+Status: accepted; partly superseded by 0240 and 0243 (the rule list, and the digit-group separators)
 
 Context: Digit runs alone miss phone and card numbers written as `801-555-1234`, `(801) 555 1234` or `4111 1111 1111 1111`. Summary input must never carry them (0004).
 Decision: `redact` replaces any token containing an email-shaped `@` with `[email]` and any group of digits joined by whitespace, dashes, dots or parentheses with 6+ digits in total with `[number]`. Only an ISO date (`YYYY-MM-DD`, real month and day) with nothing attached stays, so `20261107`, `2026-11-07-1234` and `2026-11-07.5` are redacted. `redact` runs before `trim`, never after.

@@ -228,18 +228,18 @@ def test_context_redacts_numbers_urls_and_tokens() -> None:
 
 
 def test_context_redacts_before_trimming() -> None:
-    title = "x" * 70 + " 8015551234"
+    title = "x " * 36 + "8015551234"
 
     context = build_context([_event(title)], TODAY)
 
-    assert f"- [event] {'x' * 70} [number]" in _lines(context)
+    assert f"- [event] {'x ' * 36}[number]" in _lines(context)
     assert "801" not in context
 
 
 def test_context_trims_a_long_title_to_eighty_characters() -> None:
-    context = build_context([_event("w" * 200)], TODAY)
+    context = build_context([_event("w " * 100)], TODAY)
 
-    assert f"- [event] {'w' * 79}…" in _lines(context)
+    assert f"- [event] {('w ' * 40)[:79]}…" in _lines(context)
 
 
 def test_context_collapses_whitespace_and_newlines_in_titles() -> None:
@@ -284,7 +284,7 @@ def test_context_adds_a_note_only_to_the_event_that_has_one() -> None:
 
 
 def test_context_note_is_redacted_neutralised_and_trimmed_to_two_hundred() -> None:
-    notes = {"a": "call 8015551234 <b> " + "n" * 300}
+    notes = {"a": "call 8015551234 <b> " + "n " * 150}
 
     context = build_context([_event("Lunch", id="a")], TODAY, notes=notes)
 

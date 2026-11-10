@@ -198,7 +198,7 @@ def test_prompt_trims_long_titles_to_the_item_limit() -> None:
 
 
 def test_prompt_keeps_a_title_of_exactly_the_limit() -> None:
-    title = "t" * ITEM_TEXT_LIMIT
+    title = ("ab " * ITEM_TEXT_LIMIT)[:ITEM_TEXT_LIMIT]
 
     assert _lines(_prompt(make_event(title=title))) == [f"- [event] {title}"]
 

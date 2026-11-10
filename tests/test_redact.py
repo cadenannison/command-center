@@ -136,6 +136,11 @@ def _digit_groups_outside_iso_dates(text: str) -> list[str]:
     return [g for g in _GROUP.findall(masked) if sum(c.isdigit() for c in g) >= 6]
 
 
+_OCTET = r"(?:25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])"
+# A dotted quad is an address, not a number (decisions 0244, 0255): under six digits the IPv4 rule
+# marks it [ip], and a six-digit-plus group that is exactly a quad is marked [ip] by the digit rule.
+_IPV4_ONLY = re.compile(rf"{_OCTET}(?:\.{_OCTET}){{3}}")
+_IPV4_ADDRESS = re.compile(rf"(?<![0-9.]){_OCTET}(?:\.{_OCTET}){{3}}(?![0-9]|\.[0-9])")
 _SEPARATORS = st.sampled_from([" ", "-", ".", ") ", "  ", " - "])
 _CHUNKS = st.text(alphabet="0123456789", min_size=1, max_size=3)
 
@@ -151,9 +156,12 @@ def test_redact_replaces_any_separator_joined_number_of_six_or_more_digits(
         sep + chunk for sep, chunk in zip(separators, chunks[1:], strict=False)
     )
     if sum(len(c) for c in chunks) < 6:
-        assert redact(f"x {number} y") == f"x {number} y"
+        expected = _IPV4_ADDRESS.sub("[ip]", number)
+    elif _IPV4_ONLY.fullmatch(number):
+        expected = "[ip]"
     else:
-        assert redact(f"x {number} y") == "x [number] y"
+        expected = "[number]"
+    assert redact(f"x {number} y") == f"x {expected} y"
 
 
 @example("call 801-555-1234")
