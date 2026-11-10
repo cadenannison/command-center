@@ -1,0 +1,11 @@
+# 0252. module-index.md lists each module with its docstring and no line counts; test:for finds tests by import
+
+Status: accepted
+
+Context: An agent that does not know a layer lists folders and opens files to learn what each is. `docs/MAP.md` lists adapters in one hand-written paragraph. Tests are 219 flat files with no map to the code they cover, so the options are the whole suite or guessing.
+Decision: (1) `docs/generated/module-index.md`, built by `scripts/gen_module_index.py`, has one line per module under `src/command_center/`, grouped by folder: the first sentence of its docstring, at most 120 characters. `__init__.py` is skipped. It carries no line counts, so it changes only when a module is added, removed or has its first sentence edited, and `gen:check` does not fail after every edit. (2) A new task `mise run test:for -- <src path>` runs `scripts/tests_for.py`, which prints the test files that import the module, directly (`import a.b`, `from a.b import x`, `from a import b`). A package `__init__.py` means the package.
+Alternative: Line counts in the index (rejected: stale after every edit, so `gen:check` and every agent would have to rebuild). A coverage-contexts or pytest-testmon mapping (rejected: a new dependency or a stored database, and AGENTS.md says to ask first). Guess from the file name (rejected: `test_redact_urls_and_tokens.py` and the property tests would be missed).
+Reason: Both are cheap to build, need no dependency, and cannot go stale silently: the index is checked by `gen:check`, and `test:for` reads the tests at run time.
+Consequences: `test:for` misses a test that reaches a module only through a rig or another module; the docstring of the script says so and `mise run check` still decides done. A module without a docstring shows "(no docstring)". `test:for` is a new task name; AGENTS.md says task names match across repos, and this adds one without changing any existing name.
+Where: `scripts/gen_module_index.py`, `scripts/tests_for.py`, `mise.toml` (`test:for`), `docs/generated/module-index.md`, `tests/test_gen_module_index.py`, `tests/test_tests_for.py`.
+Revisit when: Tests move into subfolders (then `test:for` can print folders), or a module the index describes badly needs its docstring fixed.

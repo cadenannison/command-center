@@ -54,7 +54,7 @@ layer reads the environment itself. Enforced by review only: no import-linter co
 - Command contract and tool versions: `mise.toml`; guards and hooks: `scripts/hooks/`
 - Decisions and reasons: `docs/decisions/` (index of numbers, titles, statuses and what replaced what: `docs/generated/decision-index.md`, built by `scripts/gen_decision_index.py` through `scripts/gen_docs.py`); behaviour per package: `docs/contracts/`
 - The phone repo's notes: `docs/mobile-api-notes.md`
-- Generated (never hand-edit): `docs/generated/`
+- Generated (never hand-edit): `docs/generated/`; `module-index.md` lists every module with its first docstring sentence, `decisions-by-file.md` maps a path to the decisions that name it on their `Where:` line
 - Operations: `docs/runbook.md`; running the Docker stack: `docs/distributed-mode.md`
 
 ## Assumptions

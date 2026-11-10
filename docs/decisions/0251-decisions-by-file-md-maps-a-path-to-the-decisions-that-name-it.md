@@ -1,0 +1,11 @@
+# 0251. decisions-by-file.md maps a path to the decisions that name it
+
+Status: accepted
+
+Context: There are 160+ decision records (about 100k tokens) and the index of them is about 7k tokens and grows with every record. An agent about to edit `core/redact.py` has to read the index or grep 400 KB to find the records that bind that file.
+Decision: `mise run gen:build` also writes `docs/generated/decisions-by-file.md`, built by `scripts/gen_decision_index.py` (`build_by_file`) from the `Where:` line of each record. Only backticked tokens under `src/`, `tests/`, `docs/`, `scripts/`, `.claude/`, `.github/`, or a root file (a capital or dot first letter, `pyproject.toml`, `mise.toml`, `uv.lock`) count. A bare file name (`agenda.py`) is resolved to the one repo file with that name, or the one in the folder named next to it, and dropped if still ambiguous. A record whose own status is "superseded" is left out; a partly superseded one stays. Each line is `- path: 0075 0120 ...`; the numbers are looked up in `decision-index.md`.
+Alternative: Add the paths to the index table (rejected: the table is already the largest generated file). Resolve every bare name against its neighbour's folder (rejected: it produced paths that do not exist, such as `services/app.py`, and a wrong path misleads more than a missing one). Check that every full path exists (rejected: it would make the file change whenever a file is deleted, and a record may rightly cite a path that has since moved).
+Reason: A reverse index turns "which decisions bind this file" from a read of the whole index into a grep of one path.
+Consequences: Only the `Where:` line is read, so a record that names no file is absent; the file is as complete as the records. Bare-name resolution lists files with `git ls-files` (tracked and untracked, not ignored; a plain walk outside a git checkout), so it looks at the working tree, so adding a second file with the same name can drop an entry until the name is qualified; `gen:check` shows it.
+Where: `scripts/gen_decision_index.py`, `scripts/gen_docs.py`, `docs/generated/decisions-by-file.md`, `tests/test_gen_decisions_by_file.py`.
+Revisit when: Records stop carrying a `Where:` line, or the file passes about 30 KB.

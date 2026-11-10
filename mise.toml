@@ -39,6 +39,10 @@ run = "uv run lint-imports"
 description = "Unit + integration tests with the coverage floor"
 run = "uv run pytest"
 
+[tasks."test:for"]
+description = "List the tests that import a source file: mise run test:for -- src/command_center/core/redact.py"
+run = "uv run python scripts/tests_for.py"
+
 [tasks."test:count"]
 description = "Print the number of tests (last line, digits only)"
 run = "uv run pytest --collect-only -q --no-cov -p no:cacheprovider 2>/dev/null | grep -Eo '^[0-9]+ tests? collected' | grep -Eo '^[0-9]+' | tail -1"

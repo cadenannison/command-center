@@ -1,4 +1,5 @@
-"""Build docs/generated/ (openapi.json, api-reference.md, decision-index.md) from the code.
+"""Build docs/generated/ (openapi.json, api-reference.md, decision-index.md, decisions-by-file.md,
+module-index.md).
 
 Usage: gen_docs.py          regenerate in place
        gen_docs.py --check  fail if the committed files are stale or orphaned
@@ -18,12 +19,12 @@ OUT_DIR = SCRIPTS_DIR.parent / "docs" / "generated"
 HTTP_METHODS = ("get", "put", "post", "delete", "patch")
 
 
-def _decision_index() -> ModuleType:
-    """Load scripts/gen_decision_index.py as a fresh module on each call (a test sets its paths)."""
-    loader = SourceFileLoader("gen_decision_index", str(SCRIPTS_DIR / "gen_decision_index.py"))
+def _load_script(name: str) -> ModuleType:
+    """Load scripts/<name>.py as a fresh module on each call (a test sets its paths)."""
+    loader = SourceFileLoader(name, str(SCRIPTS_DIR / f"{name}.py"))
     spec = spec_from_loader(loader.name, loader)
     if spec is None:
-        msg = "Failed to load scripts/gen_decision_index.py"
+        msg = f"Failed to load scripts/{name}.py"
         raise ImportError(msg)
     module = module_from_spec(spec)
     sys.modules[loader.name] = module  # dataclasses look their module up here
@@ -31,10 +32,33 @@ def _decision_index() -> ModuleType:
     return module
 
 
+def _decision_index() -> ModuleType:
+    return _load_script("gen_decision_index")
+
+
+def _module_index_text() -> str:
+    """module-index.md, or a one-line error naming the bad file instead of a traceback."""
+    modules = _load_script("gen_module_index")
+    try:
+        return modules.build_module_index(SCRIPTS_DIR.parent / "src" / "command_center")
+    except modules.ModuleIndexError as exc:
+        print(f"gen_docs: {exc}", file=sys.stderr)
+        raise SystemExit(1) from exc
+
+
 def _index_text(decisions: ModuleType) -> str:
     """The index, or a one-line error naming the bad record instead of a traceback."""
     try:
         return decisions.build_index(decisions.DECISIONS_DIR)
+    except decisions.DecisionFormatError as exc:
+        print(f"gen_docs: {exc}", file=sys.stderr)
+        raise SystemExit(1) from exc
+
+
+def _by_file_text(decisions: ModuleType) -> str:
+    """decisions-by-file.md, or the same one-line error as the index."""
+    try:
+        return decisions.build_by_file(decisions.DECISIONS_DIR, SCRIPTS_DIR.parent)
     except decisions.DecisionFormatError as exc:
         print(f"gen_docs: {exc}", file=sys.stderr)
         raise SystemExit(1) from exc
@@ -61,6 +85,8 @@ def render() -> dict[str, str]:
         "openapi.json": json.dumps(spec, indent=2, sort_keys=True) + "\n",
         "api-reference.md": "\n".join(lines) + "\n",
         "decision-index.md": _index_text(decisions),
+        "decisions-by-file.md": _by_file_text(decisions),
+        "module-index.md": _module_index_text(),
     }
 
 

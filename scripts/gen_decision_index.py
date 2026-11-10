@@ -5,10 +5,13 @@ Usage: gen_decision_index.py          write the index in place
        gen_decision_index.py --check  fail if the committed index is stale
 
 `mise run gen:build` and `gen:check` reach this through scripts/gen_docs.py, which asks for
-`build_index` and keeps the file with the other generated ones.
+`build_index` and `build_by_file` and keeps both files with the other generated ones. Run on its
+own, this script writes only the index.
 """
 
 import re
+import shutil
+import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -18,6 +21,7 @@ DECISIONS_DIR = ROOT / "docs" / "decisions"
 INDEX_PATH = ROOT / "docs" / "generated" / "decision-index.md"
 INDEX_NAME = "decision-index.md"
 
+_GIT = shutil.which("git") or "git"
 _FILE = re.compile(r"^(\d{4})-.+\.md$")
 _TITLE = re.compile(r"^#\s+(\d{4})\.\s+(.+?)\s*$")
 _STATUS = re.compile(r"^Status:\s*(.+?)\s*$", re.MULTILINE)
@@ -33,6 +37,22 @@ _SUPERSEDED_BY = re.compile(
 _SUPERSEDES = re.compile(r"\bsupersedes\b", re.IGNORECASE)
 _IN_PART = re.compile(r"\bin\s+part\b|\bpartly\b", re.IGNORECASE)
 _NUMBER = re.compile(r"\d{4}")
+_WHERE = re.compile(r"^Where:\s*(.+?)\s*$", re.MULTILINE)
+_CODE_SPAN = re.compile(r"`([^`\n]+)`")
+_LINE_SUFFIX = re.compile(r":\d+$")
+_PATH_CHARS = re.compile(r"^[\w.\-/]+$")
+_FILE_EXTENSIONS = (".py", ".md", ".toml", ".sh", ".json", ".html", ".yml", ".yaml", ".cfg", ".txt")
+_REPO_FOLDERS = ("src/", "tests/", "docs/", "scripts/", ".claude/", ".github/")
+_ROOT_FILES = frozenset({"pyproject.toml", "mise.toml", "uv.lock"})
+BY_FILE_NAME = "decisions-by-file.md"
+_BY_FILE_HELP = (
+    (
+        "Each line is a path and the decisions that name it. Look a number up with"
+        " `grep -E '^\\| (0075|0120) ' docs/generated/decision-index.md`; the record is"
+        " `docs/decisions/NNNN-*.md`. Records that are fully superseded are left out, and a record"
+        " that names no file on its `Where:` line does not appear."
+    ),
+)
 
 
 class DecisionFormatError(ValueError):
@@ -51,6 +71,8 @@ class Decision:
     superseded_by_in_part: frozenset[str]
     supersedes: frozenset[str]
     supersedes_in_part: frozenset[str]
+    where_paths: frozenset[str] = frozenset()
+    where_bare: frozenset[tuple[str, str]] = frozenset()
 
     @property
     def keyword(self) -> str:
@@ -87,6 +109,7 @@ def parse_decision(path: Path) -> Decision:
     for found in _SUPERSEDES.finditer(status_text):
         clause = _clause(status_text, found.start(), found.end())
         (supersedes_in_part if _IN_PART.search(clause) else supersedes).update(_numbers(clause))
+    where = _where_paths(text)
     return Decision(
         number=title.group(1),
         title=title.group(2),
@@ -96,7 +119,87 @@ def parse_decision(path: Path) -> Decision:
         superseded_by_in_part=frozenset(superseded_by_in_part),
         supersedes=frozenset(supersedes),
         supersedes_in_part=frozenset(supersedes_in_part),
+        where_paths=where[0],
+        where_bare=where[1],
     )
+
+
+def _where_paths(text: str) -> tuple[frozenset[str], frozenset[tuple[str, str]]]:
+    """The repo paths a record names on its `Where:` line, in backticks, and its bare file names.
+
+    Returns (paths, bare). Symbols (`EventStore`), patterns (`tests/test_*.py`), placeholders
+    (`0072-...md`) and names with spaces are skipped, and a trailing `::name` or `:12` is dropped. A
+    name that starts with a capital or a dot, or is one of a few root files, is a path at the repo
+    root. Any other bare file name
+    (`agenda.py`) is returned as (name, folder of the last path in its `;`-separated clause, or "")
+    for build_by_file to resolve against the repo.
+    """
+    paths: set[str] = set()
+    bare: set[tuple[str, str]] = set()
+    for where in _WHERE.findall(text):
+        for part in where.split(";"):
+            folder = ""
+            for span in _CODE_SPAN.findall(part):
+                token = _LINE_SUFFIX.sub("", span.split("::")[0])
+                if not _PATH_CHARS.match(token) or "..." in token:
+                    continue
+                if "/" in token:
+                    if token.startswith(_REPO_FOLDERS):
+                        paths.add(token)
+                        folder = token if token.endswith("/") else token.rsplit("/", 1)[0] + "/"
+                elif token.endswith(_FILE_EXTENSIONS):
+                    if token[0].isupper() or token[0] == "." or token in _ROOT_FILES:
+                        paths.add(token)
+                    else:
+                        bare.add((token, folder))
+    return frozenset(paths), frozenset(bare)
+
+
+def _repo_files(root: Path) -> dict[str, list[str]]:
+    """{file name: [repo-relative paths]} for the folders a record can name.
+
+    Uses `git ls-files` (tracked and untracked, ignored files left out) so a local cache or scratch
+    file cannot change the result between machines; outside a git checkout it walks the folders.
+    """
+    listed = subprocess.run(  # noqa: S603  (git on PATH, fixed arguments)
+        [
+            _GIT,
+            "-C",
+            str(root),
+            "ls-files",
+            "--cached",
+            "--others",
+            "--exclude-standard",
+            "-z",
+            "--",
+        ]
+        + [folder.rstrip("/") for folder in _REPO_FOLDERS],
+        capture_output=True,
+        check=False,
+        timeout=60,
+    )
+    if listed.returncode == 0:
+        relative = [p for p in listed.stdout.decode("utf-8").split("\0") if p]
+    else:
+        relative = [
+            path.relative_to(root).as_posix()
+            for folder in _REPO_FOLDERS
+            for path in sorted((root / folder).rglob("*"))
+            if path.is_file()
+        ]
+    found: dict[str, list[str]] = {}
+    for item in sorted(set(relative)):
+        if "__pycache__" not in item.split("/"):
+            found.setdefault(item.rsplit("/", 1)[-1], []).append(item)
+    return found
+
+
+def _resolve(name: str, folder: str, files: dict[str, list[str]]) -> str | None:
+    """The one repo file a bare name means, or None when it matches none or stays ambiguous."""
+    candidates = files.get(name, [])
+    if len(candidates) == 1:
+        return candidates[0]
+    return folder + name if folder + name in candidates else None
 
 
 def _clause(text: str, keyword_start: int, start: int) -> str:
@@ -178,6 +281,45 @@ def build_index(directory: Path) -> str:
         link = f"[{title}](../decisions/{decision.filename})"
         row = [decision.number, link, decision.keyword, _superseded_by_cell(decision, decisions)]
         lines.append("| " + " | ".join(row) + " |")
+    return "\n".join(lines) + "\n"
+
+
+def build_by_file(directory: Path, root: Path | None = None) -> str:
+    """Render decisions-by-file.md: each path and the records that name it on their Where line.
+
+    A full path on a Where line is listed as the record wrote it, whether or not the file exists
+    (a record may rightly cite a path that has since moved). A bare file name (`agenda.py`) is
+    resolved against the repo at `root`: the one file with that name, or the one in the folder
+    named next to it. Without `root`, or when it stays ambiguous, it is dropped; guessing would
+    list a path that does not exist.
+
+    A record whose own status is "superseded" is left out (it no longer governs the file); one that
+    is only partly superseded stays.
+    """
+    files = _repo_files(root) if root is not None else {}
+    by_path: dict[str, list[str]] = {}
+    for decision in load_decisions(directory):
+        if decision.keyword == "superseded":
+            continue
+        paths = set(decision.where_paths)
+        for name, folder in decision.where_bare:
+            resolved = _resolve(name, folder, files)
+            if resolved is not None:
+                paths.add(resolved)
+        for path in paths:
+            by_path.setdefault(path, []).append(decision.number)
+    lines = [
+        "# Decisions by file",
+        "",
+        (
+            "Generated by `mise run gen:build` from the `Where:` line of each record in"
+            " `docs/decisions/`. Do not edit."
+        ),
+        "",
+        *_BY_FILE_HELP,
+        "",
+    ]
+    lines += [f"- {path}: {' '.join(sorted(by_path[path]))}" for path in sorted(by_path)]
     return "\n".join(lines) + "\n"
 
 

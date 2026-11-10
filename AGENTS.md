@@ -6,6 +6,12 @@ views with an opt-in AI summary. Python 3.13, uv, FastAPI, Jinja2 + HTMX, SQLite
 Layout and import boundaries: docs/MAP.md. Patterns: docs/standards.md. Decisions and their reasons:
 docs/decisions/. Read the one contract you need (docs/contracts/core.md, services.md, adapters.md,
 storage.md, api.md), not the whole docs tree.
+Current state, gate status and what is next: docs/STATUS.md. A layer directory under src/command_center
+may hold its own CLAUDE.md (contract, key files, pitfalls); it loads when you work there.
+Find a file: docs/generated/module-index.md (one line per module). Find the decisions behind a file:
+grep its path in docs/generated/decisions-by-file.md, then look the numbers up in decision-index.md.
+Large files: `grep -n '^## '` a contract and Read one section with offset and limit. Never read
+docs/generated/decision-index.md or docs/generated/openapi.json whole; grep the index by keyword.
 
 ## Commands (same names in every repo; defined in mise.toml)
 - mise run check          every non-mutating gate; run before saying a task is done
@@ -14,7 +20,9 @@ storage.md, api.md), not the whole docs tree.
 - mise run fmt:check | lint | typecheck | test | arch | gen:check | audit | secrets
 - mise run gen:build      regenerate docs/generated/ (openapi.json, api-reference.md) from the code
 - mise run mutate         mutation testing on src/command_center/core (by hand; no CI workflow yet)
-To run one test file: `uv run pytest tests/test_smoke.py --no-cov`. Run `mise run setup` after every clone.
+To run one test file: `uv run pytest tests/test_smoke.py --no-cov`. To find the tests that import a
+source file: `mise run test:for -- src/command_center/core/redact.py` (direct imports only; the full
+`mise run check` still decides done). Run `mise run setup` after every clone.
 
 ## Architecture rules (never break)
 Rules 1-4 are enforced today by ruff banned-api and import-linter (pyproject.toml). Rules 5-6 are
