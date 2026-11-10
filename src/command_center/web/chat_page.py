@@ -12,13 +12,14 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse
 
-from command_center.services.chat import ChatService
+from command_center.services.chat import ChatService, ChatShown
 from command_center.services.container import Container
 from command_center.services.errors import (
     ChatConversationNotFoundError,
     ChatDisabledError,
     ChatNotConfiguredError,
     ChatRateLimitedError,
+    ChatSettingsChangedError,
     ChatUnavailableError,
     InvalidChatMessageError,
 )
@@ -84,6 +85,7 @@ _CHAT_ERRORS = (
     InvalidChatMessageError,
     ChatNotConfiguredError,
     ChatRateLimitedError,
+    ChatSettingsChangedError,
     ChatUnavailableError,
 )
 
@@ -97,7 +99,7 @@ def _refusal(exc: Exception) -> HTTPException:
         return HTTPException(status_code=404, detail=CONVERSATION_GONE, headers=headers)
     if isinstance(exc, InvalidChatMessageError):
         return HTTPException(status_code=400, detail=str(exc), headers=headers)
-    if isinstance(exc, ChatNotConfiguredError):
+    if isinstance(exc, ChatNotConfiguredError | ChatSettingsChangedError):
         return HTTPException(status_code=409, detail=str(exc), headers=headers)
     if isinstance(exc, ChatRateLimitedError):
         headers["Retry-After"] = str(exc.retry_after_seconds)
@@ -137,15 +139,24 @@ def chat_router(get_container: Callable[..., Container], renderer: Renderer) -> 
         return renderer.render(request, "chat.html", {"active": "chat", "c": view})
 
     @router.post("/chat/message", response_class=HTMLResponse)
-    async def send_message(
+    async def send_message(  # noqa: PLR0913, PLR0917  (one form field each)
         request: Request,
         services: Annotated[Container, Depends(get_container)],
         message: Annotated[str, Form()] = "",
         conversation_id: Annotated[str, Form()] = "",
+        shown_history: Annotated[str | None, Form()] = None,
+        shown_notes: Annotated[str | None, Form()] = None,
     ) -> HTMLResponse:
         chat = chat_of(services)
+        # A page that says what it showed is held to it; a post with neither value (an old page, a
+        # script) keeps the stored-setting behaviour. One value alone counts the other as off.
+        shown = None
+        if shown_history is not None or shown_notes is not None:
+            shown = ChatShown(
+                include_history=shown_history == "on", include_notes=shown_notes == "on"
+            )
         try:
-            answer = await chat.reply(message, conversation_id.strip() or None)
+            answer = await chat.reply(message, conversation_id.strip() or None, shown=shown)
         except _CHAT_ERRORS as exc:
             raise _refusal(exc) from None
         context = {"message": message.strip(), "reply": answer.reply, "id": answer.conversation_id}

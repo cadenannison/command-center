@@ -100,6 +100,13 @@ class ChatDisabledError(Exception):
         super().__init__("Chat is off")
 
 
+class ChatSettingsChangedError(Exception):
+    """The history or notes choice changed after the page showed it, so nothing was sent."""
+
+    def __init__(self) -> None:
+        super().__init__("Settings changed in another tab; reload the page")
+
+
 class ChatNotConfiguredError(Exception):
     """Chat is on but its provider setting cannot be used. The message is fixed text."""
 

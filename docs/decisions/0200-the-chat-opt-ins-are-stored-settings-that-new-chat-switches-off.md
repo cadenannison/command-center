@@ -1,6 +1,6 @@
 # 0200. The chat opt-ins are the stored settings, and a new conversation switches both off
 
-Status: accepted. Builds on 0163 and 0161.
+Status: accepted, amended by 0256 (a send now checks the opt-ins its page showed). Builds on 0163 and 0161.
 
 Context: The card asks for "include history" and "include notes" checkboxes that are off by default and "per conversation". `ChatService` reads both from the stored settings (`chat.include_history`, `chat.include_notes`) on every message; it has no per-conversation state, and this task may change the service only to expose settings.
 Decision: The checkboxes on `/chat` write the stored settings (`POST /chat/context`), and the page always shows the stored value, so what it shows is what the next message carries. To make them behave per conversation, both are switched off whenever a conversation starts from the page: "New chat" (`POST /chat/new`) and opening `/chat` (`GET /chat`), because the conversation id lives only in the page, so a reload or a new tab is a new conversation. The user then opts in for that conversation. The page says so in plain words. A `GET` that writes is acceptable here because it can only reduce what is sent. `POST /v1/chat` with no `conversation_id` still uses the stored values: the API has no page and keeps the stored-setting meaning. `ChatService` gets a read-only `settings` property so the web layer reaches `ChatSettings` without a second route into the store.

@@ -5,12 +5,12 @@
 <ol>{% for step in howto.steps %}<li>{{ step }}</li>{% endfor %}</ol>
 {% if howto.note %}<p class="hint">{{ howto.note }}</p>{% endif %}
 </details>{% endfor %}
-<form id="form-ai" autocomplete="off" hx-put="/ai/settings" hx-target="#ai-card" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="#save-ai" hx-indicator="#busy-ai" hx-request='{"timeout": 120000}'>
+<form id="form-ai" autocomplete="off" hx-put="/ai/settings" hx-target="#ai-card" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="#save-ai" hx-indicator="#busy-ai" hx-request='{"timeout": 135000}'>
 <label for="ai-kind">Provider</label>
 <select id="ai-kind" name="kind">{% for value, label in ai.kinds %}<option value="{{ value }}"{% if value == ai.kind %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>
 <label for="ai-base-url">Server address</label>
 <input id="ai-base-url" name="base_url" type="text" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="http://localhost:11434"{% if ai.base_url %} value="{{ ai.base_url }}"{% endif %}>
-<p class="hint">For Ollama and OpenAI-compatible servers; leave empty for Gemini. Plain http is allowed only for this Mac and your own network; anything else must be https.</p>
+<p class="hint">For Ollama and OpenAI-compatible servers; leave empty for Gemini. Plain http is allowed only for this Mac and your own network; anything else must be https. Never paste a key into the address or the model: keys go on the key card.</p>
 <label for="ai-model">Model</label>
 <input id="ai-model" name="model" type="text" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="llama3.2"{% if ai.model %} value="{{ ai.model }}"{% endif %}>
 <label class="check"><input type="checkbox" name="enabled" value="on"{% if ai.enabled %} checked{% endif %}> Turn chat on</label>
@@ -18,7 +18,7 @@
 </form>
 <div class="actions">
 <button type="submit" id="save-ai" form="form-ai">Save</button>
-<button type="button" class="secondary" hx-post="/ai/test" hx-target="#result-ai" hx-swap="outerHTML" hx-disabled-elt="this" hx-indicator="#busy-ai" hx-request='{"timeout": 120000}'>Test connection</button>
+<button type="button" class="secondary" hx-post="/ai/test" hx-target="#result-ai" hx-swap="outerHTML" hx-disabled-elt="this" hx-indicator="#busy-ai" hx-request='{"timeout": 135000}'>Test connection</button>
 <span class="busy" id="busy-ai">Working…</span>
 </div>
 <p class="hint">Test connection checks the saved settings, so save first. It sends only the fixed words "Reply with OK" and nothing of yours.</p>

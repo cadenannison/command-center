@@ -13,9 +13,14 @@ from urllib.parse import urlsplit
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse
 
-from command_center.core.chat import CHAT_KINDS
+from command_center.core.chat import (
+    CHAT_KINDS,
+    address_holds_api_key,
+    model_name_looks_like_api_key,
+)
 from command_center.core.urlcheck import require_chat_base_url
 from command_center.services.chat import ChatService
+from command_center.services.chat_settings import MAX_MODEL_LENGTH, MAX_URL_LENGTH
 from command_center.services.container import Container
 from command_center.services.errors import (
     ChatNotConfiguredError,
@@ -104,6 +109,7 @@ def ai_router(get_container: Callable[..., Container], renderer: Renderer) -> AP
                 refusal = str(exc)
         if refusal is not None:
             typed["base_url"] = _shown_address(typed["base_url"])
+            typed["model"] = _shown_model(typed["model"])
             return card_response(request, await ai_card(chat, typed=typed, flash=refusal, ok=False))
         await chat.settings.set_enabled(enabled=typed.get("enabled") == _ON)
         saved = "Saved. Chat is on." if typed.get("enabled") == _ON else "Saved. Chat is off."
@@ -130,16 +136,30 @@ def _text(value: object) -> str:
 
 
 def _shown_address(address: str) -> str:
-    """The address to put back in the form after a refusal: none if it carries a credential.
+    """The address to put back in the form after a refusal, or "" when it must not be echoed.
 
-    A key in the user, password or query part must not be echoed into a page (decision 0161).
+    Only a plain http(s) address with a host, no user, password, query or fragment, no key-shaped
+    part and a sane length comes back; anything else may hold a pasted key (decision 0161).
     """
+    if len(address) > MAX_URL_LENGTH:
+        return ""
     try:
         parts = urlsplit(address)
         carries_secret = bool(parts.username or parts.password or parts.query or parts.fragment)
+        usable = parts.scheme in ("http", "https") and bool(parts.hostname)
+        _ = parts.port  # a key typed where the port goes raises ValueError
     except ValueError:
-        carries_secret = True
-    return "" if carries_secret else address
+        return ""
+    if carries_secret or not usable:
+        return ""
+    return "" if address_holds_api_key(address) else address
+
+
+def _shown_model(model: str) -> str:
+    """The model name to put back after a refusal: none when it is long or shaped like a key."""
+    if len(model) > MAX_MODEL_LENGTH or model_name_looks_like_api_key(model):
+        return ""
+    return model
 
 
 def _refusal(typed: dict[str, str]) -> str | None:

@@ -165,9 +165,16 @@ AI_HOWTOS: tuple[tuple[str, HowTo], ...] = (
                 "Save, then press Test connection. No key is needed.",
             ),
             (
-                "Ollama on another computer on your network works too: enter its address, for "
-                "example http://192.168.1.20:11434. Plain http is allowed only for this Mac and "
-                "your own network."
+                "Ollama on another computer works too, but Ollama listens only on 127.0.0.1 (this "
+                "computer) by default, so another computer needs OLLAMA_HOST set on that computer. "
+                "On it, set OLLAMA_HOST=0.0.0.0:11434 and restart Ollama (on a Mac: quit the app, "
+                "run `launchctl setenv OLLAMA_HOST 0.0.0.0:11434`, open it again; with systemd: "
+                "add the variable to the service), and allow port 11434 through its firewall. "
+                "Then enter its address here, for example http://192.168.1.20:11434. Plain http is "
+                "allowed only for this Mac and your own network. Over plain http on a LAN, your "
+                "agenda text crosses the network unencrypted and anyone on that network can reach "
+                "the server: use it only on a network you trust. Keep the address free of keys; "
+                "Ollama needs none."
             ),
         ),
     ),

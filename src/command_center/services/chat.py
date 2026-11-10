@@ -11,7 +11,8 @@ import asyncio
 import logging
 import math
 from collections import OrderedDict, deque
-from collections.abc import Callable
+from collections.abc import AsyncGenerator, Callable
+from contextlib import asynccontextmanager
 from datetime import date, datetime, timedelta, tzinfo
 from typing import TYPE_CHECKING
 
@@ -39,6 +40,7 @@ from command_center.services.errors import (
     ChatConversationNotFoundError,
     ChatDisabledError,
     ChatRateLimitedError,
+    ChatSettingsChangedError,
     ChatUnavailableError,
     InvalidChatMessageError,
     safe_message,
@@ -52,6 +54,10 @@ MESSAGE_LIMIT = 10
 MESSAGE_WINDOW = timedelta(seconds=60)
 MAX_CONVERSATIONS = 20
 MAX_REPLY_CHARS = 8000
+# One deadline for waiting for the lock plus the whole provider call (decision 0257). The adapters'
+# own timeout is per read, so a server that trickles bytes could otherwise hold the lock for good.
+CALL_TIMEOUT_SECONDS = 120.0
+_TOO_SLOW_DETAIL = "The chat provider did not answer in time"
 _UNEXPECTED_DETAIL = "The chat provider failed: the request could not be completed"
 # The connection test sends only these two fixed lines: no agenda, no history, no notes.
 TEST_SYSTEM = "This is a connection test. Reply with the single word OK."
@@ -67,6 +73,16 @@ class ChatReply(BaseModel):
 
     reply: str
     conversation_id: str
+
+
+class ChatShown(BaseModel):
+    """The two opt-ins a page showed the user, sent back with the message so the service can
+    refuse when the stored choices have changed since (another tab, a late tick)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    include_history: bool
+    include_notes: bool
 
 
 class ChatContextPreview(BaseModel):
@@ -122,12 +138,20 @@ class ChatService:
         """Whether the user opted in to chat."""
         return await self._settings.enabled()
 
-    async def reply(self, message: str, conversation_id: str | None = None) -> ChatReply:
+    async def reply(
+        self, message: str, conversation_id: str | None = None, *, shown: ChatShown | None = None
+    ) -> ChatReply:
         """Answer message in the conversation, starting one when conversation_id is None.
 
+        `shown` is what the user's page said would be sent. When it differs from the stored
+        opt-ins, on the very config read that builds the context, nothing is sent and
+        ChatSettingsChangedError is raised; None (the API) skips the comparison.
+
         Raises ChatDisabledError (checked first: nothing is built or sent), ChatNotConfiguredError,
-        ChatRateLimitedError, ChatConversationNotFoundError for an id with no live conversation,
-        and ChatUnavailableError when the provider fails (its own text is not passed on).
+        ChatSettingsChangedError, ChatRateLimitedError, ChatConversationNotFoundError for an id
+        with no live conversation, and ChatUnavailableError when the provider fails or does not
+        answer, or the lock is not free, within CALL_TIMEOUT_SECONDS in total (its own text is not
+        passed on).
         """
         if not await self._settings.enabled():
             raise ChatDisabledError
@@ -136,12 +160,14 @@ class ChatService:
             msg = f"A message must be 1 to {MAX_MESSAGE_CHARS} characters"
             raise InvalidChatMessageError(msg)
         config = await self._settings.config()
+        _require_shown(config, shown)
         self._admit()
-        async with self._lock:
+        async with self._deadline(), self._lock:
             # A message that waited for the lock honours a setting changed while it waited.
             if not await self._settings.enabled():
                 raise ChatDisabledError
             config = await self._settings.config()
+            _require_shown(config, shown)
             if conversation_id is not None and conversation_id not in self._conversations:
                 raise ChatConversationNotFoundError
             earlier = self._conversations.get(conversation_id or "", [])
@@ -177,7 +203,7 @@ class ChatService:
         """
         _ = await self._settings.config()
         self._admit()
-        async with self._lock:
+        async with self._deadline(), self._lock:
             config = await self._settings.config()
             turns = [ChatMessage(role="user", content=TEST_PROMPT)]
             _ = await self._ask(config, turns, TEST_SYSTEM)
@@ -187,6 +213,18 @@ class ChatService:
         async with self._lock:
             if self._conversations.pop(conversation_id, None) is None:
                 raise ChatConversationNotFoundError
+
+    @staticmethod
+    @asynccontextmanager
+    async def _deadline() -> AsyncGenerator[None]:
+        """One overall deadline for the lock wait and the provider call together."""
+        try:
+            async with asyncio.timeout(CALL_TIMEOUT_SECONDS):
+                yield
+        except TimeoutError:
+            logger.warning("Chat call did not finish in time", extra={"reason": "chat_timeout"})
+            reason = "failed"
+            raise ChatUnavailableError(reason, _TOO_SLOW_DETAIL) from None
 
     async def _ask(self, config: ChatConfig, turns: list[ChatMessage], system: str) -> str:
         provider = self._provider_for(config)
@@ -252,6 +290,14 @@ class ChatService:
             logger.warning("chat message refused", extra={"reason": "chat_rate_limited"})
             raise ChatRateLimitedError(max(1, math.ceil(wait)))
         self._recent.append(now)
+
+
+def _require_shown(config: ChatConfig, shown: ChatShown | None) -> None:
+    if shown is not None and (
+        shown.include_history != config.include_history
+        or shown.include_notes != config.include_notes
+    ):
+        raise ChatSettingsChangedError
 
 
 def _localise(event: Event, tz: tzinfo) -> Event:

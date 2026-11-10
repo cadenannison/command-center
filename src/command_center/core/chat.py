@@ -4,10 +4,13 @@ Core only builds text; it never calls a provider. Untrusted text (titles, notes)
 redacted, neutralised and trimmed, in that order, before it can reach a model.
 """
 
+import ipaddress
+import re
 import unicodedata
 from collections.abc import Mapping, Sequence
 from datetime import date
 from typing import Literal
+from urllib.parse import unquote, urlsplit
 
 from pydantic import BaseModel, ConfigDict
 
@@ -37,6 +40,12 @@ _GROUP_LABELS = {"done_by_you": "done by you", "done_by_source": "done at source
 # Both markers need "<" or ">", so replacing every one makes a forged marker impossible.
 _NEUTRALISE = str.maketrans({"<": "\u2039", ">": "\u203a"})
 
+_KEY_PREFIXES = ("sk-", "AIza", "ghp_")
+_MODEL_KEY_PREFIXES = ("sk-", "AIza", "ghp_", "gho_", "ghu_", "ghs_", "github_pat_", "AKIA")
+_SLACK_PREFIX = re.compile(r"xox[baprs]-")
+_LONG_RUN = re.compile(r"[A-Za-z0-9]{32}")
+MAX_MODEL_NAME_LENGTH = 100
+
 _INSTRUCTIONS = (
     "You are a read-only assistant for a personal dashboard.\n"
     "You have NO tools. You cannot change, create, delete or send anything; "
@@ -55,6 +64,65 @@ class ChatMessage(BaseModel):
 
     role: Literal["user", "assistant"]
     content: str
+
+
+def looks_like_api_key(text: str) -> bool:
+    """Whether text is shaped like an API key: it starts with a well-known key prefix, or redaction
+    would change it (a long token, a number run, an address). Best effort only: a key of another
+    shape passes, and the callers say so. A long model name with no separators is refused too
+    (decision 0258); this reuses `redact` rather than adding a second pattern.
+    """
+    value = text.strip()
+    return value.startswith(_KEY_PREFIXES) or redact(value) != value
+
+
+def model_name_looks_like_api_key(name: str) -> bool:
+    """Whether a model name is shaped like an API key (decision 0270).
+
+    True when the stripped name starts with a known key prefix (`sk-`, `AIza`, `ghp_`, `gho_`,
+    `ghu_`, `ghs_`, `github_pat_`, `AKIA`, `xox[baprs]-`), holds one unbroken run of 32 or more
+    letters and digits (any other character, such as `- . _ : /`, ends a run), or is longer than
+    100 characters. It does not use `redact`: real hosted names such as
+    `meta-llama/Llama-3.3-70B-Instruct-Turbo-Free` are long but made of short runs. Best effort: a
+    key of another shape passes. Addresses keep `looks_like_api_key` and `address_holds_api_key`.
+    """
+    value = name.strip()
+    return (
+        len(value) > MAX_MODEL_NAME_LENGTH
+        or value.startswith(_MODEL_KEY_PREFIXES)
+        or _SLACK_PREFIX.match(value) is not None
+        or _LONG_RUN.search(value) is not None
+    )
+
+
+def address_holds_api_key(address: str) -> bool:
+    """Whether the host or any path segment of a server address looks like a key.
+
+    The host is tested label by label with `redact` alone: a whole host would trip its URL rule
+    (`www.example.com`) and an IP literal its IPv4 rule, so a LAN server would be refused. A path
+    segment is tested as typed and percent-decoded.
+    """
+    try:
+        parts = urlsplit(address.strip())
+        host, path = parts.hostname or "", parts.path
+    except ValueError:
+        return False
+    if (
+        host
+        and not _is_ip_literal(host)
+        and any(redact(label) != label for label in host.split("."))
+    ):
+        return True
+    segments = [part for part in path.split("/") if part]
+    return any(looks_like_api_key(part) or looks_like_api_key(unquote(part)) for part in segments)
+
+
+def _is_ip_literal(host: str) -> bool:
+    try:
+        _ = ipaddress.ip_address(host)
+    except ValueError:
+        return False
+    return True
 
 
 def cap_turns(messages: Sequence[ChatMessage], max_turns: int = MAX_TURNS) -> list[ChatMessage]:

@@ -11,7 +11,12 @@ import re
 
 from pydantic import BaseModel, ConfigDict
 
-from command_center.core.chat import CHAT_KINDS, ChatKind
+from command_center.core.chat import (
+    CHAT_KINDS,
+    ChatKind,
+    address_holds_api_key,
+    model_name_looks_like_api_key,
+)
 from command_center.core.ports import AppSettingStore
 from command_center.core.urlcheck import require_chat_base_url
 from command_center.services.errors import ChatNotConfiguredError, InvalidChatSettingError
@@ -27,6 +32,7 @@ MAX_MODEL_LENGTH = 100
 _ON = "on"
 _OFF = "off"
 _MODEL = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:/@+-]*")
+_KEY_IN_FIELD = "The {field} looks like an API key; keys go on the key card, not in this field"
 
 
 class ChatDefaults(BaseModel):
@@ -67,7 +73,12 @@ def normalise_provider(
         raise InvalidChatSettingError(msg)
     address = (base_url or "").strip() or None
     name = (model or "").strip() or None
-    if name is not None and (len(name) > MAX_MODEL_LENGTH or not _MODEL.fullmatch(name)):
+    if name is not None and len(name) > MAX_MODEL_LENGTH:
+        msg = f"The model name must be at most {MAX_MODEL_LENGTH} characters"
+        raise InvalidChatSettingError(msg)
+    if name is not None and model_name_looks_like_api_key(name):
+        raise InvalidChatSettingError(_KEY_IN_FIELD.format(field="model name"))
+    if name is not None and not _MODEL.fullmatch(name):
         msg = "The model name must be 1 to 100 letters, digits or . _ : / @ + -"
         raise InvalidChatSettingError(msg)
     if chosen == "gemini":
@@ -83,6 +94,8 @@ def normalise_provider(
 
 
 def _checked_address(address: str) -> str:
+    if address_holds_api_key(address):
+        raise InvalidChatSettingError(_KEY_IN_FIELD.format(field="server address"))
     if len(address) > MAX_URL_LENGTH:
         msg = "The server address is too long"
         raise InvalidChatSettingError(msg)

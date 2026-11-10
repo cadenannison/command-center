@@ -224,3 +224,65 @@ def test_an_address_with_a_query_key_is_not_echoed_back(rig: WebChatRig) -> None
 
     assert "must not carry a query string" in html
     assert "fake-key-98765" not in html
+
+
+# --- rows from the C2 review: what a refusal never echoes and never stores ----------------------
+
+PATH_KEY = "AI" + "za" + "fake1234" * 4 + "x"  # built from parts: no scanner sees a key literal
+
+
+def stored(rig: WebChatRig) -> list[str | None]:
+    return [rig.chat.store.get(f"chat.{name}") for name in ("kind", "base_url", "model")]
+
+
+def test_an_address_with_a_fragment_is_refused_not_echoed_and_not_stored(rig: WebChatRig) -> None:
+    html = save(rig, kind="ollama", base_url="http://localhost:11434/#fake-frag-4321", model="m")
+
+    assert "must not carry a query string or fragment" in html
+    assert "fake-frag-4321" not in html
+    assert stored(rig) == [None, None, None]
+
+
+@pytest.mark.parametrize("field", ["base_url", "model"])
+def test_a_value_over_the_limit_is_refused_with_the_fixed_text_and_not_sent_back(
+    rig: WebChatRig, field: str
+) -> None:
+    fields = {"kind": "ollama", "base_url": "http://localhost:11434", "model": "m"}
+    fields[field] = "x" * 8193
+
+    html = save(rig, **fields)
+
+    assert "A value is longer than 8192 characters; nothing was saved." in html
+    assert "xxxxxxxxxx" not in html
+    assert stored(rig) == [None, None, None]
+
+
+@pytest.mark.parametrize("host", ["localhost.", "foo.localhost"])
+def test_a_local_name_with_a_dot_is_accepted_by_the_literal_rules(
+    rig: WebChatRig, host: str
+) -> None:
+    """Both are local names, so the lookup at call time decides; the saved card is not refused."""
+    html = save(rig, kind="ollama", base_url=f"http://{host}:11434", model="m")
+
+    assert "Saved." in html
+    assert rig.chat.store.get("chat.base_url") == f"http://{host}:11434"
+
+
+@pytest.mark.parametrize("host", ["localhost.example.com", "foo.localhost.example.com"])
+def test_a_public_name_that_only_starts_like_localhost_is_refused_over_http(
+    rig: WebChatRig, host: str
+) -> None:
+    html = save(rig, kind="ollama", base_url=f"http://{host}:11434", model="m")
+
+    assert "Rejected URL" in html
+    assert stored(rig) == [None, None, None]
+
+
+def test_a_key_in_the_address_path_is_refused_not_echoed_and_not_stored(rig: WebChatRig) -> None:
+    html = save(
+        rig, kind="openai_compatible", base_url=f"https://api.example.com/{PATH_KEY}", model="m"
+    )
+
+    assert "looks like an API key" in html
+    assert PATH_KEY not in html
+    assert stored(rig) == [None, None, None]
