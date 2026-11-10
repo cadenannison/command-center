@@ -18,7 +18,7 @@ No I/O, clock, randomness, environment or globals; time, randomness and ids come
 - `sync_state`: `SyncState`, `SyncStatus` (moved from `services.models`, which re-exports them; decision 0071).
 - `resilience`: `RetryPolicy`, `DEFAULT_RETRY_POLICY`, `DEFAULT_VISIBILITY_TIMEOUT`, `BreakerPhase`, `BreakerState`, `CircuitBreaker`.
 - `summary`: `DailySummary`, `build_prompt`, `template_summary`, `MAX_PROMPT_ITEMS`, `ITEM_TEXT_LIMIT`.
-- `chat`: `ChatMessage`, `ChatKind`, `CHAT_KINDS`, `looks_like_api_key`, `address_holds_api_key`, `cap_turns`, `build_context`, `build_system`, `MAX_TURNS`, `MAX_MESSAGE_CHARS`, `MAX_CONTEXT_CHARS`, `MAX_REPLY_TOKENS`, `AGENDA_DAYS`, `HISTORY_DAYS`, `CONTEXT_START`, `CONTEXT_END`.
+- `chat`: `ChatMessage`, `ChatKind`, `CHAT_KINDS`, `looks_like_api_key`, `model_name_looks_like_api_key`, `address_holds_api_key`, `cap_turns`, `build_context`, `build_system`, `MAX_TURNS`, `MAX_MESSAGE_CHARS`, `MAX_CONTEXT_CHARS`, `MAX_REPLY_TOKENS`, `AGENDA_DAYS`, `HISTORY_DAYS`, `CONTEXT_START`, `CONTEXT_END`.
 - `pairing`: `Device`, `RefreshRecord`, `PairingOffer`, `IssuedTokens`, `FailureLimiter`, `hash_token`, `hashes_match`, `is_plausible_token`, `clean_device_name`, `PAIRING_TOKEN_BYTES`, `CREDENTIAL_TOKEN_BYTES`, `DEVICE_ID_BYTES`, `PAIRING_TTL`, `ACCESS_TTL`, `MAX_DEVICE_NAME`, `FAILURE_LIMIT`, `LOCK_DURATION`, `DEFAULT_DEVICE_NAME`.
 - `hosts`: `Exposure`, `classify_request`, `host_name`, `is_proxy_header`, `LOOPBACK_HOSTS`, `PROXY_HEADER_NAMES`.
 

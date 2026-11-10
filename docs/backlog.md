@@ -68,7 +68,7 @@ Status is one of `proposed` (written down, not yet decided), `accepted` (we will
 - Touches: `templates/base.html`, `templates/_htmx_errors.js`, `templates/_chat_parts.html`, `tests/test_web_pages.py` (the task card must say `tests: modify`).
 
 ## Pairing: purge superseded refresh rows after the reuse-detection window (about 96 rows a day per device)
-- Status: proposed
+- Status: proposed (second review, finding 10; reuse detection needs superseded rows for a window, so purge after that window)
 - Why: every refresh rotates the device's refresh credential and keeps the superseded row so a reused token can be detected, so rows pile up at about 96 a day per device (one refresh before each 15-minute access token ends).
 - Idea: delete a superseded refresh row once the reuse-detection window has passed, in the same transaction as a refresh or in a periodic purge, with the window and the batch size named in the code; a test shows a reuse inside the window still revokes the device and a reuse after it is only refused.
 - Touches: `storage/sqlite_devices.py`, `services/pairing.py`, `docs/contracts/storage.md`, a new decision.

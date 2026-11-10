@@ -5,36 +5,32 @@ task ends: edit the lines, do not append a log. Decisions and their reasons live
 ideas not yet accepted live in `docs/backlog.md`. This file holds neither.
 
 ## Last updated
-2026-11-10, HEAD `222e82f` (feat: chat page and AI provider settings).
+2026-11-10, HEAD `7d30913` (chore: raise test floor to 4446).
 
-## In flight (uncommitted in the working tree)
-- Redaction hardening: `core/redact.py` and its tests (decisions 0240-0244, 0255).
-- Provider and outbound-path hardening: summary providers, city search, chat (decisions 0245, 0246).
-- Test rigs and guards: schema guard, auth rig, context preview (decisions 0247-0249).
-- Agent-cost aids: this file, the `CLAUDE.md` in each layer, `docs/generated/module-index.md` and
-  `decisions-by-file.md`, `mise run test:for`, the fingerprint in `scripts/hooks/stop-gate.sh`, and the
-  `*-engineer` agents in `.claude/agents/` (decisions 0250-0254).
-- Chat fixes from the C2 review (task C3, decisions 0256-0258): opt-ins the page showed are checked on
-  send, one 120 s deadline covers the lock wait and the provider call, key-shaped model names and
-  addresses are refused by the redaction rule. Open: `tests/test_redact_gaps.py` idempotence property
-  test fails intermittently in the full run (passes alone); it belongs to the redaction work.
-- The human reviews the diff and commits. Agents never commit (AGENTS.md).
+## In flight
+Nothing. The working tree was clean at HEAD before the docs tidy (card D1); the redaction, provider,
+rig and agent-cost work (decisions 0240-0258) and the chat fixes are all committed. Agents never commit
+(AGENTS.md); the human reviews the diff and commits.
 
-## Gate state (last full `mise run check`)
-| Gate | State |
-|---|---|
-| `fmt:check`, `lint`, `typecheck`, `arch`, `gen:check`, `audit`, `secrets` | pass |
-| `test` | 2 failures, both Hypothesis cases in the redaction tests: `tests/test_redact.py::test_redact_replaces_any_separator_joined_number_of_six_or_more_digits` (`x 0.0.0.0 y`: the test says fewer than 6 digits stay as written, decision 0244 masks every address as `[ip]`) and `tests/test_redact_gaps.py::test_redact_is_idempotent_on_text_built_from_the_new_rules_pieces` (`02026-11-09www.code `: the number mask leaves `]` before `www.code`, so a second pass masks it as `[url]`). Both need a decision; the six-digit `x 0 0 [ip] y` case is fixed by 0255. |
+## Gate state
+Seen on 2026-11-10: `mise run check:fast` passes (fmt:check, lint, typecheck, arch: 12 contracts kept,
+0 broken); `mise run test:count` prints 4446 and `.test-floor` is 4446. No known red gates. The
+intermittent redaction idempotence failure noted earlier has not been reproduced in this check; it
+was not re-run in the full suite by card D1.
 
 ## Next
-- Decision 0255 (filed): the IPv4 rule runs after the digit-group rule; it amends 0240's rule order.
-- Settle the two redaction test failures above (test change for the first, bare-URL lookbehind or rule order for the second).
+- Card G1: Gmail pending-connect wording (decisions 0190-0194).
+- Then the UI redesign.
+- Remaining backlog (`docs/backlog.md`): Postgres sync vs check-off deadlock retry (0233),
+  `CHAT_TRUST_ENV` opt-in (0225), move the `base.html` error handler to a static file if a CSP is added
+  (0212), pairing refresh-row purge, `GeminiIntegration.validate` catch-all, save chats,
+  summary-provider unification, and the pytest-asyncio loop-scope setting (the human edits
+  `pyproject.toml`). Also accepted: the city-name weather form.
 - Run a layer agent (adapter-, services-, storage-, api-, web-engineer) on the next real task; none has
   been tried yet. Watch whether the under-200-word reports hold.
 - Optional: the read-deny list in `.claude/settings.json` (`uv.lock`, `.venv`, caches); only the human
-  edits that file. Keep `docs/generated/openapi.json` readable: `api-reference.md` lists only method,
-  path and summary, so parameters and schemas are only in `openapi.json`.
-- Backlog items marked `accepted`: see `docs/backlog.md` (city-name weather form).
+  edits that file. `api-reference.md` lists only method, path and summary, so parameters and schemas
+  are only in `openapi.json` (grep it, never read it whole).
 
 ## Known quirks
 - `guard-bash.sh` blocks a Bash command that merely contains words like "commit" after "git" (for
