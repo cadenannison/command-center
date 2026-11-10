@@ -1125,7 +1125,7 @@
                 }
               }
             },
-            "description": "Chat is off, or there is no such conversation"
+            "description": "Chat is not wired into this server"
           },
           "409": {
             "content": {
@@ -1136,33 +1136,6 @@
               }
             },
             "description": "Chat is on but its provider setting is unusable"
-          },
-          "429": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorBody"
-                }
-              }
-            },
-            "description": "Too many messages in the last minute; wait Retry-After seconds",
-            "headers": {
-              "Retry-After": {
-                "schema": {
-                  "type": "integer"
-                }
-              }
-            }
-          },
-          "502": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorBody"
-                }
-              }
-            },
-            "description": "The chat provider failed; the detail is redacted"
           }
         },
         "security": [
