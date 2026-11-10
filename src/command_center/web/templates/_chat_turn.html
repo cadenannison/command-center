@@ -1,0 +1,6 @@
+{% from "_chat_parts.html" import new_chat, message_box %}
+<div class="turn me"><p class="who">You</p><p class="said">{{ message }}</p></div>
+<div class="turn bot"><p class="who">Assistant</p><p class="said">{{ reply }}</p></div>
+<input type="hidden" id="chat-conversation" name="conversation_id" value="{{ id }}" hx-swap-oob="true">
+{{ message_box(oob=True) }}
+{{ new_chat(id, oob=True) }}

@@ -1,0 +1,7 @@
+{% macro new_chat(conversation_id="", oob=False) %}
+{% if conversation_id %}<button type="button" class="secondary" id="new-chat"{% if oob %} hx-swap-oob="true"{% endif %} hx-delete="/v1/chat/{{ conversation_id }}" hx-swap="none" hx-disabled-elt="this" hx-on::config-request="if (event.detail.verb === 'delete') { delete event.detail.headers['Content-Type']; }" hx-on::after-request="if (event.detail.successful || event.detail.xhr.status === 404) { htmx.ajax('POST', '/chat/new', {source: this, target: '#chat-panel', swap: 'outerHTML'}); }">New chat</button>
+{% else %}<button type="button" class="secondary" id="new-chat"{% if oob %} hx-swap-oob="true"{% endif %} hx-post="/chat/new" hx-target="#chat-panel" hx-swap="outerHTML" hx-disabled-elt="this">New chat</button>{% endif %}
+{% endmacro %}
+{% macro message_box(oob=False, disabled=False) %}
+<textarea id="chat-message" name="message" rows="3" maxlength="2000" required spellcheck="true"{% if oob %} hx-swap-oob="true" autofocus{% endif %}{% if disabled %} disabled{% endif %}></textarea>
+{% endmacro %}

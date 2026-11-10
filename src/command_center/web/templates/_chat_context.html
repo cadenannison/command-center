@@ -1,0 +1,18 @@
+<div id="chat-context">
+<details class="howto"{% if c.open_context %} open{% endif %}><summary>What the assistant can see</summary>
+<p>Each message you send goes to {{ c.provider }} together with the text below. It has no tools: it can only answer in text, and it cannot change, create or send anything.</p>
+<ul>
+<li>Always: the titles and due dates of your open items for the next 7 days, with addresses and numbers removed.</li>
+<li>Only if you tick it below: what you finished or removed in the last 7 days, or the notes you wrote on items.</li>
+<li>Never: email, and never anything else on your computer.</li>
+</ul>
+{% if c.problem %}<p class="status-error">The text cannot be shown yet: {{ c.problem }}</p>
+{% else %}<p class="hint">This is exactly what the next message would carry along. Nothing is sent by looking at it.</p>
+<pre class="context">{{ c.context }}</pre>{% endif %}
+</details>
+<form id="chat-context-form" hx-post="/chat/context" hx-trigger="change" hx-target="#chat-context" hx-swap="outerHTML" hx-sync="this:replace">
+<label class="check"><input type="checkbox" name="include_history" value="on"{% if c.include_history %} checked{% endif %}> Also show it what I finished or removed in the last 7 days</label>
+<label class="check"><input type="checkbox" name="include_notes" value="on"{% if c.include_notes %} checked{% endif %}> Also show it the notes I wrote on items</label>
+<p class="hint">Both are off by default and apply to this conversation only: opening this page or pressing New chat switches them off again.</p>
+</form>
+</div>

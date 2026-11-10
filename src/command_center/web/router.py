@@ -3,6 +3,8 @@
 from fastapi import APIRouter, Depends, Request
 
 from command_center.services.container import Container
+from command_center.web.ai_settings import ai_router
+from command_center.web.chat_page import chat_router
 from command_center.web.csrf import new_token, require_csrf
 from command_center.web.history import history_router
 from command_center.web.item_routes import item_router
@@ -36,6 +38,8 @@ def create_router(
     router.include_router(pages_router(get_container, renderer))
     router.include_router(settings_router(get_container, renderer))
     router.include_router(pair_router(get_container, renderer))
+    router.include_router(chat_router(get_container, renderer))
+    router.include_router(ai_router(get_container, renderer))
     router.include_router(summary_router(get_container, renderer))
     router.include_router(item_router(get_container, renderer))
     router.include_router(history_router(get_container, renderer))

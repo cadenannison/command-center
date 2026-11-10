@@ -1,0 +1,17 @@
+{% from "_chat_parts.html" import new_chat, message_box %}
+<section class="panel chat" id="chat-panel" aria-labelledby="h-chat">
+<h2 id="h-chat">Ask about your schedule</h2>
+<p class="status" id="chat-provider">Provider: <strong>{{ c.provider }}</strong> · model: <strong>{{ c.model or "not set" }}</strong>{% if not c.enabled %} · <span class="status-error">chat is off</span>{% endif %}</p>
+{% if not c.enabled %}<p class="note">Chat is off, so nothing is sent anywhere. Turn it on in <a href="/settings#ai-card">Settings</a>, on the AI assistant card.</p>{% endif %}
+{% if c.problem %}<p class="status-error">{{ c.problem }} Fix it in <a href="/settings#ai-card">Settings</a>.</p>{% endif %}
+{% include "_chat_context.html" %}
+<div class="transcript" id="transcript" aria-live="polite"></div>
+<p class="flash" id="chat-flash" role="status" aria-live="polite"></p>
+<form id="chat-form" autocomplete="off" hx-post="/chat/message" hx-target="#transcript" hx-swap="beforeend" hx-sync="this:drop" hx-disabled-elt="#chat-send" hx-indicator="#chat-busy" hx-request='{"timeout": 120000}'>
+<input type="hidden" id="chat-conversation" name="conversation_id" value="">
+<label for="chat-message">Your question</label>
+{{ message_box(disabled=not c.enabled or c.problem) }}
+<div class="actions"><button type="submit" id="chat-send"{% if not c.enabled or c.problem %} disabled{% endif %}>Send</button><span class="busy" id="chat-busy">Waiting for the assistant…</span></div>
+</form>
+<div class="actions">{{ new_chat() }}</div>
+</section>

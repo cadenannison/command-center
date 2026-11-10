@@ -142,3 +142,79 @@ HOWTO: dict[str, HowTo] = {
 def howto_for(source: str) -> HowTo | None:
     """The steps for source, or None when it has none."""
     return HOWTO.get(source)
+
+
+# The AI settings card's guides, one per provider (decision 0202). Titles are what the summary says.
+AI_HOWTOS: tuple[tuple[str, HowTo], ...] = (
+    (
+        "Ollama",
+        HowTo(
+            (
+                (
+                    "Install Ollama from https://ollama.com and start it. It answers on this Mac "
+                    "at http://localhost:11434."
+                ),
+                (
+                    "In a terminal run `ollama pull llama3.2` (or another model; `ollama list` "
+                    "shows the names you have)."
+                ),
+                (
+                    "Here choose the provider Ollama, leave the address empty or enter "
+                    "http://localhost:11434, and enter the model name as `ollama list` shows it."
+                ),
+                "Save, then press Test connection. No key is needed.",
+            ),
+            (
+                "Ollama on another computer on your network works too: enter its address, for "
+                "example http://192.168.1.20:11434. Plain http is allowed only for this Mac and "
+                "your own network."
+            ),
+        ),
+    ),
+    (
+        "LM Studio or llama.cpp",
+        HowTo(
+            (
+                (
+                    "LM Studio: load a model, open the Developer tab and start the local server "
+                    "(it answers at http://localhost:1234/v1; menu names may differ). llama.cpp: "
+                    "run `llama-server -m your-model.gguf --port 8080`, which answers at "
+                    "http://localhost:8080/v1."
+                ),
+                (
+                    "Here choose the provider OpenAI-compatible server and enter that address, "
+                    "including the /v1 at the end."
+                ),
+                "Enter the model name the server lists (llama.cpp accepts any name).",
+                "Save, then press Test connection.",
+            ),
+            (
+                "These servers need no key. If yours does, enter it on the Chat provider key "
+                "card; it is sent only over https or to this Mac, never in clear text across "
+                "your network."
+            ),
+        ),
+    ),
+    (
+        "Gemini",
+        HowTo(
+            (
+                "Choose the provider Gemini and leave the address empty.",
+                (
+                    "Chat with Gemini uses the key on the Gemini summaries card; add it there if "
+                    "you have not (https://aistudio.google.com/apikey, the page layout may "
+                    "differ)."
+                ),
+                (
+                    "The model can stay empty to use the built-in default. Save, then press Test "
+                    "connection."
+                ),
+            ),
+            (
+                "On Gemini's free tier Google may use what you send to improve its products. "
+                "With Gemini the chat sends your agenda text (titles and due dates, redacted) to "
+                "Google."
+            ),
+        ),
+    ),
+)

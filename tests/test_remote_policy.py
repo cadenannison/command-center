@@ -41,6 +41,7 @@ POLICY: dict[tuple[str, str], str] = {
     ("GET", "/settings"): HIDDEN,  # prefilled non-secret values: the page's own check (0211)
     ("GET", "/settings/{source}/status"): HIDDEN,
     ("GET", "/pair"): HIDDEN,
+    ("GET", "/chat"): HIDDEN,  # the Mac's own chat page: the page's own check answers 404 (0203)
     ("GET", "/static"): READ,
     ("GET", "/openapi.json"): READ,
     ("GET", "/docs"): READ,
@@ -75,6 +76,11 @@ POLICY: dict[tuple[str, str], str] = {
     ("DELETE", "/items/{item_id}"): DENIED,
     ("POST", "/tasks"): DENIED,
     ("POST", "/pair/code"): DENIED,
+    ("POST", "/chat/message"): DENIED,  # sends the agenda to a provider (0203)
+    ("POST", "/chat/context"): DENIED,  # the history and notes opt-ins (0200)
+    ("POST", "/chat/new"): DENIED,
+    ("PUT", "/ai/settings"): DENIED,  # provider URL and model are the Mac's own (0203)
+    ("POST", "/ai/test"): DENIED,
     ("POST", "/summary/settings"): DENIED,  # the opt-in switch is the Mac's own (0112)
     ("POST", "/summary/generate"): DENIED,  # it calls the provider, so only the Mac may (0113)
 }

@@ -7,6 +7,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, Request
 from fastapi.responses import HTMLResponse
 
 from command_center.services.container import Container
+from command_center.web.ai_settings import ai_card
 from command_center.web.cards import card_view
 from command_center.web.checklist import checklist_rows
 from command_center.web.loopback import require_loopback
@@ -28,6 +29,7 @@ def settings_router(get_container: Callable[..., Container], renderer: Renderer)
             "active": "settings",
             "cards": [card_view(item) for item in items],
             "checklist": checklist_rows(services.settings.checklist(items)),
+            "ai": None if services.chat is None else await ai_card(services.chat),
         }
         return renderer.render(request, "settings.html", context)
 

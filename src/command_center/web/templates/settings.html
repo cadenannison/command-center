@@ -8,4 +8,5 @@
 <span class="chip chip-{{ row.state }}">{{ row.state_label }}</span>{% if row.when %}<span class="muted">{{ row.when }}</span>{% endif %}</li>{% endfor %}</ul></div>{% endif %}
 {% if cards %}{% for card in cards %}{% include "_card.html" %}{% endfor %}
 {% else %}<p class="muted">No sources are registered.</p>{% endif %}
+{% if ai %}{% include "_ai_card.html" %}{% endif %}
 {% endblock %}

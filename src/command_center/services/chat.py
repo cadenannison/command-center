@@ -53,6 +53,9 @@ MESSAGE_WINDOW = timedelta(seconds=60)
 MAX_CONVERSATIONS = 20
 MAX_REPLY_CHARS = 8000
 _UNEXPECTED_DETAIL = "The chat provider failed: the request could not be completed"
+# The connection test sends only these two fixed lines: no agenda, no history, no notes.
+TEST_SYSTEM = "This is a connection test. Reply with the single word OK."
+TEST_PROMPT = "Reply with OK."
 
 logger = logging.getLogger(__name__)
 
@@ -110,6 +113,11 @@ class ChatService:
         # One user, one provider: one turn at a time keeps a conversation's order and cost small.
         self._lock = asyncio.Lock()
 
+    @property
+    def settings(self) -> ChatSettings:
+        """The stored chat settings, for the settings page and the chat page (decision 0200)."""
+        return self._settings
+
     async def enabled(self) -> bool:
         """Whether the user opted in to chat."""
         return await self._settings.enabled()
@@ -158,6 +166,21 @@ class ChatService:
             include_notes=config.include_notes,
             context=await self._context(config),
         )
+
+    async def test_connection(self) -> None:
+        """Send one fixed prompt to the stored provider; return when it answered.
+
+        Works while chat is off, because a user checks a provider before opting in; what goes is
+        two fixed lines and nothing of the user's (decision 0201). It counts against the message
+        limit and runs one at a time with the chat turns. Raises ChatNotConfiguredError,
+        ChatRateLimitedError and ChatUnavailableError (fixed, redacted text).
+        """
+        _ = await self._settings.config()
+        self._admit()
+        async with self._lock:
+            config = await self._settings.config()
+            turns = [ChatMessage(role="user", content=TEST_PROMPT)]
+            _ = await self._ask(config, turns, TEST_SYSTEM)
 
     async def delete(self, conversation_id: str) -> None:
         """Forget a conversation; ChatConversationNotFoundError if there is none."""

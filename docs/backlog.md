@@ -54,3 +54,15 @@ Status is one of `proposed` (written down, not yet decided), `accepted` (we will
 - Why: on Postgres a check-off on an item stored outside a running sync's window can deadlock with that sync; the sync is redelivered, but the check-off shows a server error (`_tolerating_concurrent_writes` catches only `IntegrityError`).
 - Idea: retry the check-off once when Postgres reports a deadlock (a named failure class, a cap of one retry, a logged reason), and add a two-connection test for the interleaving that runs in the CI integration job, where Postgres is available.
 - Touches: `storage/sqlite_items.py` (`_tolerating_concurrent_writes`), a new test beside `tests/test_ledger_races.py`.
+
+## Chat: optional proxy and private CA support
+- Status: proposed (decision 0225)
+- Why: chat calls ignore `HTTP_PROXY`, the system proxy and `SSL_CERT_FILE` (`trust_env=False`), so a user behind a mandatory proxy or a private CA cannot reach a public https provider.
+- Idea: an opt-in `CC_CHAT_TRUST_ENV` that turns `trust_env` back on for chat, off by default, with the proxy still unable to bypass the address checks it was added to protect.
+- Touches: `adapters/chat_http.py` (`post_json`), `config.py`, `app.py`, `docs/contracts/adapters.md`, a new decision.
+
+## Web: move the inline htmx scripts to a static file if a CSP is added
+- Status: proposed (decision 0212)
+- Why: the global error listener is inline in `base.html`, and the chat page's New chat button carries inline `hx-on` handlers (decision 0203); a Content-Security-Policy would block both.
+- Idea: move the listener to `web/static/cc.js` loaded after htmx and replace the `hx-on` handlers with a listener there; `test_pages_load_nothing_from_outside` then lists the second script.
+- Touches: `templates/base.html`, `templates/_htmx_errors.js`, `templates/_chat_parts.html`, `tests/test_web_pages.py` (the task card must say `tests: modify`).
