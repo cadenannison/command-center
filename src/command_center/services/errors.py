@@ -30,6 +30,38 @@ class PairingLockedError(Exception):
         self.retry_after_seconds = retry_after_seconds
 
 
+class GeocodeRateLimitedError(Exception):
+    """Too many city searches in the last minute; nothing was sent to the provider."""
+
+    def __init__(self, retry_after_seconds: int) -> None:
+        super().__init__(f"Too many city searches; try again in {retry_after_seconds} seconds")
+        self.retry_after_seconds = retry_after_seconds
+
+
+class GeocodeUnavailableError(Exception):
+    """The city search provider failed. The message is redacted and never holds the query."""
+
+
+class SummaryUnavailableError(Exception):
+    """The summary provider could not produce a summary.
+
+    `reason` is `rate_limited` or `failed`. The message carries the reason only, never the
+    provider's own text, so it is safe to show.
+    """
+
+    def __init__(self, reason: str) -> None:
+        super().__init__(f"The summary provider is unavailable: {reason}")
+        self.reason = reason
+
+
+class UnknownSummaryProviderError(ValueError):
+    """The named summary provider is not one of the supported ones."""
+
+    def __init__(self, provider: str) -> None:
+        super().__init__(f"Unknown summary provider {provider!r}: choose gemini or ollama")
+        self.provider = provider
+
+
 _MESSAGE_LIMIT = 200
 
 

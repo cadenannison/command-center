@@ -9,7 +9,7 @@ from fastapi.responses import HTMLResponse
 
 from command_center.services.container import Container
 from command_center.web.render import Renderer
-from command_center.web.summary import load_summary
+from command_center.web.summary import summary_card, summary_context
 from command_center.web.views import month_view, today_view, week_view
 
 DayParam = Annotated[date | None, Query(alias="date")]
@@ -30,8 +30,8 @@ def pages_router(get_container: Callable[..., Container], renderer: Renderer) ->
         events = await agenda.day(shown)
         attention = await agenda.attention()
         view = today_view(events, attention, shown, agenda.tz)
-        summary = await load_summary(services, shown)
-        context = {"active": "today", "view": view, "summary": summary}
+        card = await summary_card(services, shown, generate=False)
+        context = {"active": "today", "view": view, **summary_context(card)}
         return renderer.render(request, "today.html", context)
 
     @router.get("/week", response_class=HTMLResponse)

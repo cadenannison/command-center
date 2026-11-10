@@ -4,7 +4,7 @@ from datetime import date
 from pathlib import Path
 
 from pydantic import ValidationError
-from sqlalchemy import Date, Engine, String, create_engine, select
+from sqlalchemy import Date, Engine, String, create_engine, delete, select
 from sqlalchemy.engine import make_url
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 
@@ -46,6 +46,13 @@ class SqliteSummaryStore:
         row = _SummaryRow(user_id=user_id, day=day, summary=summary.model_dump_json())
         with self._sessions.begin() as session:
             session.merge(row)
+
+    def delete(self, day: date, *, user_id: str = "local") -> None:
+        statement = delete(_SummaryRow).where(
+            _SummaryRow.user_id == user_id, _SummaryRow.day == day
+        )
+        with self._sessions.begin() as session:
+            session.execute(statement)
 
     def latest_before(self, day: date, *, user_id: str = "local") -> DailySummary | None:
         statement = (

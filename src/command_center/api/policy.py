@@ -3,6 +3,8 @@
 No I/O. A phone is any non-loopback request (decision 0057, item 5; decision 0060). It may read
 and may `POST /v1/sync`. Everything else is refused, so a route added tomorrow is denied for a
 phone until someone lists it here (`tests/test_remote_policy.py` fails until it is classified).
+The item writes (`POST /v1/items`, `PATCH`/`DELETE /v1/items/{id}`, the `done` and `notes`
+routes; decision 0126) are therefore loopback-only: they are not in `REMOTE_WRITES`.
 """
 
 from http import HTTPStatus
@@ -20,8 +22,14 @@ JSON_ONLY_PREFIX = "/v1/"
 JSON_ONLY_EXEMPT = frozenset({"/v1/pair", "/v1/pair/refresh"})
 
 
+# Reads a phone may not make: the Mac's own web UI uses them (decision 0180). Any safe method.
+REMOTE_DENIED_READS = frozenset({"/v1/geocode"})
+
+
 def remote_may_call(method: str, path: str) -> bool:
     """Whether a paired phone may make this request. Default deny for anything but a read."""
+    if path in REMOTE_DENIED_READS:
+        return False
     if method in SAFE_METHODS:
         return True
     return (method, path) in REMOTE_WRITES

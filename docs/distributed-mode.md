@@ -26,9 +26,10 @@ flowchart LR
 ```
 
 - A job carries a source name, a window and ids; never a credential. Workers read credentials from the secret store themselves.
-- The api fetches nothing. Connecting a source validates and stores the credentials, then queues one sync job; `GET /v1/settings` and the Settings page show the state the normalizer recorded in the shared database (0074).
+- The api fetches nothing and writes no source events; it writes only the user's own item marks, notes and local tasks. Connecting a source validates and stores the credentials, then queues one sync job; `GET /v1/settings` and the Settings page show the state the normalizer recorded in the shared database (0074).
 - A worker fetches under `RetryPolicy` and a per-source `CircuitBreaker`; it never writes events. The normalizer is the only writer of events and sync state.
 - Each source has a generation number in the database. Disconnecting bumps it; every job carries the number current when it was queued, the worker copies it into its report, and the normalizer applies a report only if its number is the current one, checked in the same transaction that writes the events and the state, which are stamped with it (0074, 0075). A report that is not current is dropped, and so is whatever an older generation left behind.
+- The item ledger (check-offs, notes, completions and removals seen at the source, decision 0120) is written in the same transaction as the events. In the normalizer that is inside `ReportSink.apply`, after the generation check: a report of an old generation, or one older than the stored state, writes no ledger rows, and a crash after the write and before the acknowledgement leaves the same rows after redelivery, because the times come from the report. Purging an old generation (a disconnect) deletes its ledger rows and notes with its events (decisions 0121, 0127). The api writes the user's own check-offs, notes and local tasks directly; those are never touched by a sync or by a disconnect of a source.
 - Redis streams give at-least-once delivery. Every consumer is idempotent, so a repeat changes nothing.
 
 ## Failure walkthrough

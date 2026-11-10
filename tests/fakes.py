@@ -156,6 +156,9 @@ class InMemorySummaryStore:
     def put(self, day: date, summary: DailySummary, *, user_id: str = "local") -> None:
         self._summaries[(user_id, day)] = summary
 
+    def delete(self, day: date, *, user_id: str = "local") -> None:
+        self._summaries.pop((user_id, day), None)
+
     def latest_before(self, day: date, *, user_id: str = "local") -> DailySummary | None:
         days = [stored for owner, stored in self._summaries if owner == user_id and stored < day]
         return self._summaries[(user_id, max(days))] if days else None
@@ -177,3 +180,16 @@ class FakeSummaryProvider:
         if isinstance(self._outcome, Exception):
             raise self._outcome
         return self._outcome
+
+
+class InMemoryAppSettingStore:
+    """AppSettingStore backed by a dict keyed by (user_id, key)."""
+
+    def __init__(self) -> None:
+        self._values: dict[tuple[str, str], str] = {}
+
+    def get(self, key: str, *, user_id: str = "local") -> str | None:
+        return self._values.get((user_id, key))
+
+    def set(self, key: str, value: str, *, user_id: str = "local") -> None:
+        self._values[(user_id, key)] = value

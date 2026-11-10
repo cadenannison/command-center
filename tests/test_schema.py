@@ -63,10 +63,10 @@ def test_event_accepts_urgency_bounds(urgency: int) -> None:
 
 def test_event_rejects_unknown_kind() -> None:
     with pytest.raises(ValidationError):
-        make_event(kind="task")
+        make_event(kind="bogus")
 
 
-@pytest.mark.parametrize("kind", ["event", "assignment", "email", "weather"])
+@pytest.mark.parametrize("kind", ["event", "assignment", "email", "weather", "task"])
 def test_event_accepts_each_kind(kind: str) -> None:
     assert make_event(kind=kind).kind == kind
 

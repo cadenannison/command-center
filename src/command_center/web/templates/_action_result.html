@@ -1,0 +1,4 @@
+{% from "_button.html" import connect_button %}
+<p class="flash{% if not ok %} bad{% endif %}" id="result-{{ source }}" role="status" aria-live="polite">{{ message }}</p>
+{% if card %}{% include "_status.html" %}
+{{ connect_button(card, oob=True) }}{% endif %}

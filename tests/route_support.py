@@ -6,7 +6,12 @@ from typing import Any
 
 from starlette.routing import Mount
 
-SAMPLE = {"period": "day", "source": "canvas", "device_id": "no-such-device"}
+SAMPLE = {
+    "period": "day",
+    "source": "canvas",
+    "device_id": "no-such-device",
+    "item_id": "no-such-item",
+}
 SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
 
 

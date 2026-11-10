@@ -2,6 +2,7 @@
 
 import asyncio
 import hashlib
+import logging
 from collections.abc import Mapping
 from datetime import tzinfo
 from urllib.parse import urlsplit
@@ -13,9 +14,12 @@ from command_center.adapters.ical_events import events_in_window, parse_calendar
 from command_center.adapters.net_guard import ensure_public_host
 from command_center.core.errors import AuthExpired, FatalError, TransientError
 from command_center.core.ports import Clock
+from command_center.core.redact import redact
 from command_center.core.schema import Event, ValidationResult
 from command_center.core.urlcheck import require_https_public
 from command_center.core.windows import TimeWindow
+
+logger = logging.getLogger(__name__)
 
 SOURCE_NAME = "learningsuite"
 MAX_FEED_BYTES = 5 * 1024 * 1024
@@ -43,7 +47,7 @@ class IcalFeedAdapter:
         return SOURCE_NAME
 
     async def validate(self, creds: Mapping[str, str]) -> ValidationResult:
-        urls = _urls(creds)
+        urls = feed_urls(creds)
         if not urls:
             return ValidationResult(ok=False, message="Paste at least one feed URL")
         for number, url in enumerate(urls, start=1):
@@ -57,14 +61,16 @@ class IcalFeedAdapter:
         )
 
     async def fetch(self, creds: Mapping[str, str], window: TimeWindow) -> list[Event]:
-        urls = _urls(creds)
+        urls = feed_urls(creds)
         if not urls:
             msg = "Failed to fetch LearningSuite feeds: no feed URLs are configured"
             raise FatalError(msg)
         fetched_at = self._clock.now()
         events: list[Event] = []
+        in_feeds = 0
         for number, url in enumerate(urls, start=1):
             calendar = await self._load(number, url)
+            in_feeds += sum(1 for part in calendar.subcomponents if part.name == "VEVENT")
             try:
                 found = await asyncio.to_thread(
                     events_in_window,
@@ -81,6 +87,9 @@ class IcalFeedAdapter:
                 raise FatalError(msg) from None
             events.extend(found)
         self._forget_unused(urls)
+        if not events:
+            note = zero_items_message(len(urls), in_feeds)
+            logger.info(redact(note), extra={"source": SOURCE_NAME})
         return events
 
     async def _load(self, number: int, url: str) -> Calendar:
@@ -92,7 +101,7 @@ class IcalFeedAdapter:
             raise FatalError(msg) from None
 
     async def _download(self, number: int, url: str) -> bytes:
-        await _check_url(number, url)
+        await check_feed_url(number, url)
         key = hashlib.sha256(url.encode()).hexdigest()
         cached = self._cache.get(key)
         headers = {"Accept": "text/calendar, */*;q=0.1"}
@@ -110,7 +119,7 @@ class IcalFeedAdapter:
                 _raise_for_status(number, response.status_code, has_cache=cached is not None)
                 if response.status_code == _NOT_MODIFIED and cached is not None:
                     return cached[1]
-                body = await _read_capped(number, response)
+                body = await read_feed_capped(number, response)
                 etag = response.headers.get("etag")
         except TimeoutError:
             failure = "timed out"
@@ -131,11 +140,22 @@ class IcalFeedAdapter:
             del self._cache[key]
 
 
-def _urls(creds: Mapping[str, str]) -> list[str]:
+def zero_items_message(feeds: int, events_in_feeds: int) -> str:
+    """Counts only: why a sync of these feeds kept nothing (decision 0140)."""
+    feed_word = "feed" if feeds == 1 else "feeds"
+    event_word = "event" if events_in_feeds == 1 else "events"
+    return (
+        f"Synced 0 items: {feeds} {feed_word}, {events_in_feeds} {event_word} in the feeds, "
+        "0 inside the window"
+    )
+
+
+def feed_urls(creds: Mapping[str, str]) -> list[str]:
+    """The stored feed URLs: one per line, blanks ignored."""
     return [line.strip() for line in creds.get("urls", "").splitlines() if line.strip()]
 
 
-async def _check_url(number: int, url: str) -> None:
+async def check_feed_url(number: int, url: str) -> None:
     """SSRF checks; the URL is a secret so no message quotes it."""
     rejected = False
     host: str | None = None
@@ -181,7 +201,7 @@ def _raise_for_status(number: int, status: int, *, has_cache: bool) -> None:
         raise FatalError(msg)
 
 
-async def _read_capped(number: int, response: httpx.Response) -> bytes:
+async def read_feed_capped(number: int, response: httpx.Response) -> bytes:
     declared = response.headers.get("content-length", "")
     if declared.isdigit() and int(declared) > MAX_FEED_BYTES:
         msg = f"Feed {number}: larger than {MAX_FEED_BYTES // (1024 * 1024)} MB"

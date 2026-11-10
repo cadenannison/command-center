@@ -130,8 +130,13 @@ def test_the_summary_appears_on_the_page_and_in_the_api_when_enabled() -> None:
     assert "A quiet Saturday" in page
 
 
-def test_the_page_has_no_summary_block_while_summaries_are_off(client: TestClient) -> None:
-    assert "Summary" not in client.get("/", params={"date": DAY}).text
+def test_the_page_shows_the_not_enabled_summary_card_while_summaries_are_off(
+    client: TestClient,
+) -> None:
+    page = client.get("/", params={"date": DAY}).text
+
+    assert "The AI summary is not enabled." in page
+    assert "A quiet Saturday" not in page
 
 
 def test_the_lifespan_syncs_connected_sources_without_any_request() -> None:

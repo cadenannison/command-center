@@ -40,6 +40,13 @@ def test_the_walker_finds_the_known_write_routes(rig: AuthRig) -> None:
         ("PUT", "/v1/settings/{source}"),
         ("DELETE", "/v1/settings/{source}"),
         ("DELETE", "/v1/devices/{device_id}"),
+        ("POST", "/v1/items"),
+        ("PATCH", "/v1/items/{item_id}"),
+        ("DELETE", "/v1/items/{item_id}"),
+        ("POST", "/v1/items/{item_id}/done"),
+        ("DELETE", "/v1/items/{item_id}/done"),
+        ("PUT", "/v1/items/{item_id}/notes"),
+        ("DELETE", "/v1/items/{item_id}/notes"),
     }
 
 
@@ -117,7 +124,9 @@ def test_a_refused_write_never_reaches_the_handler(rig: AuthRig) -> None:
         content='{"credentials": {"token": "fake-canvas-token-00000000"}}',
         headers={"Content-Type": "text/plain"},
     )
-    assert rig.local.get("/v1/settings").json() == [{"source": "canvas", "keys": {}, "sync": None}]
+    assert rig.local.get("/v1/settings").json() == [
+        {"source": "canvas", "keys": {}, "sync": None, "values": {}}
+    ]
 
 
 def test_a_phone_that_may_sync_is_still_held_to_json(rig: AuthRig) -> None:

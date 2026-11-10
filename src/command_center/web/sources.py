@@ -2,6 +2,8 @@
 
 from dataclasses import dataclass
 
+from command_center.services.credential_fields import is_secret
+
 MAX_VALUE_LENGTH = 8192  # same bound as the API's CredentialValue
 
 GEMINI_CAVEAT = (
@@ -14,7 +16,7 @@ GEMINI_CAVEAT = (
 
 @dataclass(frozen=True)
 class Field:
-    """One input of a source's form."""
+    """One input of a source's form. `secret` comes from `credential_fields`, never from here."""
 
     key: str
     label: str
@@ -34,37 +36,48 @@ class SourceForm:
     credential_only: bool = False  # an API key: no sync, no items, so no sync state to show
 
 
+def _field(source: str, key: str, label: str, *, multiline: bool = False, hint: str = "") -> Field:
+    return Field(key, label, secret=is_secret(source, key), multiline=multiline, hint=hint)
+
+
 SOURCE_FORMS: dict[str, SourceForm] = {
     "canvas": SourceForm(
         "Canvas",
         (
-            Field("base_url", "Canvas URL", hint="https://school.instructure.com"),
-            Field("token", "Access token", secret=True),
+            _field("canvas", "base_url", "Canvas URL", hint="https://school.instructure.com"),
+            _field("canvas", "token", "Access token"),
         ),
     ),
     "apple_calendar": SourceForm(
         "Apple Calendar",
         (
-            Field("username", "Apple ID"),
-            Field("app_password", "App-specific password", secret=True),
+            _field("apple_calendar", "username", "Apple ID"),
+            _field("apple_calendar", "app_password", "App-specific password"),
         ),
     ),
     "learningsuite": SourceForm(
         "LearningSuite",
-        (Field("urls", "iCal feed URLs", secret=True, multiline=True, hint="One URL per line"),),
+        (
+            _field(
+                "learningsuite", "urls", "iCal feed URLs", multiline=True, hint="One URL per line"
+            ),
+        ),
     ),
     "gmail": SourceForm(
         "Gmail",
-        (Field("client_json", "OAuth client JSON", secret=True, multiline=True),),
+        (_field("gmail", "client_json", "OAuth client JSON", multiline=True),),
         sign_in_wait=True,
     ),
     "weather": SourceForm(
         "Weather",
-        (Field("latitude", "Latitude", hint="40.2338"), Field("longitude", "Longitude")),
+        (
+            _field("weather", "latitude", "Latitude", hint="40.2338"),
+            _field("weather", "longitude", "Longitude"),
+        ),
     ),
     "gemini": SourceForm(
         "Gemini summaries",
-        (Field("api_key", "API key", secret=True),),
+        (_field("gemini", "api_key", "API key"),),
         note=GEMINI_CAVEAT,
         credential_only=True,
     ),

@@ -50,7 +50,28 @@ What to do if you see it:
 
 The other sources keep syncing while Canvas shows Reconnect.
 
-## 5. If something else is wrong
+## 5. LearningSuite connects but shows 0 items
+Run the diagnosis. It reads the feed links already stored in your keychain (you paste nothing), downloads each feed once and prints only counts, categories and dates: never a link, a title, a description or a location, so the whole output is safe to paste ([decision 0140](decisions/0140-learningsuite-diagnosis-is-a-counts-only-subcommand.md)).
+```sh
+uv run command-center diagnose learningsuite
+```
+It prints, per feed, the HTTP status class (2xx/3xx/4xx/5xx), the content kind (`calendar`, `html`, `text`, `json`, `other`, `missing`), the size in bytes, how many VEVENT and VTODO items the feed holds, how many have a start or due date, the earliest and latest date, and where the events fall relative to the **sync window** (from 14 days before today up to, not including, 60 days after it, by UTC dates: the same window a sync uses): inside, before, after, undated, cancelled, or dropped because a recurrence rule could not be expanded. The last line is the conclusion:
+
+| Conclusion line | What it means and what to do |
+|---|---|
+| `no feed URLs are stored` | LearningSuite is not connected. Paste the links in Settings. |
+| `N of M feeds could not be read` | Read each feed's `Problem:` line. `HTTP 4xx` with content `html` is usually a login page or a link that expired or was copied wrongly: copy the course's link again in LearningSuite and paste it in Settings. `5xx` or `could not be reached`: try again later. A sync keeps nothing from a run in which any feed fails. |
+| `feed contains no VEVENT or VTODO` | Every feed is an empty calendar. Nothing to fix here: check the courses' schedules in LearningSuite. |
+| `feed contains only VTODO items` | The feed lists tasks, and Command Center reads events only, so it returns 0. This is a gap in the app, not in your setup: report it to the project manager with the output. |
+| `all events are before the window` / `after the window` / `outside the window` | The feeds work but every event is older than 14 days or 60 or more days away (for example a past semester). Items show once a date falls in the window. |
+| `all events have no start time` | The events carry no start date, so they cannot be placed on a day and are left out. |
+| `all events are cancelled` | Every event is marked cancelled and is skipped. |
+| `some recurring events could not be expanded (N)` | A repeating event has a rule the app cannot read. A sync fails on it and keeps nothing from that feed, so this comes before every other answer. Report it with the output. |
+| `N events fall inside the window: a sync should return them` | The feed is fine. Press the LearningSuite card's button to sync again; if it still shows 0, run `bash scripts/report-state.sh` and send both outputs. |
+
+When a sync keeps nothing the app also writes one counts-only line to its log, for example `Synced 0 items: 3 feeds, 12 events in the feeds, 0 inside the window`; the card itself does not show it ([decision 0141](decisions/0141-zero-item-feed-counts-are-logged-not-shown-on-the-card.md)).
+
+## 6. If something else is wrong
 - **Error** on a source: the card's text is already redacted; run `scripts/report-state.sh` and send the output.
 - Nothing is listening on 8765: another copy is running, or the server did not start; the terminal that runs `uv run command-center` says why.
 - The distributed (Docker) stack has its own guide and a smoke test: [distributed-mode.md](distributed-mode.md).

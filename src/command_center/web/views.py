@@ -26,6 +26,8 @@ class Row:
     urgent: bool
     status: str | None = None
     link: str | None = None
+    # 1-10, or None for a done or ended item (core/priority.py).
+    priority: int | None = None
 
 
 @dataclass(frozen=True)
@@ -132,6 +134,7 @@ def to_row(event: Event, tz: tzinfo, day: date | None = None, *, dated: bool = F
         urgent=event.urgency >= ATTENTION_URGENCY,
         status=event.status,
         link=safe_link(event.link),
+        priority=event.priority,
     )
 
 

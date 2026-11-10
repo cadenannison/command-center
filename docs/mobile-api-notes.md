@@ -52,8 +52,16 @@ Writes under `/v1` are JSON only: any body needs `Content-Type: application/json
 A write with no body (`POST /v1/sync`) sends no Content-Type. Do not send an `Origin` header (a native
 app does not by default): one that is not the server's own Host is refused with 403.
 
+## Items, notes and history (additive; decisions 0120-0127, 0130, 0131)
+- **Ignore unknown event kinds.** `EventKind` gained `task` (a task the user made on the Mac, source `local`). A client that does not know a kind must skip the event, not fail. Decision 0124.
+- Every event has `has_note` (bool, default false). It says an item has a note; the text is only in `GET /v1/history`.
+- `GET /v1/history?from=YYYY-MM-DD&to=YYYY-MM-DD` is a read, so a paired phone may call it. Days are in the Mac's configured timezone; a day with a note shows the note, which is plain text (render it as text, never as markup). At most 366 days per call.
+- The writes (`POST /v1/items`, `PATCH`/`DELETE /v1/items/{id}`, `POST`/`DELETE .../done`, `PUT`/`DELETE .../notes`) are loopback-only: a paired phone gets 403 (decision 0126). Do not build check-off on the phone yet.
+- Each history entry has `reopened` (bool, default false; additive, decision 0130): true on a source entry when the source later reported the item open again. The entry stays on the day it was completed, so show it as "later reopened"; the agenda shows that item as open. One item can have several entries (decision 0131): the source completing it twice gives two source entries on their own days, and your check-off plus the source's completion give one entry in `done_by_you` and one in `done_by_source`. Do not assume `item_id` is unique in a history response. Ignore unknown fields.
+- History is not forever: disconnecting a source deletes that source's history and notes (decision 0127), like its events. A removed item (it left its source without being done) is listed as `gone`, never as done.
+
 ## `DELETE /v1/settings/{source}` also deletes the source's events
-Disconnecting a source removes its stored credentials, **its stored events** and its sync state, so its
+Disconnecting a source removes its stored credentials, **its stored events**, its item history and notes (decision 0127) and its sync state, so its
 items leave `/v1/events`, `/v1/agenda/...` and `/v1/attention` at once (decisions 0029, 0074). The phone
 cannot call it today (see above), but if it ever can, or if the app mirrors the agenda locally, drop
 that source's cached events when its settings entry loses its keys. A later `PUT` brings the data back

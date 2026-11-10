@@ -11,7 +11,13 @@ import asyncio
 import logging
 from collections.abc import Sequence
 
-from command_center.core.ports import Clock, EventStore, GenerationStore, SyncStateStore
+from command_center.core.ports import (
+    Clock,
+    EventStore,
+    GenerationStore,
+    ItemLedger,
+    SyncStateStore,
+)
 from command_center.core.sync_state import SyncState, SyncStatus
 from command_center.services.errors import UnknownSourceError, safe_message
 from command_center.services.scheduler import SyncEnqueuer
@@ -33,7 +39,10 @@ class QueuedSyncService:
         events: EventStore,
         generations: GenerationStore,
         clock: Clock,
+        *,
+        ledger: ItemLedger | None = None,
     ) -> None:
+        self._ledger = ledger
         self._sources = tuple(sources)
         self._enqueuer = enqueuer
         self._states = states
@@ -126,7 +135,9 @@ class QueuedSyncService:
         await asyncio.to_thread(self._generations.bump, source)
 
     async def purge(self, source: str) -> None:
-        """Bump the generation again, then delete the source's events and sync state.
+        """Bump the generation again, then delete the source's events, ledger rows and sync state.
+
+        The ledger rows are its notes, check-offs and history; local tasks are never deleted.
 
         The second bump invalidates a sync queued after `cancel` and before the credentials were
         deleted, whose report would otherwise be applied after this purge (decision 0086). A
@@ -137,6 +148,8 @@ class QueuedSyncService:
         """
         await asyncio.to_thread(self._generations.bump, source)
         await asyncio.to_thread(self._events.delete_source, source)
+        if self._ledger is not None:
+            await asyncio.to_thread(self._ledger.delete_source, source)
         await asyncio.to_thread(self._states.delete, source)
 
     def _unstored(self, source: str, status: SyncStatus, message: str) -> SyncState:

@@ -17,6 +17,11 @@
             },
             "title": "Credentials",
             "type": "object"
+          },
+          "unverified": {
+            "default": false,
+            "title": "Unverified",
+            "type": "boolean"
           }
         },
         "required": [
@@ -28,6 +33,11 @@
       "ConnectResult": {
         "description": "Outcome of connecting a source.\n\nWhen `ok` is false nothing was stored, except if the secret store failed part-way through\nwriting the keys: then the keys written before the failure stay stored.",
         "properties": {
+          "can_save_unverified": {
+            "default": false,
+            "title": "Can Save Unverified",
+            "type": "boolean"
+          },
           "message": {
             "title": "Message",
             "type": "string"
@@ -170,6 +180,11 @@
             "title": "Fetched At",
             "type": "string"
           },
+          "has_note": {
+            "default": false,
+            "title": "Has Note",
+            "type": "boolean"
+          },
           "id": {
             "title": "Id",
             "type": "string"
@@ -179,7 +194,8 @@
               "event",
               "assignment",
               "email",
-              "weather"
+              "weather",
+              "task"
             ],
             "title": "Kind",
             "type": "string"
@@ -194,6 +210,19 @@
               }
             ],
             "title": "Link"
+          },
+          "priority": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "1-10 priority derived from `urgency`; None when done or urgency is 0. Not stored.",
+            "readOnly": true,
+            "title": "Priority"
           },
           "raw": {
             "additionalProperties": true,
@@ -249,9 +278,213 @@
           "source",
           "kind",
           "title",
-          "fetched_at"
+          "fetched_at",
+          "priority"
         ],
         "title": "Event",
+        "type": "object"
+      },
+      "GeocodeCandidate": {
+        "description": "One place a city search found. The user picks one; nothing here is ever chosen for them.",
+        "properties": {
+          "country": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country"
+          },
+          "latitude": {
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Latitude",
+            "type": "number"
+          },
+          "longitude": {
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "title": "Longitude",
+            "type": "number"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "population": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Population"
+          },
+          "region": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region"
+          }
+        },
+        "required": [
+          "name",
+          "latitude",
+          "longitude"
+        ],
+        "title": "GeocodeCandidate",
+        "type": "object"
+      },
+      "HistoryDay": {
+        "description": "One day of history, split by how an item left the agenda.",
+        "properties": {
+          "day": {
+            "format": "date",
+            "title": "Day",
+            "type": "string"
+          },
+          "done_by_source": {
+            "items": {
+              "$ref": "#/components/schemas/LedgerEntry"
+            },
+            "title": "Done By Source",
+            "type": "array"
+          },
+          "done_by_you": {
+            "items": {
+              "$ref": "#/components/schemas/LedgerEntry"
+            },
+            "title": "Done By You",
+            "type": "array"
+          },
+          "gone": {
+            "items": {
+              "$ref": "#/components/schemas/LedgerEntry"
+            },
+            "title": "Gone",
+            "type": "array"
+          }
+        },
+        "required": [
+          "day"
+        ],
+        "title": "HistoryDay",
+        "type": "object"
+      },
+      "LedgerEntry": {
+        "description": "One line of history: an item that was done or that vanished from its source.",
+        "properties": {
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "completed_by": {
+            "anyOf": [
+              {
+                "enum": [
+                  "user",
+                  "source"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Who finished the item: \"user\", \"source\", or None when it only vanished. Not stored.",
+            "readOnly": true,
+            "title": "Completed By"
+          },
+          "group": {
+            "enum": [
+              "done_by_you",
+              "done_by_source",
+              "gone"
+            ],
+            "title": "Group",
+            "type": "string"
+          },
+          "item_id": {
+            "title": "Item Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "link": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Link"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "reopened": {
+            "default": false,
+            "title": "Reopened",
+            "type": "boolean"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "item_id",
+          "source",
+          "kind",
+          "title",
+          "at",
+          "group",
+          "completed_by"
+        ],
+        "title": "LedgerEntry",
+        "type": "object"
+      },
+      "NoteInput": {
+        "additionalProperties": false,
+        "description": "A note as written; trailing whitespace is dropped, nothing else is changed.",
+        "properties": {
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "NoteInput",
         "type": "object"
       },
       "PairRequest": {
@@ -326,7 +559,7 @@
         "type": "object"
       },
       "SourceSettings": {
-        "description": "What the settings API may reveal about one source: per-key status plus its sync state.",
+        "description": "What the settings API may reveal about one source: per-key status plus its sync state.\n\n`values` holds the stored value of each non-secret key (a Canvas URL, an Apple ID, a\ncoordinate; see `credential_fields`). A secret key never appears in it, only in `keys` as\nset + last4 (decision 0100).",
         "properties": {
           "keys": {
             "additionalProperties": {
@@ -348,6 +581,14 @@
                 "type": "null"
               }
             ]
+          },
+          "values": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Stored value of each set non-secret key. Always empty unless the request is loopback: a paired phone never receives it (decision 0106).",
+            "title": "Values",
+            "type": "object"
           }
         },
         "required": [
@@ -414,6 +655,80 @@
           "at"
         ],
         "title": "SyncState",
+        "type": "object"
+      },
+      "TaskInput": {
+        "additionalProperties": false,
+        "description": "What the user types to make a local task.",
+        "properties": {
+          "due": {
+            "format": "date-time",
+            "title": "Due",
+            "type": "string"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "due"
+        ],
+        "title": "TaskInput",
+        "type": "object"
+      },
+      "TaskPatch": {
+        "additionalProperties": false,
+        "description": "A partial change to a local task; `model_fields_set` says which fields were given.",
+        "properties": {
+          "due": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "title": "TaskPatch",
         "type": "object"
       },
       "TokenResponse": {
@@ -761,6 +1076,97 @@
         ]
       }
     },
+    "/v1/geocode": {
+      "get": {
+        "description": "Up to 5 candidates (`name`, `region`, `country`, `latitude`, `longitude`, `population`).\n\nOpen-Meteo's order is kept and nothing is picked for the caller: the user chooses one and the\nstored `latitude` and `longitude` are then set as usual. Loopback only: a paired phone gets\n403. At most 10 searches a minute (429 with `Retry-After`). The query text is never logged.",
+        "operationId": "geocode_v1_geocode_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": true,
+            "schema": {
+              "maxLength": 100,
+              "minLength": 2,
+              "title": "Q",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/GeocodeCandidate"
+                  },
+                  "title": "Response Geocode V1 Geocode Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "City search is not available"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Too many searches in the last minute; wait Retry-After seconds",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Open-Meteo could not answer; the detail is redacted"
+          }
+        },
+        "security": [
+          {
+            "DeviceToken": []
+          }
+        ],
+        "summary": "Find places by city name",
+        "tags": [
+          "weather"
+        ]
+      }
+    },
     "/v1/health": {
       "get": {
         "description": "Report that the server is up.",
@@ -784,6 +1190,511 @@
         "summary": "Liveness check",
         "tags": [
           "health"
+        ]
+      }
+    },
+    "/v1/history": {
+      "get": {
+        "description": "Items completed (by you, or seen done at the source) and items that disappeared, by day.\n\n`from` and `to` are calendar days in the configured timezone, both included, at most 366 days\napart. Only days with something to show are returned, oldest first. Each entry carries\n`completed_by` (`user`, `source`, or null for an item that disappeared), its source, title and\nits note, if it has one. `reopened` is true for an item the source completed and later reported\nopen again; it stays on the day it was completed (decision 0130).",
+        "operationId": "history_v1_history_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "from",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "From",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "To",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/HistoryDay"
+                  },
+                  "title": "Response History V1 History Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "DeviceToken": []
+          }
+        ],
+        "summary": "What was completed or left its source on a day",
+        "tags": [
+          "items"
+        ]
+      }
+    },
+    "/v1/items": {
+      "post": {
+        "description": "Store a task of your own (source `local`, kind `task`). No sync ever prunes it.",
+        "operationId": "create_item_v1_items_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Event"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "DeviceToken": []
+          }
+        ],
+        "summary": "Create a local task",
+        "tags": [
+          "items"
+        ]
+      }
+    },
+    "/v1/items/{item_id}": {
+      "delete": {
+        "description": "Delete a local task with its note and check-off; 409 for an item from a source.",
+        "operationId": "delete_item_v1_items__item_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "title": "Item Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "DeviceToken": []
+          }
+        ],
+        "summary": "Delete a local task",
+        "tags": [
+          "items"
+        ]
+      },
+      "patch": {
+        "description": "Change the title, due time or label of a local task; 409 for an item from a source.",
+        "operationId": "update_item_v1_items__item_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "title": "Item Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Event"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "DeviceToken": []
+          }
+        ],
+        "summary": "Change a local task",
+        "tags": [
+          "items"
+        ]
+      }
+    },
+    "/v1/items/{item_id}/done": {
+      "delete": {
+        "description": "Undo your own check-off; an item the source marks done stays done.",
+        "operationId": "undo_check_off_v1_items__item_id__done_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "title": "Item Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Event"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "DeviceToken": []
+          }
+        ],
+        "summary": "Undo a check-off",
+        "tags": [
+          "items"
+        ]
+      },
+      "post": {
+        "description": "Mark the item done. It then scores 0, has no priority and leaves the attention list.",
+        "operationId": "check_off_v1_items__item_id__done_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "title": "Item Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Event"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "DeviceToken": []
+          }
+        ],
+        "summary": "Check an item off",
+        "tags": [
+          "items"
+        ]
+      }
+    },
+    "/v1/items/{item_id}/notes": {
+      "delete": {
+        "description": "Delete the note; an item with none is returned unchanged.",
+        "operationId": "delete_note_v1_items__item_id__notes_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "title": "Item Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Event"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "DeviceToken": []
+          }
+        ],
+        "summary": "Delete an item's note",
+        "tags": [
+          "items"
+        ]
+      },
+      "put": {
+        "description": "Attach or replace the note (1 to 4000 characters). The item then has `has_note` true.",
+        "operationId": "put_note_v1_items__item_id__notes_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "title": "Item Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NoteInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Event"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "DeviceToken": []
+          }
+        ],
+        "summary": "Set an item's note",
+        "tags": [
+          "items"
         ]
       }
     },
@@ -947,7 +1858,7 @@
     },
     "/v1/settings": {
       "get": {
-        "description": "Per source and per key: whether it is set and its last 4 characters; plus the sync state.",
+        "description": "Per source and per key: whether it is set and its last 4 characters; plus the sync state.\n\n`values` (the stored non-secret values) is filled for a loopback request only; any other\ncaller gets it empty (decision 0106).",
         "operationId": "get_settings_v1_settings_get",
         "responses": {
           "200": {
@@ -1034,7 +1945,7 @@
         ]
       },
       "put": {
-        "description": "Validate and store the credentials; the sync starts after the response (state \"syncing\").\n\nIn distributed mode the api runs no sync: it queues a job for the source's worker, and\n`GET /v1/settings` shows the state the normalizer records when the worker reports.\n\nA credential-only integration (the Gemini key) has no sync: its result carries `sync` null.",
+        "description": "Validate and store the credentials; the sync starts after the response (state \"syncing\").\n\nIn distributed mode the api runs no sync: it queues a job for the source's worker, and\n`GET /v1/settings` shows the state the normalizer records when the worker reports.\n\nA credential-only integration (the Gemini key) has no sync: its result carries `sync` null.\n\nWith `unverified: true` the credentials are stored without validation and no sync follows;\na source is then left in an `error` state whose message starts with `Saved unverified:`.\nA failed connect sets `can_save_unverified` only after a transient (network) error.",
         "operationId": "put_settings_v1_settings__source__put",
         "parameters": [
           {

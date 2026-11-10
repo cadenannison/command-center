@@ -100,8 +100,8 @@ def _to_event(  # noqa: PLR0913
     status = _text(component, "STATUS")
     if status is not None and status.upper() == "CANCELLED":
         return None
-    start = _localise(component.start, tz)
-    end = _localise(component.end, tz)
+    start = localise(component.start, tz)
+    end = localise(component.end, tz)
     span_end = end if end > start else None
     if not _in_window(start, span_end, window):
         return None
@@ -131,7 +131,7 @@ def _in_window(start: datetime, end: datetime | None, window: TimeWindow) -> boo
     return window_start <= start.astimezone(UTC) < window_end
 
 
-def _localise(value: date | datetime, tz: tzinfo) -> datetime:
+def localise(value: date | datetime, tz: tzinfo) -> datetime:
     """Aware datetimes pass through; floating ones and all-day dates are placed in tz."""
     if isinstance(value, datetime):
         return value if value.utcoffset() is not None else value.replace(tzinfo=tz)

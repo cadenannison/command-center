@@ -8,6 +8,7 @@ from command_center.web.pages import pages_router
 from command_center.web.pair_routes import pair_router
 from command_center.web.render import Renderer
 from command_center.web.settings_routes import settings_router
+from command_center.web.summary import summary_router
 
 
 def create_router(
@@ -33,4 +34,5 @@ def create_router(
     router.include_router(pages_router(get_container, renderer))
     router.include_router(settings_router(get_container, renderer))
     router.include_router(pair_router(get_container, renderer))
+    router.include_router(summary_router(get_container, renderer))
     return router

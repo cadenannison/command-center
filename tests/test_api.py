@@ -190,7 +190,9 @@ def test_attention_lists_urgent_items_most_urgent_first(rig: Rig) -> None:
 
 
 def test_settings_lists_each_source_with_no_keys_before_connecting(rig: Rig) -> None:
-    assert rig.client.get("/v1/settings").json() == [{"source": "canvas", "keys": {}, "sync": None}]
+    assert rig.client.get("/v1/settings").json() == [
+        {"source": "canvas", "keys": {}, "sync": None, "values": {}}
+    ]
 
 
 def test_put_settings_validates_and_stores_then_answers_before_the_sync_result(rig: Rig) -> None:
@@ -301,7 +303,7 @@ def test_delete_settings_removes_the_secret_and_the_sync_state(rig: Rig) -> None
 
     response = rig.client.delete("/v1/settings/canvas")
 
-    assert response.json() == {"source": "canvas", "keys": {}, "sync": None}
+    assert response.json() == {"source": "canvas", "keys": {}, "sync": None, "values": {}}
     assert rig.secrets.get("canvas") == {}
 
 

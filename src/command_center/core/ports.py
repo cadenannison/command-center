@@ -4,7 +4,9 @@ from collections.abc import Collection, Mapping, Sequence
 from datetime import date, datetime
 from typing import Literal, Protocol
 
+from command_center.core.geocode import GeocodeCandidate
 from command_center.core.jobs import DeadLetter, DeadReport, Job, SyncReport
+from command_center.core.ledger import ItemMark, LedgerEntry
 from command_center.core.pairing import Device, RefreshRecord
 from command_center.core.schema import Event, EventKind, SecretStatus, ValidationResult
 from command_center.core.summary import DailySummary
@@ -63,6 +65,17 @@ class IntegrationAdapter(Protocol):
 
     async def validate(self, creds: Mapping[str, str]) -> ValidationResult:
         """Check creds with a cheap call; raise the core.errors a SourceAdapter would."""
+        ...
+
+
+class Geocoder(Protocol):
+    """Turns a city name into candidate places. Never logs or reports the query text."""
+
+    async def search(self, query: str) -> list[GeocodeCandidate]:
+        """Return up to MAX_CANDIDATES places for query, best match first; none found is [].
+
+        Raises TransientError (unreachable, rate limited, 5xx) or FatalError (anything else).
+        """
         ...
 
 
@@ -127,6 +140,53 @@ class EventStore(Protocol):
         ...
 
 
+class ItemLedger(Protocol):
+    """Item ledger: notes, check-offs, history and local tasks (decisions 0120, 0121).
+
+    Events and the ledger share one database, so every write reads the item first.
+    """
+
+    def find(self, item_id: str, *, user_id: str = "local") -> Event | None:
+        """Return the stored event with this id, synced or local, or None."""
+        ...
+
+    def marks(self, item_ids: Collection[str], *, user_id: str = "local") -> dict[str, ItemMark]:
+        """Return the marks of those items that have a note or a check-off."""
+        ...
+
+    def check_off(self, item_id: str, at: datetime, *, user_id: str = "local") -> bool:
+        """Mark the item done by the user, keeping the first time; False for an unknown item."""
+        ...
+
+    def undo(self, item_id: str, *, user_id: str = "local") -> bool:
+        """Undo the user's check-off only (a source-done stays done); False when unknown."""
+        ...
+
+    def set_note(self, item_id: str, text: str, at: datetime, *, user_id: str = "local") -> bool:
+        """Store text as the item's note; False for an unknown item."""
+        ...
+
+    def clear_note(self, item_id: str, *, user_id: str = "local") -> bool:
+        """Remove the item's note; False when the item is unknown."""
+        ...
+
+    def history(self, window: TimeWindow, *, user_id: str = "local") -> list[LedgerEntry]:
+        """Return entries whose done_at or gone_at is in [start, end), ordered by (at, item_id)."""
+        ...
+
+    def save_local(self, event: Event) -> None:
+        """Insert or replace a local task; ValueError for an event that is not one."""
+        ...
+
+    def remove_local(self, item_id: str, *, user_id: str = "local") -> bool:
+        """Delete a local task and its ledger row; False when there is none."""
+        ...
+
+    def delete_source(self, source: str, *, user_id: str = "local") -> int:
+        """Delete the source's ledger rows, notes included, never `local`; returns the count."""
+        ...
+
+
 class SummaryProvider(Protocol):
     """One AI backend that turns a redacted prompt into a DailySummary."""
 
@@ -153,6 +213,22 @@ class SummaryStore(Protocol):
 
     def latest_before(self, day: date, *, user_id: str = "local") -> DailySummary | None:
         """Return the summary of the user's latest stored day strictly before day, or None."""
+        ...
+
+    def delete(self, day: date, *, user_id: str = "local") -> None:
+        """Drop the user's summary for day; a day with none stored is not an error."""
+        ...
+
+
+class AppSettingStore(Protocol):
+    """Synchronous key-value store for small app settings, one value per (user, key)."""
+
+    def get(self, key: str, *, user_id: str = "local") -> str | None:
+        """Return the value stored under key, or None."""
+        ...
+
+    def set(self, key: str, value: str, *, user_id: str = "local") -> None:
+        """Store value under key, replacing any existing value."""
         ...
 
 

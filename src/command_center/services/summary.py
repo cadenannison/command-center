@@ -11,6 +11,7 @@ from command_center.core.ports import Clock, SummaryProvider, SummaryStore
 from command_center.core.schema import Event
 from command_center.core.summary import DailySummary, build_prompt, template_summary
 from command_center.services.agenda import AgendaService
+from command_center.services.errors import SummaryUnavailableError
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +32,16 @@ class SummaryResult(BaseModel):
     summary: DailySummary
     provider: str
     cached: bool
+
+
+def summary_text(summary: DailySummary) -> str:
+    """The summary as plain text: the headline, then its priorities and heads-up lines."""
+    lines = [summary.headline]
+    if summary.priorities:
+        lines.append("Priorities: " + "; ".join(summary.priorities))
+    if summary.heads_up:
+        lines.append("Heads up: " + "; ".join(summary.heads_up))
+    return "\n".join(lines)
 
 
 class SummaryService:
@@ -59,6 +70,11 @@ class SummaryService:
         # One user, one provider: serialising keeps two requests from paying for the same day twice.
         self._lock = asyncio.Lock()
 
+    @property
+    def provider_name(self) -> str:
+        """The name of the provider this service calls."""
+        return self._provider.name
+
     async def get(self, day: date) -> SummaryResult:
         """The summary for day: stored, else from the provider, else a fallback."""
         async with self._lock:
@@ -70,26 +86,55 @@ class SummaryService:
                 return self._template(events, day)
             return await self._from_provider(events, day)
 
+    async def cached(self, day: date) -> DailySummary | None:
+        """The summary already stored for day, or None. Never calls the provider."""
+        return await asyncio.to_thread(self._store.get, day)
+
+    async def generate(self, day: date, *, refresh: bool = False) -> SummaryResult:
+        """The summary for day, failing loudly: a provider failure raises SummaryUnavailableError.
+
+        Unlike `get` it never falls back to an earlier summary or the template, so the caller can
+        show the failure. With `refresh` the stored summary is ignored and replaced on success.
+        """
+        async with self._lock:
+            if not refresh:
+                stored = await asyncio.to_thread(self._store.get, day)
+                if stored is not None:
+                    return SummaryResult(summary=stored, provider=self._provider.name, cached=True)
+            events = await self._events(day)
+            if not events:
+                return self._template(events, day)
+            try:
+                return await self._ask(events, day)
+            except SummaryProviderError as exc:
+                raise SummaryUnavailableError(self._log_failure(exc)) from None
+
     async def for_day(self, day: date) -> str | None:
         """The summary as plain text for the web page."""
-        summary = (await self.get(day)).summary
-        lines = [summary.headline]
-        if summary.priorities:
-            lines.append("Priorities: " + "; ".join(summary.priorities))
-        if summary.heads_up:
-            lines.append("Heads up: " + "; ".join(summary.heads_up))
-        return "\n".join(lines)
+        return summary_text((await self.get(day)).summary)
 
     async def _from_provider(self, events: list[Event], day: date) -> SummaryResult:
-        prompt = build_prompt(events, self._include_email, day)
         try:
-            summary = await self._provider.summarize(prompt)
+            return await self._ask(events, day)
         except SummaryProviderError as exc:
-            reason = "rate limited" if isinstance(exc, SummaryRateLimited) else "failed"
-            logger.warning("Summary provider %s %s: %s", self._provider.name, reason, exc)
+            self._log_failure(exc)
             return await self._fallback(events, day)
+
+    async def _ask(self, events: list[Event], day: date) -> SummaryResult:
+        prompt = build_prompt(events, self._include_email, day)
+        summary = await self._provider.summarize(prompt)
         await asyncio.to_thread(self._store.put, day, summary)
         return SummaryResult(summary=summary, provider=self._provider.name, cached=False)
+
+    def _log_failure(self, exc: SummaryProviderError) -> str:
+        limited = isinstance(exc, SummaryRateLimited)
+        logger.warning(
+            "Summary provider %s %s: %s",
+            self._provider.name,
+            "rate limited" if limited else "failed",
+            exc,
+        )
+        return "rate_limited" if limited else "failed"
 
     async def _fallback(self, events: list[Event], day: date) -> SummaryResult:
         earlier = await asyncio.to_thread(self._store.latest_before, day)

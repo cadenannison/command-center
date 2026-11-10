@@ -44,6 +44,15 @@ POLICY: dict[tuple[str, str], str] = {
     # the one write
     ("POST", "/v1/sync"): SYNC,
     # everything else is refused for a phone
+    ("GET", "/v1/geocode"): DENIED,  # a read, but only the Mac's own web UI may use it (0180)
+    ("GET", "/v1/history"): READ,  # what was done and when, with notes (0123, 0126)
+    ("POST", "/v1/items"): DENIED,  # the item writes are loopback-only (0126)
+    ("PATCH", "/v1/items/{item_id}"): DENIED,
+    ("DELETE", "/v1/items/{item_id}"): DENIED,
+    ("POST", "/v1/items/{item_id}/done"): DENIED,
+    ("DELETE", "/v1/items/{item_id}/done"): DENIED,
+    ("PUT", "/v1/items/{item_id}/notes"): DENIED,
+    ("DELETE", "/v1/items/{item_id}/notes"): DENIED,
     ("GET", "/v1/devices"): READ,
     ("DELETE", "/v1/devices/{device_id}"): DENIED,
     ("PUT", "/v1/settings/{source}"): DENIED,
@@ -51,6 +60,8 @@ POLICY: dict[tuple[str, str], str] = {
     ("PUT", "/settings/{source}"): DENIED,
     ("DELETE", "/settings/{source}"): DENIED,
     ("POST", "/pair/code"): DENIED,
+    ("POST", "/summary/settings"): DENIED,  # the opt-in switch is the Mac's own (0112)
+    ("POST", "/summary/generate"): DENIED,  # it calls the provider, so only the Mac may (0113)
 }
 
 

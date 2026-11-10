@@ -49,6 +49,8 @@ logger = logging.getLogger(__name__)
 # Reachable from the tailnet without a token: liveness, and the two calls that create one.
 OPEN_PATHS = frozenset({"/v1/health", "/v1/pair", "/v1/pair/refresh"})
 MAX_TOKEN_CHARS = 200
+# Set in the request state (scope["state"]) for a request the Host rules call loopback.
+LOOPBACK_STATE_KEY = "loopback"
 
 bearer_scheme = HTTPBearer(
     auto_error=False,
@@ -105,6 +107,10 @@ class DeviceAuthMiddleware:
             )
             await _refuse(response, scope, receive, send)
             return
+        if exposure is Exposure.LOOPBACK:
+            # A handler that shows more to the Mac's own UI than to a phone asks for this flag;
+            # without it (no middleware) the request counts as remote (decision 0106).
+            scope.setdefault("state", {})[LOOPBACK_STATE_KEY] = True
         is_remote = exposure is Exposure.REMOTE and scope["path"] not in OPEN_PATHS
         if is_remote and not _phone_may_call(scope):
             logger.warning("request refused: outside a device's scope", extra={"reason": "scope"})

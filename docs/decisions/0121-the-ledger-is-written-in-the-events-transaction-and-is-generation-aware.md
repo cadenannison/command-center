@@ -1,0 +1,10 @@
+# 0121. The ledger is written in the same transaction as the events, behind the generation lock
+
+Status: accepted
+
+Context: A removal or a completion has to be recorded exactly when the events change, or a crash between the two writes loses it or records one that never happened. In distributed mode a report from a disconnected source's old generation must write nothing (decisions 0074, 0075).
+Decision: `SqliteEventStore.replace_events` reads the stored rows of the window, calls `record_sync` in the same session, then deletes and merges. `SyncService` (single process) reaches it through `replace`; `SqliteReportSink.apply` (distributed) calls it after `lock_generation` and the current-generation check, so a stale or older report changes neither events nor ledger rows, and a rejected report rolls both back. The time on a removal or completion is the sink's `state.at` (the report's own time), not the writing process's clock, so a redelivered report stamps the same time. `purge_stale` and the leftover purge inside `apply` delete the ledger rows of the old generation together with its events.
+Alternative: Write the ledger from `SyncService` after `replace` returns (a second transaction: a crash in between loses the removal, and in distributed mode a stale generation could still write); a separate ledger worker (another queue and another way to lose a record).
+Reason: One transaction is the only way to make "the event changed" and "the ledger noted it" both true or both false, and the sink already holds the lock that decides whether a report may write at all.
+Where: `src/command_center/storage/sqlite.py` (`replace_events`), `sqlite_sink.py` (`apply`, `purge_stale`), `sqlite_ledger.py` (`record_sync`); tests in `tests/test_ledger_sync.py` and `tests/test_ledger_sink.py` (SQLite always, Postgres with `CC_TEST_POSTGRES_URL`, Redis with `CC_TEST_REDIS_URL`).
+Revisit when: The ledger moves to its own database or service; the same-transaction guarantee then has to be rebuilt another way.

@@ -28,6 +28,7 @@ async def get_summary(
     404 when summaries are off (the default). A provider failure never fails the request: the
     last stored summary (`provider` "stored") or a built-in one (`provider` "template") is returned.
     """
-    if container.summary is None:
+    service = await container.summary_service()
+    if service is None:
         raise HTTPException(status_code=404, detail=SUMMARY_OFF)
-    return await container.summary.get(day)
+    return await service.get(day)

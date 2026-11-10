@@ -1,0 +1,39 @@
+{% macro controls(s, providers) %}
+{% if s.can_configure %}
+<details class="controls"><summary>Summary settings</summary>
+<form hx-post="/summary/settings?date={{ s.day.isoformat() }}" hx-target="#summary-card" hx-swap="outerHTML" hx-disabled-elt="find button">
+<label for="summary-provider">Provider</label>
+<select id="summary-provider" name="provider">{% for p in providers %}<option value="{{ p }}"{% if p == s.provider %} selected{% endif %}>{{ p }}</option>{% endfor %}</select>
+<div class="actions"><button type="submit">Save provider</button><button type="submit" name="enabled" value="off" class="danger">Turn summaries off</button></div>
+</form></details>
+{% endif %}
+{% endmacro %}
+<section class="panel summary" id="summary-card" aria-labelledby="summary-h" data-state="{{ s.state }}"{% if s.state == "generating" %} hx-post="/summary/generate?date={{ s.day.isoformat() }}&amp;refresh={{ 'true' if s.refresh else 'false' }}" hx-trigger="load" hx-target="this" hx-swap="outerHTML"{% endif %}>
+<h2 id="summary-h">Summary</h2>
+{% if s.state == "off" %}
+<p>The AI summary is not enabled.</p>
+<p class="note">When you enable it, a short briefing is written from the titles and due dates of your items, with addresses and numbers removed. Email bodies are never sent. Until then nothing is sent anywhere.{% if s.caveat %} {{ s.caveat }}{% endif %}</p>
+{% if s.can_configure %}
+<form hx-post="/summary/settings?date={{ s.day.isoformat() }}" hx-target="#summary-card" hx-swap="outerHTML" hx-disabled-elt="find button">
+<label for="summary-provider">Provider</label>
+<select id="summary-provider" name="provider">{% for p in providers %}<option value="{{ p }}"{% if p == s.provider %} selected{% endif %}>{{ p }}</option>{% endfor %}</select>
+<div class="actions"><button type="submit" name="enabled" value="on">Enable AI summary</button></div>
+</form>
+{% endif %}
+{% elif s.state == "no_key" %}
+<p>The AI summary is on, but there is no Gemini API key yet.</p>
+<p><a href="/settings#source-gemini">Add the key on the Gemini card in Settings</a></p>
+{{ controls(s, providers) }}
+{% elif s.state == "generating" %}
+<p class="muted" role="status" aria-live="polite">Generating summary…</p>
+{% elif s.state == "error" %}
+<p class="flash bad" role="alert">{{ s.error }}</p>
+<div class="actions"><button type="button" hx-post="/summary/generate?date={{ s.day.isoformat() }}&amp;refresh=true" hx-target="#summary-card" hx-swap="outerHTML" hx-disabled-elt="this" hx-indicator="#summary-busy">Try again</button><span class="busy" id="summary-busy">Generating…</span></div>
+{{ controls(s, providers) }}
+{% else %}
+{% for line in s.text.split("\n") %}<p>{{ line }}</p>{% endfor %}
+<p class="note">Written from titles and due dates only.</p>
+<div class="actions"><button type="button" hx-post="/summary/generate?date={{ s.day.isoformat() }}&amp;refresh=true" hx-target="#summary-card" hx-swap="outerHTML" hx-disabled-elt="this" hx-indicator="#summary-busy">Regenerate</button><span class="busy" id="summary-busy">Generating…</span></div>
+{{ controls(s, providers) }}
+{% endif %}
+</section>

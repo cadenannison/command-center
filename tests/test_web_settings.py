@@ -7,6 +7,7 @@ import pytest
 from builders import NOW, make_event
 from command_center.core.errors import AuthExpired, SecretStoreError
 from command_center.core.schema import ValidationResult
+from command_center.services.credential_fields import is_secret
 from fake_adapter import KEYCHAIN_DETAIL, FakeAdapter
 from fakes import InMemorySecretStore
 from web_rig import WebRig, make_rig
@@ -93,12 +94,21 @@ def test_cards_only_ask_for_their_own_fields(rig: WebRig) -> None:
     assert re.findall(r'name="(\w+)"', weather) == ["latitude", "longitude"]
 
 
-def test_no_input_is_ever_prefilled(rig: WebRig) -> None:
+def test_a_secret_input_is_never_prefilled(rig: WebRig) -> None:
     connect_canvas(rig)
 
-    html = rig.client.get("/settings").text
+    token = field_tag(rig.client.get("/settings").text, "canvas", "token")
 
-    assert " value=" not in html
+    assert " value=" not in token
+    assert CRED not in token
+
+
+def test_a_non_secret_input_is_prefilled_with_the_stored_value(rig: WebRig) -> None:
+    connect_canvas(rig)
+
+    base_url = field_tag(rig.client.get("/settings").text, "canvas", "base_url")
+
+    assert f'value="{BASE_URL}"' in base_url
 
 
 def test_gemini_card_states_the_free_tier_caveat(rig: WebRig) -> None:
@@ -340,7 +350,13 @@ def test_no_credential_value_appears_in_any_response() -> None:
     seen += [rig.client.get(f"/settings/{source}/status").text for source in SOURCES]
     seen.append(rig.client.delete("/settings/canvas", headers=rig.headers).text)
     seen.append(put(rig, "canvas", token=""))
-    secrets = [value for fields in values.values() for value in fields.values()]
+    secrets = [
+        value
+        for source, fields in values.items()
+        for key, value in fields.items()
+        if is_secret(source, key)
+    ]
+    assert len(secrets) == 5  # the plain settings (URL, Apple ID, coordinates) may be shown
     assert len(seen) > 10
 
     leaked = [

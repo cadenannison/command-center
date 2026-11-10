@@ -1,12 +1,20 @@
 """Composition root for the API process: wires concrete infrastructure."""
 
-from collections.abc import Awaitable, Callable
-from typing import TYPE_CHECKING
+import asyncio
+import sys
+from collections.abc import Awaitable, Callable, Sequence
+from datetime import UTC
+from typing import TYPE_CHECKING, TextIO
 from zoneinfo import ZoneInfo
 
 from fastapi import FastAPI
 
+from command_center.adapters.ical_diagnose import diagnose_feeds
+from command_center.adapters.ical_diagnose_report import render
+from command_center.adapters.ical_feed import SOURCE_NAME as LEARNINGSUITE
+from command_center.adapters.ical_feed import feed_urls
 from command_center.adapters.json_log import configure_json_logging
+from command_center.adapters.log_redaction import install_query_redaction
 from command_center.adapters.queue_redis import RedisStreamsQueue, source_queue_prefix
 from command_center.adapters.secret_backend import build_secret_store
 from command_center.adapters.source_registry import build_source_adapters
@@ -16,12 +24,15 @@ from command_center.adapters.system_clock import SystemClock
 from command_center.adapters.system_ids import UuidIdSource
 from command_center.adapters.system_rng import SystemRng
 from command_center.adapters.system_tokens import SystemTokenSource
+from command_center.adapters.weather_geocode import OpenMeteoGeocoder
 from command_center.api import create_app as create_api_app
 from command_center.config import Settings
+from command_center.core.errors import SecretStoreError
 from command_center.core.ports import (
     Clock,
     EventStore,
     IntegrationAdapter,
+    ItemLedger,
     SecretStore,
     SourceAdapter,
     SummaryProvider,
@@ -30,15 +41,21 @@ from command_center.core.ports import (
 from command_center.core.resilience import DEFAULT_RETRY_POLICY
 from command_center.services.agenda import AgendaService
 from command_center.services.container import Container
+from command_center.services.geocode import GeocodeService
+from command_center.services.horizon import horizon_window
+from command_center.services.items import ItemService
 from command_center.services.pairing import PairingService
 from command_center.services.queued_sync import QueuedSyncService
 from command_center.services.scheduler import SyncEnqueuer
 from command_center.services.settings import SettingsService
 from command_center.services.summary import SummaryService
+from command_center.services.summary_control import SummaryControl
 from command_center.services.sync import SyncService
 from command_center.storage.sqlite import create_event_store
+from command_center.storage.sqlite_app_settings import create_app_setting_store
 from command_center.storage.sqlite_devices import create_device_store
 from command_center.storage.sqlite_generations import create_generation_store
+from command_center.storage.sqlite_items import create_item_ledger
 from command_center.storage.sqlite_states import create_sync_state_store
 from command_center.storage.sqlite_summary import create_summary_store
 
@@ -61,15 +78,22 @@ def build_integrations(settings: Settings) -> dict[str, IntegrationAdapter]:
     return {gemini.name: gemini}
 
 
-def build_summary_provider(settings: Settings, secrets: SecretStore) -> SummaryProvider:
-    """The configured provider. Gemini reads its key from the secret store on every call."""
-    if settings.summary_provider == "ollama":
-        if settings.summary_model is None:
-            return OllamaSummaryProvider()
-        return OllamaSummaryProvider(model=settings.summary_model)
-    if settings.summary_model is None:
-        return GeminiSummaryProvider(secrets)
-    return GeminiSummaryProvider(secrets, model=settings.summary_model)
+def build_summary_provider(
+    settings: Settings, secrets: SecretStore, provider: str | None = None
+) -> SummaryProvider:
+    """The named provider (default: the configured one). Gemini reads its key on every call.
+
+    `summary_model` names a model of the configured provider only; another provider uses its own.
+    """
+    chosen = provider or settings.summary_provider
+    model = settings.summary_model if chosen == settings.summary_provider else None
+    if chosen == "ollama":
+        return OllamaSummaryProvider() if model is None else OllamaSummaryProvider(model=model)
+    return (
+        GeminiSummaryProvider(secrets)
+        if model is None
+        else GeminiSummaryProvider(secrets, model=model)
+    )
 
 
 def build_pairing(settings: Settings, clock: Clock) -> PairingService:
@@ -91,6 +115,7 @@ def build_queued_sync(  # noqa: PLR0913, PLR0917
     events: EventStore,
     states: SyncStateStore,
     clock: Clock,
+    ledger: ItemLedger | None = None,
 ) -> tuple[QueuedSyncService, Callable[[], Awaitable[None]]]:
     """The distributed api's sync: one Redis queue per source, and a function that closes them.
 
@@ -119,46 +144,71 @@ def build_queued_sync(  # noqa: PLR0913, PLR0917
             await queue.aclose()
         generations.close()
 
-    return QueuedSyncService(sources, enqueuer, states, events, generations, clock), close
+    return (
+        QueuedSyncService(sources, enqueuer, states, events, generations, clock, ledger=ledger),
+        close,
+    )
 
 
 def build_container(settings: Settings | None = None) -> Container:
     """Build the real services: SQLite or Postgres storage, keychain or file secrets, the clock.
 
-    `container.summary` stays None unless `summary_enabled`: with the default no provider is
-    built, so nothing can be sent anywhere (decision 0004).
+    `container.summary` stays None unless the environment's `summary_enabled` is set: with the
+    default no provider is built at startup. The stored switch (`summary_control`) can turn
+    summaries on later, and `container.summary_service()` is what the api and web call, so a
+    summary that is off sends nothing anywhere (decisions 0004, 0112).
     """
     settings = settings or Settings()
     tz = ZoneInfo(settings.tz)
     clock = SystemClock()
     secrets = build_secret_store(settings.secret_backend, settings.data_dir)
-    events = create_event_store(settings.database_url)
+    events = create_event_store(settings.database_url, clock)
+    ledger = create_item_ledger(settings.database_url)
     states = create_sync_state_store(settings.database_url)
     adapters = build_adapters(tz, clock)
     sync: SyncControl
     close: Callable[[], Awaitable[None]] | None = None
     if settings.mode == "distributed":
-        sync, close = build_queued_sync(settings, list(adapters), secrets, events, states, clock)
+        sync, close = build_queued_sync(
+            settings, list(adapters), secrets, events, states, clock, ledger
+        )
     else:
-        sync = SyncService(adapters, secrets, events, clock, states=states)
-    agenda = AgendaService(events, clock, tz)
-    summary: SummaryService | None = None
-    if settings.summary_enabled:
-        summary = SummaryService(
+        sync = SyncService(adapters, secrets, events, clock, states=states, ledger=ledger)
+    agenda = AgendaService(events, clock, tz, ledger)
+    summary_store = create_summary_store(settings.database_url)
+
+    def build_service(provider: str) -> SummaryService:
+        return SummaryService(
             agenda,
-            create_summary_store(settings.database_url),
-            build_summary_provider(settings, secrets),
+            summary_store,
+            build_summary_provider(settings, secrets, provider),
             clock,
             tz,
             include_email=settings.summary_include_email,
         )
+
+    summary = build_service(settings.summary_provider) if settings.summary_enabled else None
+    control = SummaryControl(
+        create_app_setting_store(settings.database_url),
+        lambda provider: (
+            summary
+            if summary is not None and provider == settings.summary_provider
+            else build_service(provider)
+        ),
+        default_enabled=settings.summary_enabled,
+        default_provider=settings.summary_provider,
+        forget_today=lambda: summary_store.delete(agenda.today()),
+    )
     return Container(
         sync=sync,
         agenda=agenda,
-        settings=SettingsService(adapters, secrets, sync, build_integrations(settings)),
+        settings=SettingsService(adapters, secrets, sync, build_integrations(settings), clock),
         summary=summary,
+        summary_control=control,
         pairing=build_pairing(settings, clock),
         close=close,
+        geocode=GeocodeService(OpenMeteoGeocoder(), clock),
+        items=ItemService(ledger, agenda, clock, UuidIdSource()),
     )
 
 
@@ -180,11 +230,48 @@ def create_app() -> FastAPI:
     return build_app(Settings())
 
 
+USAGE = "usage: command-center [diagnose learningsuite]"
+
+
+def diagnose_learningsuite(settings: Settings, out: TextIO, clock: Clock | None = None) -> int:
+    """Print counts and categories for the stored LearningSuite feeds; exit code 0 or 1.
+
+    The URLs come from the normal secret store and go nowhere but the feed requests. The window is
+    the sync's own (UTC midnights, as in SyncService), so "inside the window" matches a sync.
+    """
+    try:
+        creds = build_secret_store(settings.secret_backend, settings.data_dir).get(LEARNINGSUITE)
+    except SecretStoreError:
+        out.write("secret store unavailable\n")
+        return 1
+    urls = feed_urls(creds)
+    window = horizon_window((clock or SystemClock()).now().astimezone(UTC))
+    reports = asyncio.run(diagnose_feeds(urls, ZoneInfo(settings.tz), window))
+    out.write(render(reports, window) + "\n")
+    return 0
+
+
+def run_command(
+    argv: Sequence[str], settings: Settings, out: TextIO, err: TextIO, clock: Clock | None = None
+) -> int:
+    """Run a subcommand other than serving; 2 for one we do not know."""
+    if list(argv) == ["diagnose", LEARNINGSUITE]:
+        return diagnose_learningsuite(settings, out, clock)
+    err.write(USAGE + "\n")
+    return 2
+
+
 def main() -> None:  # pragma: no cover - process entry point
-    """Run the API and web UI: loopback, or 0.0.0.0 only with CC_BIND_ALL (decision 0072)."""
+    """Run the API and web UI: loopback, or 0.0.0.0 only with CC_BIND_ALL (decision 0072).
+
+    With arguments it runs a subcommand instead (`diagnose learningsuite`) and exits.
+    """
+    if len(sys.argv) > 1:
+        sys.exit(run_command(sys.argv[1:], Settings(), sys.stdout, sys.stderr))
     import uvicorn  # noqa: PLC0415
 
     settings = Settings()
     configure_json_logging()
+    install_query_redaction()  # the city search text is typed by the user; keep it out of the log
     # log_config=None leaves uvicorn's loggers to propagate to the JSON handler.
     uvicorn.run(build_app(settings), host=settings.listen_host, port=settings.port, log_config=None)

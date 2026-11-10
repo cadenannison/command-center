@@ -4,6 +4,7 @@ from typing import Annotated
 
 from fastapi import Depends, Request
 
+from command_center.api.auth import LOOPBACK_STATE_KEY
 from command_center.services.container import Container
 
 
@@ -17,3 +18,11 @@ def get_container(request: Request) -> Container:
 
 
 ContainerDep = Annotated[Container, Depends(get_container)]
+
+
+def is_loopback(request: Request) -> bool:
+    """Whether the Host rules called this request loopback; false when they did not run."""
+    return bool(getattr(request.state, LOOPBACK_STATE_KEY, False))
+
+
+LoopbackDep = Annotated[bool, Depends(is_loopback)]

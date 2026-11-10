@@ -26,6 +26,7 @@ from command_center.storage.sqlite_generations import (
     ensure_generation_schema,
     lock_generation,
 )
+from command_center.storage.sqlite_ledger import delete_source_ledger
 from command_center.storage.sqlite_states import (
     delete_state,
     ensure_state_schema,
@@ -63,12 +64,13 @@ class SqliteReportSink:
             if stored is not None and stored.generation < generation:
                 # Left behind by a write whose cleanup never ran: not part of this connection.
                 delete_source_events(session, source, user_id)
+                delete_source_ledger(session, source, user_id)
                 delete_state(session, source, user_id)
                 stored = None
             if stored is not None and stored.state is not None and state.at < stored.state.at:
                 return "older"
             if events is not None:
-                replace_events(session, source, window, events, user_id)
+                replace_events(session, source, window, events, user_id, state.at)
             put_state(session, state, user_id, generation=generation)
         return "applied"
 
@@ -79,6 +81,7 @@ class SqliteReportSink:
             if stored is None or stored.generation >= current:
                 return False
             delete_source_events(session, source, user_id)
+            delete_source_ledger(session, source, user_id)
             delete_state(session, source, user_id)
             return True
 

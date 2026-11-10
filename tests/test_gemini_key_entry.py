@@ -197,7 +197,7 @@ def test_deleting_the_key_before_any_summary_returns_the_day_to_the_template(
 
     deleted = client.delete("/v1/settings/gemini").json()
 
-    assert deleted == {"source": "gemini", "keys": {}, "sync": None}
+    assert deleted == {"source": "gemini", "keys": {}, "sync": None, "values": {}}
     assert summary_provider(client) == TEMPLATE  # DAY has an event, so only the key is missing
     assert rig.gemini.generate_keys == []
 
@@ -223,7 +223,7 @@ def test_deleting_the_key_leaves_the_state_where_nothing_was_ever_saved(
 
     listed = {item["source"]: item for item in client.get("/v1/settings").json()}
 
-    assert listed["gemini"] == {"source": "gemini", "keys": {}, "sync": None}
+    assert listed["gemini"] == {"source": "gemini", "keys": {}, "sync": None, "values": {}}
 
 
 def test_sync_ignores_the_key_and_the_integration(client: TestClient, rig: Rig) -> None:

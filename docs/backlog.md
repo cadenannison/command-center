@@ -8,7 +8,7 @@ Add an item as you find it: a title, why it matters, what it would take, and its
 Status is one of `proposed` (written down, not yet decided), `accepted` (we will build it) or `blocked`.
 
 ## Weather: set the location by city name
-- Status: accepted (future)
+- Status: accepted; the search API is built (`GET /v1/geocode`, decisions 0180-0182), the form is not
 - Why: Settings > Weather asks for latitude and longitude. Open-Meteo's forecast API only takes
   coordinates, so today you have to look them up yourself (decision 0006, adapter in
   `adapters/weather.py`).
@@ -34,3 +34,5 @@ Status is one of `proposed` (written down, not yet decided), `accepted` (we will
   cancelled, so a stale token could be stored when the old one finishes.
 - Touches: the message in `web/settings_routes.py`, and `tests/test_web_csrf.py` (the task card must say
   `tests: modify`).
+  ## Hyperlinks to all assignments
+  

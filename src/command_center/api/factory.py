@@ -8,7 +8,16 @@ from fastapi import FastAPI, Security
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.staticfiles import StaticFiles
 
-from command_center.api import agenda, health, pairing_routes, settings, summary_routes, sync
+from command_center.api import (
+    agenda,
+    geocode_routes,
+    health,
+    items,
+    pairing_routes,
+    settings,
+    summary_routes,
+    sync,
+)
 from command_center.api.auth import bearer_scheme, install_auth
 from command_center.api.errors import install_error_handlers
 from command_center.services.container import Container
@@ -64,6 +73,8 @@ def create_app(
     secured = (
         agenda.router,
         settings.router,
+        geocode_routes.router,
+        items.router,
         sync.router,
         summary_routes.router,
         pairing_routes.devices_router,

@@ -5,7 +5,7 @@
 <li class="row kind-{{ r.kind }}{% if r.urgent %} urgent{% endif %}">
 <span class="when">{{ r.when }}</span>
 <span class="title">{% if r.link %}<a href="{{ r.link }}" target="_blank" rel="noopener noreferrer">{{ r.title }}</a>{% else %}{{ r.title }}{% endif %}{% if r.status %} <span class="muted">({{ r.status }})</span>{% endif %}</span>
-<span class="badge" title="Urgency">{{ r.urgency }}</span>
+{% if r.priority %}<span class="prio" style="--p:{{ r.priority }}" title="Priority {{ r.priority }} of 10"><span class="visually-hidden">Priority </span>{{ r.priority }}</span>{% else %}<span class="prio none" title="No priority: done or ended"><span class="visually-hidden">No priority</span><span aria-hidden="true">–</span></span>{% endif %}
 </li>
 {% endfor %}
 </ul>

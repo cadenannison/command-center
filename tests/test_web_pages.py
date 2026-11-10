@@ -7,7 +7,7 @@ import pytest
 
 from builders import NOW, make_event
 from command_center.core.summary import DailySummary
-from web_rig import WebRig, make_rig, section
+from web_rig import CSRF, WebRig, make_rig, section
 
 ALL_PAGES = ["/", "/week", "/month", "/settings"]
 
@@ -76,26 +76,32 @@ def test_today_shows_the_summary_block_when_the_container_has_one() -> None:
     rig = make_rig(summary=summary)
     rig.seed(make_event(id="x", start=NOW))
 
-    block = section(page(rig, "/"), "summary-h")
+    first = section(page(rig, "/"), "summary-h")
+    block = rig.client.post(
+        "/summary/generate?date=2026-11-07", headers={"X-CSRF-Token": CSRF}
+    ).text
 
+    assert 'data-state="generating"' in first
     assert all(
         text in block
         for text in ("Busy Saturday", "Priorities: Finish essay", "Heads up: Quiz Monday")
     )
 
 
-def test_today_has_no_summary_block_without_a_summary_service(rig: WebRig) -> None:
-    assert "summary-h" not in page(rig, "/")
+def test_today_shows_the_not_enabled_summary_card_without_a_summary_service(rig: WebRig) -> None:
+    assert "The AI summary is not enabled." in section(page(rig, "/"), "summary-h")
 
 
 def test_today_still_renders_when_the_summary_provider_fails() -> None:
     rig = make_rig(summary=RuntimeError("provider down"))
     rig.seed(make_event(id="x", start=NOW))
 
-    html = page(rig, "/")
+    first = page(rig, "/")
+    html = rig.client.post("/summary/generate?date=2026-11-07", headers={"X-CSRF-Token": CSRF}).text
 
-    assert "Summary unavailable" in section(html, "summary-h")
-    assert "provider down" not in html
+    assert 'data-state="generating"' in section(first, "summary-h")
+    assert "Summary unavailable" in html
+    assert "provider down" not in html + first
 
 
 def test_today_escapes_titles(rig: WebRig) -> None:

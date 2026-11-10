@@ -6,7 +6,14 @@ from collections.abc import Awaitable, Callable, Mapping
 from datetime import UTC
 
 from command_center.core.errors import AuthExpired, FatalError, SecretStoreError, TransientError
-from command_center.core.ports import Clock, EventStore, SecretStore, SourceAdapter, SyncStateStore
+from command_center.core.ports import (
+    Clock,
+    EventStore,
+    ItemLedger,
+    SecretStore,
+    SourceAdapter,
+    SyncStateStore,
+)
 from command_center.core.schema import Event
 from command_center.core.windows import TimeWindow
 from command_center.services.errors import UnknownSourceError, error_text, safe_message
@@ -40,7 +47,9 @@ class SyncService:
         *,
         sleep: Sleep = asyncio.sleep,
         states: SyncStateStore | None = None,
+        ledger: ItemLedger | None = None,
     ) -> None:
+        self._ledger = ledger
         self._adapters = adapters
         self._store = states
         self._secrets = secrets
@@ -89,6 +98,12 @@ class SyncService:
         self._forget_in_memory(source)
         await asyncio.to_thread(self._drop_stored, source)
         await asyncio.to_thread(self._events.delete_source, source)
+        await self._purge_ledger(source)
+
+    async def _purge_ledger(self, source: str) -> None:
+        """Delete the source's notes, check-offs and history; local tasks are never touched."""
+        if self._ledger is not None:
+            await asyncio.to_thread(self._ledger.delete_source, source)
 
     def error_state(self, source: str, message: str) -> SyncState:
         """An error state for source, to report without replacing its last sync result."""
@@ -145,6 +160,7 @@ class SyncService:
             await asyncio.to_thread(self._drop_stored, source)
             # The disconnect may have deleted the events before this sync wrote them (0029).
             await asyncio.to_thread(self._events.delete_source, source)
+            await self._purge_ledger(source)
 
     async def sync_all(self) -> list[SyncState]:
         """Sync every source concurrently; one source's failure does not affect the others."""
