@@ -1,6 +1,6 @@
 # 0252. module-index.md lists each module with its docstring and no line counts; test:for finds tests by import
 
-Status: accepted
+Status: accepted; superseded in part by 0285 (the rule that `test:for` lists direct importers only)
 
 Context: An agent that does not know a layer lists folders and opens files to learn what each is. `docs/MAP.md` lists adapters in one hand-written paragraph. Tests are 219 flat files with no map to the code they cover, so the options are the whole suite or guessing.
 Decision: (1) `docs/generated/module-index.md`, built by `scripts/gen_module_index.py`, has one line per module under `src/command_center/`, grouped by folder: the first sentence of its docstring, at most 120 characters. `__init__.py` is skipped. It carries no line counts, so it changes only when a module is added, removed or has its first sentence edited, and `gen:check` does not fail after every edit. (2) A new task `mise run test:for -- <src path>` runs `scripts/tests_for.py`, which prints the test files that import the module, directly (`import a.b`, `from a.b import x`, `from a import b`). A package `__init__.py` means the package.

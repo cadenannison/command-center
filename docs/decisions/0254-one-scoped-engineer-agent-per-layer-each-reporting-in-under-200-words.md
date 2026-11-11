@@ -1,6 +1,6 @@
 # 0254. One scoped engineer agent per layer, each reporting in under 200 words
 
-Status: accepted
+Status: accepted; superseded in part by 0286 (the sentence that the agents list a judgement call in the report when they have no decision number)
 
 Context: Only core had a scoped implementation agent (`domain-engineer`). Other layer tasks ran in the main session or a generic agent that could read and edit anything, and the reports back were unbounded.
 Decision: Add `adapter-engineer`, `services-engineer`, `storage-engineer`, `api-engineer` and `web-engineer` in `.claude/agents/`, each on sonnet like `domain-engineer`. Each states the directories and docs it may edit, the contract and layer note it reads, "stop and report a change outside the scope", test-first, no commit or push, `mise run check` before done, and a report of files changed, contract changes, tests run and open issues in under 200 words. `api-engineer` stops before any change to a `/v1` path, parameter or schema. All of them list a judgement call in the report when they have no decision number.

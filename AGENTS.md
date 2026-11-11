@@ -21,8 +21,8 @@ docs/generated/decision-index.md or docs/generated/openapi.json whole; grep the 
 - mise run gen:build      regenerate docs/generated/ (openapi.json, api-reference.md) from the code
 - mise run mutate         mutation testing on src/command_center/core (by hand; no CI workflow yet)
 To run one test file: `uv run pytest tests/test_smoke.py --no-cov`. To find the tests that import a
-source file: `mise run test:for -- src/command_center/core/redact.py` (direct imports only; the full
-`mise run check` still decides done). Run `mise run setup` after every clone.
+source file: `mise run test:for -- src/command_center/core/redact.py` (direct importers bare, tests that
+reach it through up to two src modules marked "(indirect)", at most 15 then "+N more"; the full `mise run check` still decides done). Run `mise run setup` after every clone.
 
 ## Architecture rules (never break)
 Rules 1-4 are enforced today by ruff banned-api and import-linter (pyproject.toml). Rules 5-6 are

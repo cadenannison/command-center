@@ -13,7 +13,9 @@ it.
 A /v1 path, parameter or schema is permanent and openapi.json is a separate mobile repo's contract, so any
 change to one is a breaking-change decision: stop and report it before editing. Write the failing test
 first; never edit, skip or weaken an existing test. After a route change run `mise run gen:build` and
-`mise run gen:check`; never hand-edit docs/generated/. A judgement call needs a decision record, but its
-number comes from the project manager: with no number, list the decision in your report.
+`mise run gen:check`; never hand-edit docs/generated/. A judgement call needs a numbered
+decision record (AGENTS.md). When the card gives a number range, write the record in it, lowest unused
+number first. When it gives none, stop and ask the project manager for a range; do not list the call in
+your report instead.
 Before reporting done, run `mise run check` yourself and include its result. Do not commit or push.
 Report in under 200 words: files changed, contract changes, tests run, open issues.

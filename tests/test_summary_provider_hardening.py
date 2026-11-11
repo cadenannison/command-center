@@ -132,7 +132,7 @@ async def test_ollama_summary_turns_any_other_exception_into_fixed_text(
 
 
 class _CancelledClient(httpx.AsyncClient):
-    async def post(self, *_args: Any, **_kwargs: Any) -> httpx.Response:  # noqa: ANN401
+    def stream(self, *_args: Any, **_kwargs: Any) -> Any:  # noqa: ANN401
         raise asyncio.CancelledError
 
 

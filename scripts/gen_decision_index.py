@@ -43,6 +43,8 @@ _LINE_SUFFIX = re.compile(r":\d+$")
 _PATH_CHARS = re.compile(r"^[\w.\-/]+$")
 _FILE_EXTENSIONS = (".py", ".md", ".toml", ".sh", ".json", ".html", ".yml", ".yaml", ".cfg", ".txt")
 _REPO_FOLDERS = ("src/", "tests/", "docs/", "scripts/", ".claude/", ".github/")
+# Untracked files count only here: where a new module, test or record appears before it is added.
+_NEW_FILE_FOLDERS = ("src/", "tests/", "docs/")
 _ROOT_FILES = frozenset({"pyproject.toml", "mise.toml", "uv.lock"})
 BY_FILE_NAME = "decisions-by-file.md"
 _BY_FILE_HELP = (
@@ -155,31 +157,33 @@ def _where_paths(text: str) -> tuple[frozenset[str], frozenset[tuple[str, str]]]
     return frozenset(paths), frozenset(bare)
 
 
-def _repo_files(root: Path) -> dict[str, list[str]]:
-    """{file name: [repo-relative paths]} for the folders a record can name.
-
-    Uses `git ls-files` (tracked and untracked, ignored files left out) so a local cache or scratch
-    file cannot change the result between machines; outside a git checkout it walks the folders.
-    """
+def _git_files(root: Path, *flags: str, folders: tuple[str, ...]) -> list[str] | None:
+    """The paths `git ls-files` prints for the folders, or None when git cannot answer."""
     listed = subprocess.run(  # noqa: S603  (git on PATH, fixed arguments)
-        [
-            _GIT,
-            "-C",
-            str(root),
-            "ls-files",
-            "--cached",
-            "--others",
-            "--exclude-standard",
-            "-z",
-            "--",
-        ]
-        + [folder.rstrip("/") for folder in _REPO_FOLDERS],
+        [_GIT, "-C", str(root), "ls-files", *flags, "-z", "--", *[f.rstrip("/") for f in folders]],
         capture_output=True,
         check=False,
         timeout=60,
     )
-    if listed.returncode == 0:
-        relative = [p for p in listed.stdout.decode("utf-8").split("\0") if p]
+    if listed.returncode != 0:
+        return None
+    return [p for p in listed.stdout.decode("utf-8").split("\0") if p]
+
+
+def _repo_files(root: Path) -> dict[str, list[str]]:
+    """{file name: [repo-relative paths]} for the folders a record can name.
+
+    Uses `git ls-files`: every tracked file (staged ones included) in the folders a record can
+    name, plus untracked, non-ignored files only under `_NEW_FILE_FOLDERS` (the source, test and
+    docs folders), where a new module or record is expected before it is added. An untracked file in
+    scripts/, .claude/ or .github/ therefore cannot change the result, which would otherwise differ
+    between a working copy and CI (decision 0287). A scratch file under src/, tests/ or docs/ still
+    counts. Outside a git checkout it walks the folders.
+    """
+    tracked = _git_files(root, "--cached", folders=_REPO_FOLDERS)
+    untracked = _git_files(root, "--others", "--exclude-standard", folders=_NEW_FILE_FOLDERS)
+    if tracked is not None and untracked is not None:
+        relative = tracked + untracked
     else:
         relative = [
             path.relative_to(root).as_posix()

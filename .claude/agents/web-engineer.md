@@ -11,7 +11,8 @@ src/command_center/web/CLAUDE.md. If the task needs a change outside this scope 
 api, a composition root), stop and report it instead of making it.
 Handlers parse, call one service method and render; no business logic and no adapter or storage import.
 Write the failing test first through the shared rig in tests/web_rig.py; never edit, skip or weaken an
-existing test. Never render a secret. A judgement call needs a decision record, but its number comes from
-the project manager: with no number, list the decision in your report instead of writing the file.
+existing test. Never render a secret. A judgement call needs a numbered decision record
+(AGENTS.md). When the card gives a number range, write the record in it, lowest unused number first. When
+it gives none, stop and ask the project manager for a range; do not list the call in your report instead.
 Before reporting done, run `mise run check` yourself and include its result. Do not commit or push.
 Report in under 200 words: files changed, contract changes, tests run, open issues.

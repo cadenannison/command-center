@@ -1,15 +1,18 @@
 """Ollama summary provider: the local option, nothing leaves the machine.
 
 Talks to a fixed local endpoint over httpx in JSON mode. Failures become
-core.errors.SummaryProviderError / SummaryRateLimited with fixed messages.
+core.errors.SummaryProviderError / SummaryRateLimited with fixed messages. The reply is read as a
+stream and stopped at the shared cap in http_cap (decision 0288).
 """
 
+import json
 import logging
 from typing import cast
 
 import httpx
 from pydantic import ValidationError
 
+from command_center.adapters.http_cap import ReplyTooLarge, read_capped
 from command_center.core.errors import SummaryProviderError, SummaryRateLimited
 from command_center.core.summary import DailySummary
 
@@ -39,14 +42,24 @@ class OllamaSummaryProvider:
         payload = {"model": self._model, "prompt": prompt, "format": "json", "stream": False}
         try:
             # trust_env=False: a proxy in the environment must not carry the prompt (0246).
-            async with httpx.AsyncClient(timeout=_TIMEOUT_SECONDS, trust_env=False) as client:
-                response = await client.post(f"{self._base_url}/api/generate", json=payload)
+            async with (
+                httpx.AsyncClient(timeout=_TIMEOUT_SECONDS, trust_env=False) as client,
+                client.stream("POST", f"{self._base_url}/api/generate", json=payload) as response,
+            ):
+                # The status is decided from the headers, so an error page is never buffered.
+                _check_status(response)
+                raw = await read_capped(response)
+        except ReplyTooLarge:
+            msg = "Ollama sent a reply that is too large"
+            raise SummaryProviderError(msg) from None
         except httpx.TimeoutException:
             msg = "Ollama timed out"
             raise SummaryProviderError(msg) from None
         except httpx.HTTPError:
             msg = "Ollama is unreachable; is it running?"
             raise SummaryProviderError(msg) from None
+        except (SummaryProviderError, SummaryRateLimited):
+            raise
         except Exception as exc:  # noqa: BLE001  (a library's own text can hold the prompt)
             logger.warning(
                 "Ollama summary request failed",
@@ -54,8 +67,7 @@ class OllamaSummaryProvider:
             )
             msg = "Ollama request failed"
             raise SummaryProviderError(msg) from None
-        _check_status(response)
-        return _parse(response)
+        return _parse(raw)
 
 
 def _check_status(response: httpx.Response) -> None:
@@ -75,10 +87,10 @@ def _malformed() -> SummaryProviderError:
     return SummaryProviderError("Ollama returned a malformed summary")
 
 
-def _parse(response: httpx.Response) -> DailySummary:
+def _parse(raw: bytes) -> DailySummary:
     try:
-        body: object = response.json()
-    except ValueError:
+        body: object = json.loads(raw)
+    except (ValueError, RecursionError):
         raise _malformed() from None
     text = cast("dict[str, object]", body).get("response") if isinstance(body, dict) else None
     if not isinstance(text, str):

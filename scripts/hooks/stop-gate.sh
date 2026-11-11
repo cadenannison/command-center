@@ -3,8 +3,14 @@
 # multi-file changes and floods the context). Exit 2 keeps Claude working; stderr is shown to it.
 # Skips when the working tree is exactly what the gate last looked at, so a read-only turn in a tree that
 # is dirty for other reasons does not pay for the gates or print old failures again.
-command -v jq >/dev/null 2>&1 || exit 0
-command -v mise >/dev/null 2>&1 || exit 0
+# A missing tool turns the gate off, so say so (one line on stderr, still exit 0: not a failure).
+missing=""
+command -v jq >/dev/null 2>&1 || missing="jq"
+command -v mise >/dev/null 2>&1 || missing="${missing:+$missing and }mise"
+if [ -n "$missing" ]; then
+  echo "stop-gate: skipped, $missing not found on PATH, so the fast gates did not run" >&2
+  exit 0
+fi
 root="${CLAUDE_PROJECT_DIR:-$(cd "$(dirname "$0")/../.." && pwd)}"
 cd "$root" || exit 0
 # Loop guard: if this hook already blocked this stop once, let it through (CI is the backstop).
