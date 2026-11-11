@@ -126,42 +126,81 @@ def test_redact_keeps_surrounding_words_and_markers_intact() -> None:
 
 
 _ISO = r"[0-9]{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12][0-9]|3[01])"
+_YEAR_RANGE = r"(?:19|20)[0-9]{2}[-–/](?:(?:19|20)[0-9]{2}|[0-9]{2})"  # noqa: RUF001
+_YEAR_MONTH = r"[0-9]{4}-(?:0[1-9]|1[0-2])-"
 _GROUP = re.compile(r"\d(?:[\s().\-]*\d)*")
 
 
 def _digit_groups_outside_iso_dates(text: str) -> list[str]:
     # A date is exempt when whitespace or the edge of its digit group bounds it on both sides,
     # whatever the text around that group is (so "due 2026-11-07." and "x2026-11-07" count).
-    masked = _GROUP.sub(lambda m: re.sub(rf"(?<!\S){_ISO}(?!\S)", "|", m.group()), text)
+    # Decision 0280 also keeps a year range ("2026-2027", "2026/27") and the date part left in front
+    # of a marker when a later rule masked the tail ("2000-01-[ip]").
+    kept = rf"(?<!\S)(?:{_ISO}(?!\S)|{_YEAR_RANGE}(?!\S)|{_YEAR_MONTH}(?=\[))"
+    masked = _GROUP.sub(lambda m: re.sub(kept, "|", m.group()), text)
     return [g for g in _GROUP.findall(masked) if sum(c.isdigit() for c in g) >= 6]
 
 
-_OCTET = r"(?:25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])"
-# A dotted quad is an address, not a number (decisions 0244, 0255): under six digits the IPv4 rule
-# marks it [ip], and a six-digit-plus group that is exactly a quad is marked [ip] by the digit rule.
-_IPV4_ONLY = re.compile(rf"{_OCTET}(?:\.{_OCTET}){{3}}")
-_IPV4_ADDRESS = re.compile(rf"(?<![0-9.]){_OCTET}(?:\.{_OCTET}){{3}}(?![0-9]|\.[0-9])")
-_SEPARATORS = st.sampled_from([" ", "-", ".", ") ", "  ", " - "])
+# Explicit expectations, so the test does not rebuild the implementation's own rule. A dotted quad
+# is an address, not a number (decisions 0244, 0255); other digit groups of six or more digits are
+# numbers (decision 0280 keeps dates, versions and section ranges, which no example here is).
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("x 10.0.0.1 y", "x [ip] y"),
+        ("x 192.168.1.20 y", "x [ip] y"),
+        ("x 1.1.1.1 2 y", "x [ip] 2 y"),
+        ("x 0.0.0.0 y", "x [ip] y"),
+        ("x 255.255.255.255 y", "x [ip] y"),
+        ("x 123.456.789 y", "x [number] y"),
+        ("x 1 2 3 4 5 6 y", "x [number] y"),
+        ("x 12-34-56 y", "x [number] y"),
+        ("x 123456 y", "x [number] y"),
+        ("x 12345 y", "x 12345 y"),
+        ("x 1 2 3 4 5 y", "x 1 2 3 4 5 y"),
+        ("x 123 456 y", "x [number] y"),
+        ("x 123 45 y", "x 123 45 y"),
+    ],
+)
+def test_redact_marks_dotted_quads_as_addresses_and_long_digit_groups_as_numbers(
+    text: str, expected: str
+) -> None:
+    assert redact(text) == expected
+
+
 _CHUNKS = st.text(alphabet="0123456789", min_size=1, max_size=3)
+# Two separator sets that cannot form a date, a section range ("1.2-3.4") or a dotted quad: dashes
+# and spaces with any number of chunks, or dots and spaces with at most three chunks.
+_DASHED = st.lists(st.sampled_from([" ", "-", ") ", "  ", " - "]), min_size=12, max_size=12)
+_DOTTED = st.lists(st.sampled_from([" ", ".", ") ", "  "]), min_size=12, max_size=12)
 
 
 @given(
     chunks=st.lists(_CHUNKS, min_size=2, max_size=12),
-    separators=st.lists(_SEPARATORS, min_size=12, max_size=12),
+    separators=_DASHED,
 )
-def test_redact_replaces_any_separator_joined_number_of_six_or_more_digits(
+def test_redact_replaces_any_dash_or_space_joined_number_of_six_or_more_digits(
     chunks: list[str], separators: list[str]
 ) -> None:
     number = chunks[0] + "".join(
         sep + chunk for sep, chunk in zip(separators, chunks[1:], strict=False)
     )
-    if sum(len(c) for c in chunks) < 6:
-        expected = _IPV4_ADDRESS.sub("[ip]", number)
-    elif _IPV4_ONLY.fullmatch(number):
-        expected = "[ip]"
-    else:
-        expected = "[number]"
-    assert redact(f"x {number} y") == f"x {expected} y"
+    digits = sum(len(c) for c in chunks)
+    assert redact(f"x {number} y") == (f"x {'[number]' if digits >= 6 else number} y")
+
+
+@given(
+    chunks=st.lists(_CHUNKS, min_size=2, max_size=3),
+    separators=_DOTTED,
+)
+def test_redact_replaces_any_dot_or_space_joined_number_of_six_or_more_digits(
+    chunks: list[str], separators: list[str]
+) -> None:
+    number = chunks[0] + "".join(
+        sep + chunk for sep, chunk in zip(separators, chunks[1:], strict=False)
+    )
+    digits = sum(len(c) for c in chunks)
+    assert redact(f"x {number} y") == (f"x {'[number]' if digits >= 6 else number} y")
 
 
 @example("call 801-555-1234")

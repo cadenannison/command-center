@@ -29,7 +29,7 @@ _ALNUM = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
             "feed [url] added",
         ),
         ("a https://x.io/1 b https://y.io/2 c", "a [url] b [url] c"),
-        ("ftp://example.com/a stays", "ftp://example.com/a stays"),
+        ("ftp://example.com/a stays", "[url] stays"),
         ("plain https: no", "plain https: no"),
     ],
 )

@@ -1,6 +1,6 @@
 # 0242. A 4-5 digit code after code, otp, pin, passcode or verification is masked within five words
 
-Status: accepted; superseded in part by 0260 (the separators allowed between the keyword and the code)
+Status: accepted; superseded in part by 0260 (the separators allowed between the keyword and the code) and 0281 (the keyword list, a code before its keyword, a course number)
 
 Context: `Your code: 48213` has 5 digits, under the 6-digit rule of 0011, and an SMS code is the thing most likely to be pasted into a subject line.
 Decision: A run of 4 or 5 digits is replaced by `[number]` when it follows `code`, `otp`, `pin`, `passcode` or `verification` (case-insensitive, optional plural `s`, the keyword not inside a longer word, so `barcode` does not count) with at most five letter-only words and any of whitespace, ":", "#", "=", "-", brackets, quotes or commas between, or nothing at all (`OTP4821`, `code (4821)`, `code, 4821`). The run must be the whole number: a digit, or "-", "/" or "." followed by a digit, after it ends the match, so `code due 2026-11-09` keeps its date and `pin 1234.5` keeps its decimal. Digits before the keyword (`4821 is your code`) are not covered.

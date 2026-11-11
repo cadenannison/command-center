@@ -1,6 +1,6 @@
 # 0244. IP addresses and "[at]" / "(dot)" email spellings are masked
 
-Status: accepted; superseded in part by 0255 and 0261 (the IPv4 position in the rule order; the characters around an IPv6 run)
+Status: accepted; superseded in part by 0255, 0261, 0280 and 0281 (the IPv4 position in the rule order; the characters around an IPv6 run; a four-part version after a version word; braces and a spaced "@" in an email)
 
 Context: `10.0.0.1` has 5 digits and IPv6 has no 6-digit run, so neither was masked. `bob [at] example [dot] com` has no "@".
 Decision: IPv4 is four dotted octets (0-255, leading zeros allowed), not part of a longer dotted number, masked to `[ip]`; `1.2.3.4.5.6` is therefore left to the digit rule and `3.12.1` is not an address. IPv6 is a maximal run of hex digits, ":" and "." that `ipaddress.IPv6Address` accepts (so `::1`, `fe80::1`, the full form and `::ffff:10.0.0.1`; `10:30:45` is not) and that has at least two colons and at most 45 characters; a trailing "." or ":" and one leading ":" are tried off when the whole run is not an address (`fe80::1: refused`, `addr:fe80::1`), and a run followed by a letter or digit (`Cafe::new`) is a word, not an address. A spelled-out email is a local part, "[at]" or "(at)", then a domain whose dots are "." or "[dot]" or "(dot)" (case-insensitive, single spaces allowed), masked to `[email]`. `[at]` or `(at)` alone in a sentence is not enough.

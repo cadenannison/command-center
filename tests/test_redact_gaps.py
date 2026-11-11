@@ -351,7 +351,7 @@ def test_redact_leaves_ordinary_text_alone(text: str) -> None:
             "pin one two three four five [number]",
             id="five-words-away",
         ),
-        pytest.param("barcode 4821 pin", "barcode 4821 pin", id="digits-before-keyword"),
+        pytest.param("barcode 4821 pin", "barcode [number] pin", id="digits-before-keyword"),
     ],
 )
 def test_redact_code_rule_window_and_edges(text: str, expected: str) -> None:
