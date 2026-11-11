@@ -38,9 +38,12 @@ Ranges on disk today (each block is contiguous; the numbers between blocks are r
 | 0250-0258 | 0250-0258 (agent-cost aids 0250-0254, redaction 0255, task C3 0256-0258) |
 | 0260-0262 | 0260-0262 (task R1, round 3) |
 | 0270 | 0270 (task C4) |
+| 0280-0284 | 0280-0284 (task R3: redaction keeps agenda content) |
+| 0285-0289 | 0285-0289 (task T1: tooling and doc fixes) |
+| 0290-0292 | 0290-0292 (task C5: chat key shapes) |
 
 Reserved gaps between those blocks: 0059, 0061-0069, 0096-0099, 0107-0109, 0117-0119, 0132-0139,
-0142-0149, 0154-0159, 0173-0179, 0185-0199, 0204-0209, 0214-0219, 0226-0229, 0234-0239, 0259, 0263-0269, 0271-0274.
+0142-0149, 0154-0159, 0173-0179, 0185-0199, 0204-0209, 0214-0219, 0226-0229, 0234-0239, 0259, 0263-0269, 0271-0279, 0293-0294.
 
 The table is read from the files, so it shows where numbers were used, not how wide each card's
 allocation was: a block may have been given more numbers than it used. If you need a number and

@@ -77,3 +77,20 @@ Status is one of `proposed` (written down, not yet decided), `accepted` (we will
 - Status: proposed
 - Why: `GeminiIntegration.validate` re-raises an exception it does not recognise (its text may hold the key, and `SettingsService._check` catches only `AuthExpired`, `TransientError` and `FatalError`, so it becomes a 500), and its `finally` closes the client with a bare `aclose()`/`close()` rather than `_close`.
 - Idea: end `validate` with a fixed-text `FatalError` that logs only the class name, and close through `_close`; a test with an arbitrary exception carrying a needle. See decision 0245.
+
+## Schema guard: runtime check that every table in the schema comes from the ledger base
+- Status: proposed (final review, finding 5; decisions 0232, 0247)
+- Why: the static guard in `tests/test_schema_guard.py` reads source text, so it misses SQL in strings, `.sql` files, `string.Template`, `CREATE VIRTUAL TABLE` and `CREATE TEMP TABLE`, `ALTER ... RENAME`, and tables found through `Inspector` reflection. A table made any of those ways would not be created through the ledger base and nothing would fail.
+- Idea: a runtime check on a freshly built database that every table in the schema (what `Inspector` reports) comes from the ledger base metadata, and fails naming the extra or missing ones; a new test runs it against the real storage setup.
+- Touches: `storage/` (where the ledger base and schema are built), a new test beside `tests/test_schema_guard.py`, `docs/contracts/storage.md`, a new decision.
+
+## Split core/redact.py into rule modules
+- Status: proposed (task R3; decision 0280 "Revisit when")
+- Why: `core/redact.py` is about 400 lines; the aim is 300 (`.claude/rules/style.md`).
+- Idea: split the rules into modules (urls and emails, tokens and keys, digit groups and exemptions, codes, IPv6) behind the same `redact()`; the rule order and the idempotence guards (decisions 0261, 0283) must stay as they are.
+
+## test:for: a flag that prints every indirect test
+- Status: proposed (decision 0285)
+- Why: `mise run test:for` caps indirect output at 15 lines and prints "+N more", so some tests are hidden and the command cannot list them (for `core/redact.py` it hides 78).
+- Idea: a flag (for example `--all`) that prints every indirect test, one per line, so an agent can run them all; the default output stays capped.
+- Touches: `scripts/tests_for.py`, `tests/test_tests_for_indirect.py` and `tests/test_tests_for_limits.py` (the task card must say `tests: modify`), the `test:for` line in `AGENTS.md`, a new decision.
