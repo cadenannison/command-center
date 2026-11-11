@@ -3,9 +3,10 @@
 ## Claude Code specifics
 - Default model is sonnet (pinned in .claude/settings.json). Cheap subagents run haiku; the reviewer
   runs opus. Do not switch models mid-task: it throws away the prompt cache.
-- Delegate: test-runner after changes; reviewer once per phase, with `git diff` pasted into its prompt.
+- Delegate: test-runner after changes; reviewer once per phase, with `git diff` pasted into its prompt
+  (ui-reviewer instead when the diff touches ui/ or the UI rules).
 - Slice work: the layer's own agent (domain-engineer for core; adapter-, services-, storage-, api-,
-  web-engineer). Each is scoped to its directory and reports in under 200 words.
+  web-, ui-engineer). Each is scoped to its directory and reports in under 200 words.
 - Cross-module work: plan in a separate session and write the plan into the task card, then execute.
 - Launch `claude` from the repo root; hook paths depend on it.
 

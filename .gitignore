@@ -248,3 +248,10 @@ compose.env
 
 compose.env
 *.env
+
+# UI (decision 0301): dependencies, the repo-local pnpm store, test output
+node_modules/
+.pnpm-store/
+ui/playwright-report/
+ui/test-results/
+*.tsbuildinfo

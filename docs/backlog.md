@@ -34,8 +34,6 @@ Status is one of `proposed` (written down, not yet decided), `accepted` (we will
   cancelled, so a stale token could be stored when the old one finishes.
 - Touches: the message in `web/settings_routes.py`, and `tests/test_web_csrf.py` (the task card must say
   `tests: modify`).
-  ## Hyperlinks to all assignments
-  
 
 ## Chat: save conversations
 - Status: proposed
@@ -94,3 +92,15 @@ Status is one of `proposed` (written down, not yet decided), `accepted` (we will
 - Why: `mise run test:for` caps indirect output at 15 lines and prints "+N more", so some tests are hidden and the command cannot list them (for `core/redact.py` it hides 78).
 - Idea: a flag (for example `--all`) that prints every indirect test, one per line, so an agent can run them all; the default output stays capped.
 - Touches: `scripts/tests_for.py`, `tests/test_tests_for_indirect.py` and `tests/test_tests_for_limits.py` (the task card must say `tests: modify`), the `test:for` line in `AGENTS.md`, a new decision.
+
+## Hyperlinks to all assignments
+- Status: proposed
+- Why: an event or task on the dashboard should open the thing it came from (the Canvas assignment, the Gmail thread, the calendar entry), so the user does not have to search for it in the source app.
+- Idea: every event and task links to its source. Each adapter carries a link field on the `Event` it builds (a new optional field in core; the API adds it as an additive /v1 field, decision 0302), the URL goes through `core/urlcheck` before it is stored or shown, and the new UI renders it as a link that opens in a new tab with `rel="noopener noreferrer"`. A source with no stable URL leaves the field empty.
+- Touches: `core` (the `Event` shape and the link check), every adapter in `adapters/` (Canvas, CalDAV, iCal feed, Gmail), `storage` (a column, additive), `api` (the field), `ui/` (the link), and `docs/contracts/` for each. A new decision. A link must never carry a token or an email body; the redaction rule is unchanged because a link is not sent to a summary provider.
+
+## Instinct: personal assistant over the /v1 API (future)
+- Status: proposed (working name; decision 0302 keeps the API open for it)
+- Why: a personal assistant that can do anything the UI can, by voice or text, is the long-term reason to keep the API capability-complete.
+- Idea: an assistant that acts only through the /v1 endpoints, with the same validation and secret rules as the UI. Open questions for its own design record: how it authenticates (a scoped credential rather than the user's), whether its actions are logged and reversible, what it may read (AGENTS.md rule 6 redaction applies), and which provider runs it (opt-in and off by default, like the summaries).
+- Touches: nothing yet. Not designed; do not start before the UI ports the widgets and the API is complete (decisions 0300, 0302).

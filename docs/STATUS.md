@@ -5,25 +5,28 @@ task ends: edit the lines, do not append a log. Decisions and their reasons live
 ideas not yet accepted live in `docs/backlog.md`. This file holds neither.
 
 ## Last updated
-2026-11-10, HEAD `3a2dda6` (chore: raise test floor to 4856), plus the uncommitted card G1 changes below.
+2026-11-11.
 
 ## In flight
-Nothing apart from card G1 (Gmail pending-connect wording), in the working tree and not committed:
-decisions 0190-0192 (0193-0194 unused, reserved gaps), `web/sources.py`, `web/cards.py`,
-`web/howto.py`, `web/templates/_card.html`, `_syncing_note.html`, `_status_fragment.html`, `tests/test_web_gmail_card.py` (20 new tests), `tests/test_secret_storage_wording.py` (18 new tests; the "stored only on this computer"
-wording in `settings.html`, the chat how-to, README, SECURITY.md and docs, decision 0192), and the docs
-for them (`docs/contracts/web.md`, `gmail-setup.md`, `sources.md`, `first-run.md`, `runbook.md`, the
-regenerated decision indexes). Agents never commit (AGENTS.md); the human reviews the diff and commits.
+No task is in progress. Uncommitted in the working tree, for the human to review and commit: the K1 and
+K1b docs (decisions 0300-0304, `docs/approved-dependencies.md`, the UI agents, backlog items, README table,
+generated indexes) and H2 (decision 0310, `tests/test_redact_gaps.py`). There is no `ui/` directory yet.
+The guard and rule changes for the UI are a patch at `$TMPDIR/k1-guard.patch` (AGENTS.md,
+`docs/standards.md`, CI `ui` job, `mise.toml` `ui:*` tasks, `scripts/ui.sh`, `scripts/hooks/guard-bash.sh`,
+`.gitleaks.toml`, `.claude/settings.json`, CODEOWNERS, PR template). Until it is applied, AGENTS.md still
+says the UI is Jinja + HTMX. One known gap in it: the guard does not read `ui/pnpm-lock.yaml` (0301).
 
 ## Gate state
-Seen on 2026-11-10 in the working tree: `mise run check:fast` passes, `gen:check` is clean, and the full
-`mise run test` passes (4757 passed, 137 skipped, coverage 94%). `mise run test:count` prints 4894;
-`.test-floor` is 4856 (raise it to 4894 when G1 is committed). The intermittent redaction idempotence
-failure noted earlier has not been reproduced.
+`mise run test:count` prints 4894. `.test-floor` is 4856 in the working tree; the human raises it to 4894
+with the commit. `mise run check:fast` passes. The intermittent redaction idempotence failure noted
+earlier has not been reproduced.
 
 ## Next
-- Commit card G1 (raise `.test-floor` to 4894 with it).
-- Then the UI redesign.
+- The human applies the K1 guard patch (`git apply`) and commits it as its own commit.
+- P1: scaffold `ui/` (decisions 0300-0304): the lockfile guard check, the pnpm pin, `ui:test:count`,
+  `minimumReleaseAge` tested, Dependabot for `ui/`, the generated client, the CSP header (an api task),
+  `ui/.test-floor`. Then port the widgets one by one, each with its /v1 endpoint (0302).
+- Design after P1.
 - Remaining backlog (`docs/backlog.md`): Postgres sync vs check-off deadlock retry (0233),
   `CHAT_TRUST_ENV` opt-in (0225), move the `base.html` error handler to a static file if a CSP is added
   (0212), pairing refresh-row purge, `GeminiIntegration.validate` catch-all, save chats,

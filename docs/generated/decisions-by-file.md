@@ -11,7 +11,7 @@ Each line is a path and the decisions that name it. Look a number up with `grep 
 - .claude/agents/storage-engineer.md: 0254 0286
 - .claude/agents/web-engineer.md: 0254 0286
 - .claude/allow-test-edits: 0183
-- .github/workflows/ci.yml: 0083 0091
+- .github/workflows/ci.yml: 0083 0091 0301 0303
 - .gitleaks.toml: 0014
 - AGENTS.md: 0250 0285
 - CLAUDE.md: 0254
@@ -19,34 +19,41 @@ Each line is a path and the decisions that name it. Look a number up with `grep 
 - SECURITY.md: 0192
 - docs/MAP.md: 0024 0043 0081 0087
 - docs/STATUS.md: 0250 0287
+- docs/approved-dependencies.md: 0301
+- docs/backlog.md: 0302
 - docs/contracts/adapters.md: 0015 0024 0028 0036 0041 0046 0081 0095 0140 0225 0288
-- docs/contracts/api.md: 0020 0023 0025 0037 0052 0085 0086 0171
+- docs/contracts/api.md: 0020 0023 0025 0037 0052 0085 0086 0171 0302
 - docs/contracts/core.md: 0015 0017 0024 0028 0034 0040 0089 0110 0111 0240 0262 0280 0281 0282
 - docs/contracts/services.md: 0019 0024 0025 0026 0028 0029 0035 0037 0038 0040 0052 0056 0084 0085 0086 0256 0257
 - docs/contracts/storage.md: 0016 0027 0028 0035 0040 0111 0192 0232
 - docs/contracts/web.md: 0039 0172 0190 0192 0256 0257 0292
+- docs/decisions/0008-ui.md: 0300
+- docs/decisions/0212-one-global-htmx-error-listener-is-inline-in-the-base-template.md: 0301
 - docs/distributed-mode.md: 0076 0077 0078 0085 0086 0090
 - docs/first-run.md: 0078 0140 0191 0192
 - docs/generated/: 0025
 - docs/generated/decision-index.md: 0082 0087
 - docs/generated/decisions-by-file.md: 0251
 - docs/generated/module-index.md: 0252
-- docs/generated/openapi.json: 0110 0124 0249
+- docs/generated/openapi.json: 0110 0124 0249 0300 0302
 - docs/gmail-setup.md: 0191
-- docs/mobile-api-notes.md: 0124 0130 0131 0249
-- docs/mobile.md: 0249
+- docs/mobile-api-notes.md: 0124 0130 0131 0249 0304
+- docs/mobile.md: 0249 0304
 - docs/runbook.md: 0192
 - docs/sources.md: 0191 0192
-- mise.toml: 0252
+- mise.toml: 0252 0301 0303
 - pyproject.toml: 0043 0050 0092
 - scripts/gen-decision-index: 0082
 - scripts/gen_decision_index.py: 0087 0251 0287
 - scripts/gen_docs.py: 0082 0087 0251
 - scripts/gen_module_index.py: 0252
+- scripts/hooks/guard-bash.sh: 0301
 - scripts/hooks/stop-gate.sh: 0253 0289
 - scripts/report-state.sh: 0078 0079 0084
 - scripts/smoke-distributed.sh: 0078 0079 0084 0093
+- scripts/test-floor.sh: 0303
 - scripts/tests_for.py: 0252 0285
+- scripts/ui.sh: 0301 0303
 - src/command_center/adapters/CLAUDE.md: 0250 0288
 - src/command_center/adapters/caldav_apple.py: 0031
 - src/command_center/adapters/canvas.py: 0032 0041 0042 0046 0081
@@ -246,7 +253,7 @@ Each line is a path and the decisions that name it. Look a number up with `grep 
 - tests/test_queued_sync_publish_failure.py: 0085
 - tests/test_redact.py: 0255 0261
 - tests/test_redact_agenda.py: 0280 0281 0283 0284
-- tests/test_redact_gaps.py: 0240 0241 0242 0243 0244 0255 0260 0261
+- tests/test_redact_gaps.py: 0240 0241 0242 0243 0244 0255 0260 0261 0310
 - tests/test_redact_urls_and_tokens.py: 0089
 - tests/test_remote_policy.py: 0060 0126 0182 0203 0211 0213
 - tests/test_report_stream_contract.py: 0071

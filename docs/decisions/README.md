@@ -29,6 +29,7 @@ Ranges on disk today (each block is contiguous; the numbers between blocks are r
 | 0150-0153 | 0150-0153 |
 | 0160-0172 | 0160-0172 |
 | 0180-0184 | 0180-0184 |
+| 0190-0192 | 0190-0192 (task G1: Gmail wording, credential-storage wording) |
 | 0200-0203 | 0200-0203 |
 | 0210-0213 | 0210-0213 |
 | 0220-0225 | 0220-0225 |
@@ -41,9 +42,11 @@ Ranges on disk today (each block is contiguous; the numbers between blocks are r
 | 0280-0284 | 0280-0284 (task R3: redaction keeps agenda content) |
 | 0285-0289 | 0285-0289 (task T1: tooling and doc fixes) |
 | 0290-0292 | 0290-0292 (task C5: chat key shapes) |
+| 0300-0304 | 0300-0304 (task K1: TypeScript UI foundation) |
+| 0310 | 0310 (task H2: redact timing budget) |
 
 Reserved gaps between those blocks: 0059, 0061-0069, 0096-0099, 0107-0109, 0117-0119, 0132-0139,
-0142-0149, 0154-0159, 0173-0179, 0185-0199, 0204-0209, 0214-0219, 0226-0229, 0234-0239, 0259, 0263-0269, 0271-0279, 0293-0294.
+0142-0149, 0154-0159, 0173-0179, 0185-0189, 0193-0199, 0204-0209, 0214-0219, 0226-0229, 0234-0239, 0259, 0263-0269, 0271-0279, 0293-0299, 0305-0309, 0311-0314.
 
 The table is read from the files, so it shows where numbers were used, not how wide each card's
 allocation was: a block may have been given more numbers than it used. If you need a number and

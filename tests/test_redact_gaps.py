@@ -359,7 +359,9 @@ def test_redact_code_rule_window_and_edges(text: str, expected: str) -> None:
 
 
 _LONG = 200_000
-_TIME_BUDGET_SECONDS = 0.5
+# The budget catches quadratic or exponential blowup, not small slowdowns. Local linear time at
+# 200k chars is ~0.12s and CI once took ~0.55s; a real regression takes many seconds.
+_TIME_BUDGET_SECONDS = 2.0
 
 
 def _long(unit: str) -> str:
