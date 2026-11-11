@@ -55,8 +55,31 @@ description = "Verify docs/generated/ is current and AGENTS.md is sound"
 run = "uv run python scripts/gen_docs.py --check && bash scripts/check-agents-md.sh"
 
 [tasks.audit]
-description = "Dependency vulnerability audit"
-run = "uv run pip-audit --local --skip-editable"
+description = "Dependency vulnerability audit (Python, then the UI when ui/ exists)"
+run = "uv run pip-audit --local --skip-editable && bash scripts/ui.sh audit"
+
+# UI tasks (decisions 0300, 0301, 0303). Each skips with a notice until ui/package.json exists.
+# The K2 scaffold adds `pnpm = "<version>"` to [tools] above; it must equal packageManager in ui/package.json
+# (scripts/ui.sh guard fails if they differ). Pick a version at least 14 days old (decision 0301).
+[tasks."ui:setup"]
+description = "Install ui/ dependencies: frozen lockfile, install scripts off"
+run = "bash scripts/ui.sh setup"
+
+[tasks."ui:fast"]
+description = "ui pins and policy guard, typecheck, lint"
+run = "bash scripts/ui.sh fast"
+
+[tasks."ui:check"]
+description = "ui gates: guard, typecheck, lint, vitest, test floor, build"
+run = "bash scripts/ui.sh check"
+
+[tasks."ui:test"]
+description = "ui unit and component tests (vitest)"
+run = "bash scripts/ui.sh test"
+
+[tasks."ui:test:count"]
+description = "Print the number of ui tests (last line, digits only); ui/.test-floor is its floor"
+run = "bash scripts/ui.sh count"
 
 [tasks.secrets]
 description = "Secret scan of git history"
@@ -74,9 +97,9 @@ description = "Mutation testing scoped to core (run on a schedule by hand; no CI
 run = "uv run mutmut run"
 
 [tasks."check:fast"]
-description = "fmt:check + lint + typecheck + arch (the Stop hook runs this)"
-depends = ["fmt:check", "lint", "typecheck", "arch"]
+description = "fmt:check + lint + typecheck + arch + the ui pins, typecheck and lint (the Stop hook runs this)"
+depends = ["fmt:check", "lint", "typecheck", "arch", "ui:fast"]
 
 [tasks.check]
 description = "Every non-mutating gate (pre-push and CI run this)"
-depends = ["fmt:check", "lint", "typecheck", "arch", "gen:check", "test", "audit", "secrets"]
+depends = ["fmt:check", "lint", "typecheck", "arch", "gen:check", "test", "ui:check", "audit", "secrets"]

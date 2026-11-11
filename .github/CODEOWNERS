@@ -8,3 +8,11 @@
 /uv.lock @cadenannison
 /.test-floor @cadenannison
 /.gitleaks.toml @cadenannison
+/scripts/ui.sh @cadenannison
+/docs/approved-dependencies.md @cadenannison
+/ui/.pnpmfile.* @cadenannison
+/ui/.test-floor @cadenannison
+/ui/pnpm-lock.yaml @cadenannison
+/ui/.npmrc @cadenannison
+/ui/pnpm-workspace.yaml @cadenannison
+/ui/package.json @cadenannison

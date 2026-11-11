@@ -3,6 +3,16 @@ title = "command-center gitleaks config"
 [extend]
 useDefault = true
 
+# Vite copies every VITE_ variable into the browser bundle, so one named like a secret is a leak by
+# construction (decision 0301). Matches an assignment in ui/ files and in any .env file; a value that starts with "fake-" is allowed by the allowlist below.
+[[rules]]
+id = "vite-public-secret-name"
+description = "A VITE_ variable named like a secret ends up in the browser bundle"
+regex = '''VITE_[A-Z0-9_]*(?:KEY|SECRET|TOKEN|PASSWORD|PASSWD|CREDENTIAL)[A-Z0-9_]*\s*[=:]\s*["']?([^\s"']+)'''
+secretGroup = 1
+path = '''(^|/)ui/|(^|/)\.env'''
+keywords = ["vite_"]
+
 # Test credentials must start with "fake-" (see AGENTS.md). Matched against the secret itself,
 # not the whole line, so a real key cannot hide behind a "fake-" elsewhere on the line.
 [[allowlists]]

@@ -32,6 +32,41 @@ jobs:
       - run: mise run test
       - run: bash scripts/test-floor.sh
 
+  # The UI gates (decisions 0300, 0301, 0303). The job always runs so "gate" can require it; the steps
+  # run only once ui/package.json exists. Install is frozen and script-free; every action is SHA-pinned.
+  ui:
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions: { contents: read }
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
+      - id: present
+        run: |
+          if [ -f ui/package.json ]; then echo "found=true" >> "$GITHUB_OUTPUT"; else echo "ui/ not scaffolded yet; nothing to check"; fi
+      - if: steps.present.outputs.found == 'true'
+        uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
+      - if: steps.present.outputs.found == 'true'
+        run: bash scripts/ui.sh guard
+      - if: steps.present.outputs.found == 'true'
+        run: pnpm install --frozen-lockfile --ignore-scripts
+        working-directory: ui
+      - if: steps.present.outputs.found == 'true'
+        run: pnpm run typecheck
+        working-directory: ui
+      - if: steps.present.outputs.found == 'true'
+        run: pnpm run lint
+        working-directory: ui
+      - if: steps.present.outputs.found == 'true'
+        run: pnpm run test
+        working-directory: ui
+      - if: steps.present.outputs.found == 'true'
+        run: bash scripts/ui.sh floor
+      - if: steps.present.outputs.found == 'true'
+        run: pnpm run build
+        working-directory: ui
+
   secrets:
     if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
@@ -54,6 +89,7 @@ jobs:
         with: { persist-credentials: false }
       - uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
       - run: uv sync --all-extras
+      # pip-audit, then `pnpm audit` for the UI when ui/ exists (scripts/ui.sh audit, decision 0301)
       - run: mise run audit
 
   dependency-review:
@@ -116,7 +152,7 @@ jobs:
   # The single required status check: mark only "gate" as required in branch protection.
   gate:
     if: always() && github.event_name != 'schedule'
-    needs: [check, secrets, dependency-review]
+    needs: [check, ui, secrets, dependency-review]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

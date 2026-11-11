@@ -2,7 +2,9 @@
 
 ## What this is
 Personal productivity dashboard: aggregates calendars, Canvas, email and weather into day/week/month
-views with an opt-in AI summary. Python 3.13, uv, FastAPI, Jinja2 + HTMX, SQLite by default.
+views with an opt-in AI summary. Python 3.13, uv, FastAPI, SQLite by default. Two UIs until cutover:
+Jinja2 + HTMX in src/command_center/web (frozen: bug and security fixes only) and the new TypeScript UI
+in ui/ (Vite, React, pnpm; decisions 0300-0304).
 Layout and import boundaries: docs/MAP.md. Patterns: docs/standards.md. Decisions and their reasons:
 docs/decisions/. Read the one contract you need (docs/contracts/core.md, services.md, adapters.md,
 storage.md, api.md), not the whole docs tree.
@@ -18,6 +20,10 @@ docs/generated/decision-index.md or docs/generated/openapi.json whole; grep the 
 - mise run check:fast     fmt:check + lint + typecheck + arch
 - mise run fix            autofix format and lint
 - mise run fmt:check | lint | typecheck | test | arch | gen:check | audit | secrets
+- mise run ui:setup       install ui/ dependencies (frozen lockfile, install scripts off)
+- mise run ui:check       ui gates: pins and policy, typecheck, lint, vitest, floor, build
+- mise run ui:test | ui:test:count    the ui tests | their count (ui/.test-floor is the floor)
+  The ui tasks skip with a notice until ui/ exists. check:fast and check include them.
 - mise run gen:build      regenerate docs/generated/ (openapi.json, api-reference.md) from the code
 - mise run mutate         mutation testing on src/command_center/core (by hand; no CI workflow yet)
 To run one test file: `uv run pytest tests/test_smoke.py --no-cov`. To find the tests that import a
@@ -26,7 +32,8 @@ reach it through up to two src modules marked "(indirect)", at most 15 then "+N 
 
 ## Architecture rules (never break)
 Rules 1-4 are enforced today by ruff banned-api and import-linter (pyproject.toml). Rules 5-6 are
-enforced by tests that arrive with the features; until then they bind you by review.
+enforced by tests that arrive with the features; until then they bind you by review. Rule 7 is
+enforced by `mise run ui:check` (scripts/ui.sh) and by review.
 1. src/command_center/core is pure: no I/O, clock, randomness, environment or globals. Time,
    randomness and ids come in as parameters (Clock, Rng, IdSource in core/ports.py). core imports
    nothing in the app and none of httpx, sqlalchemy, fastapi, keyring.
@@ -41,11 +48,16 @@ enforced by tests that arrive with the features; until then they bind you by rev
    last4). The server binds 127.0.0.1. Nothing secret is logged, committed or put in a URL.
 6. AI summaries are opt-in and OFF by default. Redaction (in core) runs before any provider sees data:
    titles, due dates and trimmed subjects only, addresses and numbers stripped, never email bodies.
+7. ui/ is a client of /v1 and nothing else (decisions 0300-0302): it calls only the generated typed
+   client, never another origin, a private route or Python code; no secret in the bundle (no `VITE_`
+   credential), a log, a URL or localStorage; no inline script or style (strict CSP, decision 0301);
+   settings are write-only there too. A widget needs a /v1 endpoint first (an api task, additive).
 Reuse the shared building blocks in docs/contracts/core.md; do not invent a parallel shape.
 
 ## Generated files (never hand-edit)
 Everything under docs/generated/ comes from `mise run gen:build`. Change the source, rebuild, and run
-`mise run gen:check`. For a route, parameter or schema, read the generated page, not the hand-written
+`mise run gen:check`. The same holds for the typed client generated into ui/ (directory named in decision 0300): regenerate
+it from docs/generated/openapi.json, never edit it. For a route, parameter or schema, read the generated page, not the hand-written
 contract; contracts hold behaviour and reasons. If the two disagree, the generated one is right.
 openapi.json is the contract for a separate mobile repo, so an API change is a breaking-change decision.
 
@@ -61,6 +73,12 @@ openapi.json is the contract for a separate mobile repo, so an API change is a b
 - All dependencies are already declared in pyproject.toml and locked in uv.lock; do not edit either.
   A new dependency needs asking first, and the name must be verified on PyPI (age, downloads, repo)
   because models invent plausible package names.
+- UI dependencies follow decision 0301: install only with `--frozen-lockfile --ignore-scripts`; the
+  approved list is docs/approved-dependencies.md (only the human edits it) and a name not on it needs
+  the project manager's approval and registry facts (age, downloads, repo) first. Never run `pnpm add`,
+  enable an install script or edit docs/approved-dependencies.md, ui/pnpm-lock.yaml, ui/.npmrc,
+  ui/pnpm-workspace.yaml or ui/.test-floor; the human does.
+- The Jinja UI (src/command_center/web) is frozen: fix bugs there, build new screens in ui/.
 - Never run git commit, git push or any destructive git command (stash, clean, rebase, restore,
   checkout --, reset --hard, --no-verify). To compare with HEAD use `git show HEAD:path`. When a task
   is done, stop and report what changed; the human reviews the diff and commits.
@@ -81,6 +99,6 @@ openapi.json is the contract for a separate mobile repo, so an API change is a b
 - Don't read the real database under ~/.command-center unless the project manager asks; if told to, print only counts and types, never titles, links or notes.
 
 ## Definition of done
-`mise run check` passes · a test exists that fails without the change · contracts/MAP updated if an
-interface changed · `gen:build` run and `gen:check` clean · reviewer found nothing needing a decision
+`mise run check` passes (and `mise run ui:check` for ui/ changes) · a test exists that fails without the change · contracts/MAP updated if an
+interface changed · `gen:build` run and `gen:check` clean · reviewer (ui-reviewer for ui/ changes) found nothing needing a decision
 (max 2 fix rounds, then escalate) · STOP and report. The human commits.
