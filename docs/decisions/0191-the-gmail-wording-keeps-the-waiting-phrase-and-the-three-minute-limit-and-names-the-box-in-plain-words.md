@@ -1,0 +1,11 @@
+# 0191. The Gmail wording keeps the waiting phrase and the three-minute limit and names the box in plain words
+
+Status: accepted
+
+Context: Writing the card G1 copy needed three choices that the card did not settle: how to change the busy line without breaking the test that pins it, which time to quote for the browser sign-in, and what to do about Google's own menu names (OAuth consent screen, OAuth client ID) that the no-jargon rule would otherwise forbid.
+Decision: (1) The busy line still starts with "Waiting for Google sign-in…", which `tests/test_web_settings.py::test_gmail_connect_shows_waiting_for_google_and_allows_a_long_request` asserts, and then says what to do in the browser and how long it takes. No existing test was edited. (2) The card says the Google page waits up to 3 minutes, the value of `SIGN_IN_TIMEOUT_SECONDS` in `adapters/gmail.py` and what `docs/gmail-setup.md` already says; the 15 minute figure in the contract is only the browser's request timeout and is not shown. "About 5 minutes" for the first-time setup comes from `docs/gmail-setup.md`. (3) The field is labelled "Google credentials (paste the whole file)". The words OAuth, scope, token and JSON do not appear on the card outside the collapsible how-to; inside it, Google's menu names are kept as written because the user has to match them on Google's screen.
+Alternative: Replace the busy line entirely (rejected: it would need an edit to an existing assertion for no gain). Quote 15 minutes (rejected: the sign-in itself fails after 3). Strip OAuth from the how-to (rejected: the user would not find "OAuth consent screen" in Google's menu).
+Reason: Keep the user's guidance true to what the code does, and keep jargon out of the part of the card people read, not out of the part that must match a vendor's screen.
+Consequences: The 3 minute figure is repeated in text; if `SIGN_IN_TIMEOUT_SECONDS` changes, `GMAIL_WAITING` and `GMAIL_PENDING` must change with it. `docs/gmail-setup.md`, `docs/sources.md` and `docs/first-run.md` use the new field name.
+Where: `src/command_center/web/sources.py`, `src/command_center/web/howto.py`, `docs/gmail-setup.md`, `docs/sources.md`, `docs/first-run.md`.
+Revisit when: `SIGN_IN_TIMEOUT_SECONDS` changes, Google renames the consent-screen menus again, or the sign-in no longer needs a hand-made Google Cloud client.

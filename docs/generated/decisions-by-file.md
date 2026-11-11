@@ -15,24 +15,28 @@ Each line is a path and the decisions that name it. Look a number up with `grep 
 - .gitleaks.toml: 0014
 - AGENTS.md: 0250 0285
 - CLAUDE.md: 0254
-- README.md: 0090
+- README.md: 0090 0192
+- SECURITY.md: 0192
 - docs/MAP.md: 0024 0043 0081 0087
 - docs/STATUS.md: 0250 0287
 - docs/contracts/adapters.md: 0015 0024 0028 0036 0041 0046 0081 0095 0140 0225 0288
 - docs/contracts/api.md: 0020 0023 0025 0037 0052 0085 0086 0171
 - docs/contracts/core.md: 0015 0017 0024 0028 0034 0040 0089 0110 0111 0240 0262 0280 0281 0282
 - docs/contracts/services.md: 0019 0024 0025 0026 0028 0029 0035 0037 0038 0040 0052 0056 0084 0085 0086 0256 0257
-- docs/contracts/storage.md: 0016 0027 0028 0035 0040 0111 0232
-- docs/contracts/web.md: 0039 0172 0256 0257 0292
+- docs/contracts/storage.md: 0016 0027 0028 0035 0040 0111 0192 0232
+- docs/contracts/web.md: 0039 0172 0190 0192 0256 0257 0292
 - docs/distributed-mode.md: 0076 0077 0078 0085 0086 0090
-- docs/first-run.md: 0078 0140
+- docs/first-run.md: 0078 0140 0191 0192
 - docs/generated/: 0025
 - docs/generated/decision-index.md: 0082 0087
 - docs/generated/decisions-by-file.md: 0251
 - docs/generated/module-index.md: 0252
 - docs/generated/openapi.json: 0110 0124 0249
+- docs/gmail-setup.md: 0191
 - docs/mobile-api-notes.md: 0124 0130 0131 0249
 - docs/mobile.md: 0249
+- docs/runbook.md: 0192
+- docs/sources.md: 0191 0192
 - mise.toml: 0252
 - pyproject.toml: 0043 0050 0092
 - scripts/gen-decision-index: 0082
@@ -119,20 +123,21 @@ Each line is a path and the decisions that name it. Look a number up with `grep 
 - src/command_center/web/: 0039
 - src/command_center/web/CLAUDE.md: 0250
 - src/command_center/web/ai_settings.py: 0202
+- src/command_center/web/cards.py: 0190
 - src/command_center/web/chat_page.py: 0200 0203
 - src/command_center/web/city_search.py: 0183
 - src/command_center/web/history.py: 0153
-- src/command_center/web/howto.py: 0103
+- src/command_center/web/howto.py: 0103 0191 0192
 - src/command_center/web/item_routes.py: 0152 0153
 - src/command_center/web/loopback.py: 0210 0211
 - src/command_center/web/pair_routes.py: 0211
 - src/command_center/web/render.py: 0210
 - src/command_center/web/settings_actions.py: 0102
 - src/command_center/web/settings_routes.py: 0211
-- src/command_center/web/sources.py: 0172
+- src/command_center/web/sources.py: 0172 0190 0191
 - src/command_center/web/static/vendor/htmx.min.js: 0054
 - src/command_center/web/task_form.py: 0153
-- src/command_center/web/templates/_card.html: 0103
+- src/command_center/web/templates/_card.html: 0103 0190
 - src/command_center/web/templates/_city_results.html: 0183
 - src/command_center/web/templates/_city_search.html: 0183
 - src/command_center/web/templates/_field.html: 0183
@@ -142,6 +147,7 @@ Each line is a path and the decisions that name it. Look a number up with `grep 
 - src/command_center/web/templates/_rows.html: 0151 0152
 - src/command_center/web/templates/base.html: 0151 0203 0212
 - src/command_center/web/templates/month.html: 0210
+- src/command_center/web/templates/settings.html: 0192
 - src/command_center/web/templates/today.html: 0210
 - src/command_center/web/templates/week.html: 0210
 - src/command_center/web/views.py: 0150
@@ -246,6 +252,7 @@ Each line is a path and the decisions that name it. Look a number up with `grep 
 - tests/test_report_stream_contract.py: 0071
 - tests/test_scheduler.py: 0053
 - tests/test_schema_guard.py: 0232 0247
+- tests/test_secret_storage_wording.py: 0192
 - tests/test_settings_disconnect_order.py: 0085
 - tests/test_settings_integration.py: 0058
 - tests/test_settings_merge.py: 0052
@@ -281,6 +288,7 @@ Each line is a path and the decisions that name it. Look a number up with `grep 
 - tests/test_web_chat_card.py: 0172
 - tests/test_web_city_search.py: 0183 0184
 - tests/test_web_error_handler.py: 0212
+- tests/test_web_gmail_card.py: 0190
 - tests/test_web_history.py: 0153
 - tests/test_web_items.py: 0150 0151 0152
 - tests/test_web_items_remote.py: 0153

@@ -2,7 +2,7 @@
 {% block title %}Settings · Command Center{% endblock %}
 {% block content %}
 <h1>Settings</h1>
-<p class="muted">Values you type are stored in the OS keychain. Secrets are never shown again, only whether they are set; other settings (a URL, an Apple ID, a place) are shown so you can correct them. A blank field keeps what is already stored.</p>
+<p class="muted">Values you type are stored only on this computer (in the OS keychain, or in a protected file when running under Docker). Secrets are never shown again, only whether they are set; other settings (a URL, an Apple ID, a place) are shown so you can correct them. A blank field keeps what is already stored.</p>
 {% if checklist %}<div class="panel checklist" aria-labelledby="h-checklist"><h2 id="h-checklist">Setup checklist</h2>
 <ul class="setup">{% for row in checklist %}<li><a href="#source-{{ row.source }}">{{ row.label }}</a>
 <span class="chip chip-{{ row.state }}">{{ row.state_label }}</span>{% if row.when %}<span class="muted">{{ row.when }}</span>{% endif %}</li>{% endfor %}</ul></div>{% endif %}

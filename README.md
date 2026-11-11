@@ -2,8 +2,8 @@
 A desktop app to pull all daily, weekly, and monthly info from disparate data sources into a clean visual dashboard.
 
 Personal productivity dashboard: aggregates calendars, Canvas, email and weather into day/week/month
-views with an opt-in AI summary. Local-first: the server binds to 127.0.0.1 and secrets live in the OS
-keychain.
+views with an opt-in AI summary. Local-first: the server binds to 127.0.0.1 and secrets are stored
+only on this computer.
 
 ## Quickstart
 ```
@@ -12,8 +12,9 @@ uv run command-center  # start the server on 127.0.0.1:8765
 ```
 Then open http://localhost:8765 and go to Settings to connect your sources: [docs/sources.md](docs/sources.md)
 has the setup for each one. The app syncs when it starts and then every 30 minutes
-(`CC_SYNC_INTERVAL_MINUTES`). Your credentials are stored in the OS keychain, never in a file, and the
-server only answers on your own machine.
+(`CC_SYNC_INTERVAL_MINUTES`). Your credentials are stored only on this computer (in the OS keychain, or in a protected file under
+Docker), never in the project folder or any file you commit, and the server only answers on your own
+machine.
 
 First time? [docs/first-run.md](docs/first-run.md) walks through connecting each source and what a good
 first sync looks like. To send someone a status that is safe to paste (statuses, last 4 characters, counts,

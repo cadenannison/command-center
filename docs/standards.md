@@ -24,7 +24,7 @@ Every outbound call has a timeout. Retries need a failure class, a cap, backoff 
 Only idempotent reads are retried.
 
 ## Secrets and privacy
-Secrets: OS keychain through the keyring adapter. The settings API is write-only. Logs carry no tokens,
+Secrets: behind the secret-store port: the OS keychain through the keyring adapter by default, a protected file under Docker. The settings API is write-only. Logs carry no tokens,
 addresses, subjects or event titles at INFO and above. AI summaries follow `docs/decisions/0004-summaries.md`.
 
 ## API

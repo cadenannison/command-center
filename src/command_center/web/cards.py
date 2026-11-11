@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from command_center.services.models import SourceSettings
 from command_center.services.settings import UNVERIFIED_PREFIX
 from command_center.web.howto import HowTo, howto_for
-from command_center.web.sources import form_for
+from command_center.web.sources import PendingHelp, form_for
 
 POLL_SECONDS = 2
 CONNECT_TIMEOUT_MS = 120_000
@@ -65,6 +65,10 @@ class CardView:
     can_test: bool = False
     can_save_unverified: bool = False
     city_search: bool = False
+    busy_text: str = "Connecting…"
+    pending: PendingHelp | None = None
+    syncing_note: str = ""  # the text to show now: empty unless the source is syncing
+    has_syncing_note: bool = False  # the source has a slot for it, so a poll can fill or clear it
 
     @property
     def keep_typed(self) -> bool:
@@ -134,4 +138,8 @@ def card_view(
         can_test=connected,
         can_save_unverified=offer_unverified,
         city_search=form.city_search,
+        busy_text=form.waiting or "Connecting…",
+        pending=form.pending if status.status == "none" else None,
+        syncing_note=form.syncing_note if status.status == "syncing" else "",
+        has_syncing_note=bool(form.syncing_note),
     )

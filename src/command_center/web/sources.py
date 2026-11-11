@@ -14,6 +14,57 @@ GEMINI_CAVEAT = (
 )
 
 
+GMAIL_NOTE = (
+    "Command Center only reads your mail, to find replies you owe. It never sends, deletes or "
+    "changes anything, and it does not read message bodies. What you paste below is stored only "
+    "on this computer, never in the project folder or any file you commit, and is never shown "
+    "again after you save it."
+)
+GMAIL_WAITING = (
+    "Waiting for Google sign-in… A Google page should have opened in your browser: choose your "
+    "account and allow read-only access, then come back here. This usually takes about a minute; "
+    "it gives up after 3 minutes."
+)
+GMAIL_SYNCING = "Checking your recent mail now; this takes under a minute."
+
+
+@dataclass(frozen=True)
+class PendingHelp:
+    """What a card not yet connected says: now, next steps, how long, and what success shows."""
+
+    now: str
+    steps: tuple[str, ...]
+    time: str
+    result: str
+
+
+GMAIL_PENDING = PendingHelp(
+    now=(
+        "Gmail is not connected yet. Nothing is read from your mail until you finish the steps "
+        "below."
+    ),
+    steps=(
+        (
+            "Open “How to connect Gmail” below and follow it to get a credentials file from "
+            "Google. Do this once."
+        ),
+        "Copy the whole file, paste it into the box, and press Connect.",
+        (
+            "A Google page opens in your browser. Choose your account and allow read-only "
+            "access, then come back to this page."
+        ),
+    ),
+    time=(
+        "The first time takes about 5 minutes. After you press Connect, the Google page waits "
+        "for up to 3 minutes; if it runs out, press Connect again."
+    ),
+    result=(
+        "When it works, this card says “Connected” and shows when Command Center last checked "
+        "your mail."
+    ),
+)
+
+
 @dataclass(frozen=True)
 class Field:
     """One input of a source's form. `secret` comes from `credential_fields`, never from here."""
@@ -35,6 +86,9 @@ class SourceForm:
     sign_in_wait: bool = False  # connect blocks on a browser sign-in and can take minutes
     credential_only: bool = False  # an API key: no sync, no items, so no sync state to show
     city_search: bool = False  # the card has a "Find a city" box that fills its two coordinates
+    waiting: str = ""  # the busy line while a connect runs; empty means "Connecting…"
+    pending: PendingHelp | None = None  # shown while nothing is stored and no sync has run
+    syncing_note: str = ""  # shown under the status while any sync runs
 
 
 def _field(source: str, key: str, label: str, *, multiline: bool = False, hint: str = "") -> Field:
@@ -66,8 +120,16 @@ SOURCE_FORMS: dict[str, SourceForm] = {
     ),
     "gmail": SourceForm(
         "Gmail",
-        (_field("gmail", "client_json", "OAuth client JSON", multiline=True),),
+        (
+            _field(
+                "gmail", "client_json", "Google credentials (paste the whole file)", multiline=True
+            ),
+        ),
+        note=GMAIL_NOTE,
         sign_in_wait=True,
+        waiting=GMAIL_WAITING,
+        pending=GMAIL_PENDING,
+        syncing_note=GMAIL_SYNCING,
     ),
     "weather": SourceForm(
         "Weather",

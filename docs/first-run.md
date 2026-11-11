@@ -10,14 +10,14 @@ uv run command-center            # serves http://127.0.0.1:8765
 Open http://localhost:8765 and go to **Settings**. The app only answers on your own machine, and it syncs when it starts and then every 30 minutes (`CC_SYNC_INTERVAL_MINUTES`).
 
 ## 2. Connect your sources: in the web page only
-Type every secret into the Settings page in your browser and nowhere else. Not in the terminal (shell history and process lists keep what you type there), not in a `curl` command, not in an environment variable, not in a chat with a person or an assistant, not in an issue or a commit. The page stores each value in the OS keychain and shows only "set" and the last 4 characters afterwards.
+Type every secret into the Settings page in your browser and nowhere else. Not in the terminal (shell history and process lists keep what you type there), not in a `curl` command, not in an environment variable, not in a chat with a person or an assistant, not in an issue or a commit. The page stores each value only on this computer (in the OS keychain, or in a protected file when running under Docker) and shows only "set" and the last 4 characters afterwards.
 
 | Source | What you enter in Settings | Where it comes from |
 |---|---|---|
 | Canvas | Your school's address and an access token | Canvas > Account > Settings > Approved Integrations > New Access Token ([sources.md](sources.md#canvas)) |
 | Apple Calendar (iCloud) | Apple ID and an **app-specific password** | account.apple.com > Sign-In and Security > App-Specific Passwords; never your normal Apple password ([sources.md](sources.md#apple-calendar)) |
 | LearningSuite | The iCal feed link of each course, one per line | LearningSuite course calendar subscription links; the links are secrets ([sources.md](sources.md#learningsuite)) |
-| Gmail | Your Google OAuth client JSON, then a browser sign-in | [gmail-setup.md](gmail-setup.md); read-only, and it needs a one-time Google Cloud project |
+| Gmail | The Google credentials file you download, then a browser sign-in | [gmail-setup.md](gmail-setup.md); read-only, and it needs a one-time Google Cloud project |
 | Weather (optional) | Latitude and longitude | Any map; no account ([sources.md](sources.md#weather)) |
 
 Connect one source at a time and let it settle before the next. Each card's button checks what you typed against the real service first: a rejected credential is shown at once and nothing is stored. To change one field later, fill in only that field; a blank field keeps its stored value.
@@ -51,7 +51,7 @@ What to do if you see it:
 The other sources keep syncing while Canvas shows Reconnect.
 
 ## 5. LearningSuite connects but shows 0 items
-Run the diagnosis. It reads the feed links already stored in your keychain (you paste nothing), downloads each feed once and prints only counts, categories and dates: never a link, a title, a description or a location, so the whole output is safe to paste ([decision 0140](decisions/0140-learningsuite-diagnosis-is-a-counts-only-subcommand.md)).
+Run the diagnosis. It reads the feed links already stored on this computer (you paste nothing), downloads each feed once and prints only counts, categories and dates: never a link, a title, a description or a location, so the whole output is safe to paste ([decision 0140](decisions/0140-learningsuite-diagnosis-is-a-counts-only-subcommand.md)).
 ```sh
 uv run command-center diagnose learningsuite
 ```

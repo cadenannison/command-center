@@ -28,4 +28,4 @@ Persistence. Implements storage ports from core; SQLAlchemy lives here.
 
 ## Not built yet
 - General schema migrations: tables are created if missing and never altered, except for the `sync_states.generation` column that `ensure_state_schema` adds (decision 0075) and the `item_ledger.reopened_at` column and the `item_completions` table (with its one-time copy of `done_at`/`done_by`) that `ensure_ledger_schema` adds (decisions 0130, 0131). Also a cache of fetched items with per-source last-sync times.
-- Never stores secrets (those are in the keychain) or email bodies.
+- Never stores secrets (those are in the secret store) or email bodies.

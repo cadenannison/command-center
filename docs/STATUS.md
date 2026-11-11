@@ -5,29 +5,24 @@ task ends: edit the lines, do not append a log. Decisions and their reasons live
 ideas not yet accepted live in `docs/backlog.md`. This file holds neither.
 
 ## Last updated
-2026-11-10, HEAD `4779a5a` (docs: refresh STATUS.md, decision ranges and backlog notes), plus the
-uncommitted work below (card D2).
+2026-11-10, HEAD `3a2dda6` (chore: raise test floor to 4856), plus the uncommitted card G1 changes below.
 
 ## In flight
-In the working tree, not committed: the redaction work (R3, decisions 0280-0284, `core/redact.py`),
-the chat key-shape work (C5, decisions 0290-0292, `core/chat.py`, `services/chat_settings.py`, the chat
-panel) and the tooling fixes (T1, decisions 0285-0289: `test:for`, the decision-by-file index, the
-stop gate, the Ollama summary cap), with their tests and the docs for them. Other sessions may still be
-editing `core/chat.py` and `tests/test_chat_key_shapes.py`. Agents never commit (AGENTS.md); the human
-reviews the diff and commits.
+Nothing apart from card G1 (Gmail pending-connect wording), in the working tree and not committed:
+decisions 0190-0192 (0193-0194 unused, reserved gaps), `web/sources.py`, `web/cards.py`,
+`web/howto.py`, `web/templates/_card.html`, `_syncing_note.html`, `_status_fragment.html`, `tests/test_web_gmail_card.py` (20 new tests), `tests/test_secret_storage_wording.py` (18 new tests; the "stored only on this computer"
+wording in `settings.html`, the chat how-to, README, SECURITY.md and docs, decision 0192), and the docs
+for them (`docs/contracts/web.md`, `gmail-setup.md`, `sources.md`, `first-run.md`, `runbook.md`, the
+regenerated decision indexes). Agents never commit (AGENTS.md); the human reviews the diff and commits.
 
 ## Gate state
-Seen on 2026-11-10 in the working tree: `mise run check:fast` FAILS on lint: E501 (line 104 > 100) at
-`tests/test_chat_key_shapes.py:4`, a file another session is editing, so it was not touched here.
-`fmt:check` (609 files formatted), `typecheck` (0 errors) and `arch` (12 contracts kept, 0 broken) pass
-when run alone. `mise run test:count` prints 4856; `.test-floor` is 4446 (raise it when the work is
-committed). The full test suite was not run by card D2. The intermittent redaction idempotence failure
-noted earlier has not been reproduced.
+Seen on 2026-11-10 in the working tree: `mise run check:fast` passes, `gen:check` is clean, and the full
+`mise run test` passes (4757 passed, 137 skipped, coverage 94%). `mise run test:count` prints 4894;
+`.test-floor` is 4856 (raise it to 4894 when G1 is committed). The intermittent redaction idempotence
+failure noted earlier has not been reproduced.
 
 ## Next
-- Commit the redact, chat and tooling work now in the working tree (after the lint error above is fixed
-  and `mise run check` passes).
-- Then card G1: Gmail pending-connect wording (decisions 0190-0194).
+- Commit card G1 (raise `.test-floor` to 4894 with it).
 - Then the UI redesign.
 - Remaining backlog (`docs/backlog.md`): Postgres sync vs check-off deadlock retry (0233),
   `CHAT_TRUST_ENV` opt-in (0225), move the `base.html` error handler to a static file if a CSP is added

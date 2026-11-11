@@ -1,8 +1,13 @@
 {% from "_button.html" import connect_button %}
 {% from "_field.html" import single_input %}
+{% from "_syncing_note.html" import syncing_note %}
 <section class="card" id="source-{{ card.source }}" aria-labelledby="h-{{ card.source }}">
 <header><h2 id="h-{{ card.source }}">{{ card.label }}</h2>{% include "_status.html" %}</header>
 {% if card.note %}<p class="note">{{ card.note }}</p>{% endif %}
+{{ syncing_note(card) }}
+{% if card.pending %}<div class="pending" role="note"><p><strong>{{ card.pending.now }}</strong></p>
+<ol>{% for step in card.pending.steps %}<li>{{ step }}</li>{% endfor %}</ol>
+<p class="hint">{{ card.pending.time }}</p><p class="hint">{{ card.pending.result }}</p></div>{% endif %}
 {% if card.howto %}<details class="howto"><summary>How to connect {{ card.label }}</summary>
 <ol>{% for step in card.howto.steps %}<li>{{ step }}</li>{% endfor %}</ol>
 {% if card.howto.note %}<p class="hint">{{ card.howto.note }}</p>{% endif %}
@@ -26,7 +31,7 @@
 {% if card.can_test %}<button type="button" class="secondary" hx-put="/settings/{{ card.source }}" hx-vals='{"action": "test"}' hx-target="#result-{{ card.source }}" hx-swap="outerHTML" hx-disabled-elt="this" hx-request='{"timeout": {{ card.timeout_ms }}}'>Test connection</button>{% endif %}
 {% if card.can_sync %}<button type="button" class="secondary" hx-put="/settings/{{ card.source }}" hx-vals='{"action": "sync"}' hx-target="#result-{{ card.source }}" hx-swap="outerHTML" hx-disabled-elt="this">Sync now</button>{% endif %}
 <button type="button" class="danger" hx-delete="/settings/{{ card.source }}" hx-target="#source-{{ card.source }}" hx-swap="outerHTML" hx-confirm="{% if card.credential_only %}Delete the stored key of {{ card.label }}?{% else %}Delete the stored credentials and synced items of {{ card.label }}?{% endif %}">Delete</button>
-<span class="busy" id="busy-{{ card.source }}">{% if card.sign_in_wait %}Waiting for Google sign-in…{% else %}Connecting…{% endif %}</span>
+<span class="busy" id="busy-{{ card.source }}">{{ card.busy_text }}</span>
 </div>
 <p class="flash{% if card.flash and not card.flash_ok %} bad{% endif %}" id="result-{{ card.source }}" role="status" aria-live="polite">{{ card.flash }}</p>
 {% if card.city_search %}<footer class="attribution"><a href="https://open-meteo.com/" rel="noopener noreferrer">Weather data by Open-Meteo.com</a> (<a href="https://open-meteo.com/en/licence" rel="noopener noreferrer">CC BY 4.0</a>) · <a href="https://open-meteo.com/en/terms" rel="noopener noreferrer">Open-Meteo terms</a> · Place names from the GeoNames database (CC BY 4.0), through Open-Meteo.</footer>{% endif %}

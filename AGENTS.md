@@ -37,7 +37,7 @@ enforced by tests that arrive with the features; until then they bind you by rev
 3. Import direction follows docs/MAP.md. `mise run arch` fails the build on a violation.
 4. Each vendor SDK is imported in exactly one adapter file (caldav, googleapiclient/google_auth_oauthlib,
    google-genai, keyring, redis, rumps). The contract names the file in pyproject.toml.
-5. Secrets live in the OS keychain through keyring. The settings API is write-only (status = set +
+5. Secrets live behind the secret-store port: the OS keychain through keyring by default, a protected file under Docker (CC_SECRET_BACKEND=file). The settings API is write-only (status = set +
    last4). The server binds 127.0.0.1. Nothing secret is logged, committed or put in a URL.
 6. AI summaries are opt-in and OFF by default. Redaction (in core) runs before any provider sees data:
    titles, due dates and trimmed subjects only, addresses and numbers stripped, never email bodies.

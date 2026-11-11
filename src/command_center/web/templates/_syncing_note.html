@@ -1,0 +1,1 @@
+{% macro syncing_note(card, oob=False) %}{% if card.has_syncing_note %}<p class="note" id="syncing-note-{{ card.source }}"{% if oob %} hx-swap-oob="true"{% endif %}{% if not card.syncing_note %} hidden{% endif %}>{{ card.syncing_note }}</p>{% endif %}{% endmacro %}

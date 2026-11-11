@@ -1,3 +1,5 @@
 {% from "_button.html" import connect_button %}
+{% from "_syncing_note.html" import syncing_note %}
 {% include "_status.html" %}
 {{ connect_button(card, oob=True) }}
+{{ syncing_note(card, oob=True) }}

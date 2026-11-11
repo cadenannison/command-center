@@ -9,12 +9,12 @@
 - Gmail shows "Reconnect": the refresh token expired (7 days while the OAuth client is unverified).
   Reconnect from settings. See docs/decisions/0003-gmail.md.
 - Phone cannot connect: the Mac is asleep, or Tailscale Serve is off. Never use Funnel. Setup and checks: docs/mobile.md.
-- Rotate a secret: overwrite it through the settings API (write-only); the old value is replaced in the keychain.
+- Rotate a secret: overwrite it through the settings API (write-only); the old value is replaced in the secret store (the OS keychain, or the protected file under Docker).
 
 ## Production-readiness checklist (local-first app; tick before relying on it daily)
 - [ ] `mise run check` green on main; CI `gate` job is the only required status check
 - [ ] Server bound to 127.0.0.1 only; no 0.0.0.0 anywhere
-- [ ] Every secret in the keychain; settings API write-only; `mise run secrets` clean
+- [ ] Every secret in the secret store (keychain or protected file), none in the repo; settings API write-only; `mise run secrets` clean
 - [ ] Summaries OFF by default; redaction property-tested; email excluded unless opted in
 - [ ] Every outbound call has a timeout; every source shows per-source health in the UI
 - [ ] Backup/restore of the SQLite file tested; schema migrations tested on a copy

@@ -1,6 +1,6 @@
 # Sources
 
-Connect each one in the app under **Settings**. Values you type are stored in the OS keychain and are
+Connect each one in the app under **Settings**. Values you type are stored only on this computer and are
 never shown again; the card only says what is set and the last 4 characters of a secret.
 The adapter behaviour behind each is in [contracts/adapters.md](contracts/adapters.md).
 
@@ -9,7 +9,7 @@ The adapter behaviour behind each is in [contracts/adapters.md](contracts/adapte
 | Canvas | Canvas URL, Access token | [Canvas](#canvas) |
 | Apple Calendar | Apple ID, App-specific password | [Apple Calendar](#apple-calendar) |
 | LearningSuite | iCal feed URLs | [LearningSuite](#learningsuite) |
-| Gmail | OAuth client JSON | [gmail-setup.md](gmail-setup.md) |
+| Gmail | The Google credentials file you download | [gmail-setup.md](gmail-setup.md) |
 | Weather | Latitude, Longitude | [Weather](#weather) |
 | Gemini (summaries) | API key | [Summaries](#summaries) |
 
@@ -56,7 +56,7 @@ and then kept.
 
 ### Gemini key
 Create a key in [Google AI Studio](https://aistudio.google.com/apikey), then enter it in Settings > Gemini
-summaries. It is checked with one small request to Gemini before it is stored in the keychain (source
+summaries. It is checked with one small request to Gemini before it is stored on this computer (source
 `gemini`, key `api_key`), and works at once: no restart. Deleting it stops new Gemini summaries: a summary already made for a day is kept, a later day shows the
 latest earlier summary, and with none stored the built-in fallback is used. The key alone does not turn summaries on, that is
 `CC_SUMMARY_ENABLED=true`.
@@ -75,6 +75,6 @@ Chat answers questions about your next 7 days. It is off by default, read-only (
 | `CC_CHAT_BASE_URL` | The server address for `ollama` (default `http://localhost:11434`) and `openai_compatible` |
 | `CC_CHAT_MODEL` | The model name; required for `openai_compatible` |
 
-An address on this machine or your LAN may use http; any other server must use https at a public address, and cloud-metadata and link-local addresses are always refused. An `openai_compatible` key is stored in the keychain (source `chat`, key `api_key`) and is never shown again.
+An address on this machine or your LAN may use http; any other server must use https at a public address, and cloud-metadata and link-local addresses are always refused. An `openai_compatible` key is stored only on this computer (source `chat`, key `api_key`) and is never shown again.
 
 What is sent: titles, dates and times of the next 7 days of events and tasks, with email addresses, links and long numbers removed and the text cut to size (6000 characters). Email is never included. Your last 7 days of history and your notes are each a separate setting, off by default. `GET /v1/chat/context-preview` shows the exact text before you turn chat on. With Gemini's free tier Google may use what you send to improve its products and human reviewers may read it; with a server you run yourself nothing leaves your network. Conversations stay in memory (20 turns) and are forgotten on restart; they are not saved.

@@ -76,9 +76,9 @@ HOWTO: dict[str, HowTo] = {
                 "type Desktop app. Download the JSON file or copy its contents."
             ),
             (
-                "Paste the whole JSON here and press Connect. Your browser opens; choose your "
-                "account and allow read-only access. Google may warn that the app is unverified: "
-                "that is expected for your own client, choose Continue."
+                "Paste the whole file into the box on this card and press Connect. Your browser "
+                "opens; choose your account and allow read-only access. Google may warn that the "
+                "app is unverified: that is expected for your own client, choose Continue."
             ),
         ),
         (
@@ -127,8 +127,8 @@ HOWTO: dict[str, HowTo] = {
                 "llama.cpp on this machine or your network need none: leave this empty."
             ),
             (
-                "Enter the key here and press Connect. It is kept in your keychain and never "
-                "shown again, only its last four characters."
+                "Enter the key here and press Connect. It is kept only on this computer and "
+                "never shown again, only its last four characters."
             ),
         ),
         (

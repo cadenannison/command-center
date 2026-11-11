@@ -13,9 +13,12 @@ The app never reads message bodies; it shows who wrote, the subject and Gmail's 
    - Under Test users, **add your own Gmail address**. Without this Google refuses the sign-in.
 4. APIs & Services > Credentials > Create credentials > OAuth client ID > Application type
    **Desktop app**. Download the JSON file (or copy its contents).
-5. In Command Center, open Settings > Gmail and paste the whole JSON into the "OAuth client JSON" field, then
+5. In Command Center, open Settings > Gmail and paste the whole file into the "Google credentials" box, then
    press Connect. Your browser opens; choose your account and allow read-only access. Google may warn
    that the app is unverified: that is expected for your own client, choose Continue.
+
+What you paste is stored only on this computer, never in the project folder or any file you commit,
+and Command Center never shows it again after you save it.
 
 ## Reconnect every 7 days
 While the consent screen is in Testing, Google expires the sign-in after 7 days (decision 0003).
