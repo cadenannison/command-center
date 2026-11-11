@@ -62,9 +62,19 @@ jobs:
         run: pnpm run test
         working-directory: ui
       - if: steps.present.outputs.found == 'true'
+        run: bash scripts/ui.sh gen-check
+      - if: steps.present.outputs.found == 'true'
         run: bash scripts/ui.sh floor
       - if: steps.present.outputs.found == 'true'
         run: pnpm run build
+        working-directory: ui
+      # Playwright and axe (decision 0323). The browser is fetched by Playwright from its own CDN, not
+      # through the lockfile; its version is the one the locked @playwright/test names. Not in the test floor.
+      - if: steps.present.outputs.found == 'true'
+        run: pnpm exec playwright install --with-deps chromium
+        working-directory: ui
+      - if: steps.present.outputs.found == 'true'
+        run: pnpm run test:e2e
         working-directory: ui
 
   secrets:

@@ -1,5 +1,5 @@
 #!/bin/bash
-# UI gates (decisions 0300, 0301, 0303). Usage: scripts/ui.sh guard|setup|test|count|floor|fast|check|audit
+# UI gates (decisions 0300, 0301, 0303, 0320, 0323). Usage: scripts/ui.sh guard|lockcheck [file]|gen-check|setup|test|count|floor|fast|check|audit
 # Every subcommand skips with a notice (exit 0) until ui/package.json exists, so the gates can be wired
 # into `mise run check` and CI before the UI is scaffolded. The repo root is always this script's parent.
 set -euo pipefail
@@ -9,8 +9,8 @@ cmd="${1:-}"
 fail() { echo "ui: $*" >&2; exit 1; }
 
 case "$cmd" in
-  guard|setup|test|count|floor|fast|check|audit) ;;
-  *) fail "usage: scripts/ui.sh guard|setup|test|count|floor|fast|check|audit" ;;
+  guard|lockcheck|gen-check|setup|test|count|floor|fast|check|audit) ;;
+  *) fail "usage: scripts/ui.sh guard|lockcheck [file]|gen-check|setup|test|count|floor|fast|check|audit" ;;
 esac
 if [ ! -f "$ui/package.json" ]; then echo "ui: no ui/package.json yet, skipping $cmd"; exit 0; fi
 
@@ -114,8 +114,74 @@ guard() {
     [ -n "$name" ] || continue
     approved "$name" || problem "build allow-list entry '$name' is not on docs/approved-dependencies.md"
   done <<<"$builds"
+  lockcheck "$ui/pnpm-lock.yaml" || bad=1
   [ "$bad" -eq 0 ] || exit 1
   echo "ui guard: ok"
+}
+
+# Decision 0323: what the lockfile may contain. Every package is a registry package pinned by a sha512
+# integrity hash; nothing else rewrites or adds code at install time. Line based (a lockfile is
+# machine-written, one key per line), so a hand-edited lockfile that hides a key in a flow mapping or
+# another shape fails closed: the only accepted resolution line is `resolution: {integrity: sha512-...}`.
+# Rejected: a resolution with a tarball, git or directory source; an entry with no integrity; a version
+# or specifier that is a URL, git, file, link, workspace or npm: alias; any top-level key other than
+# lockfileVersion, settings, importers, packages and snapshots (which rules out overrides,
+# patchedDependencies, pnpmfileChecksum, catalogs, packageExtensionsChecksum and the like).
+# The file holds two YAML documents (pnpm's own pin, then the project); both are checked.
+lockcheck() {
+  local f="${1:-$ui/pnpm-lock.yaml}" out prog
+  [ -f "$f" ] || { echo "ui lockfile: $f is missing" >&2; return 1; }
+  IFS= read -r -d '' prog <<'AWK' || true
+function bad(msg) { printf "ui lockfile: line %d: %s\n", NR, msg; n++ }
+function close_entry() {
+  if (inpkg && entry != "" && !got) bad("package " entry " has no sha512 integrity")
+  entry = ""; got = 0
+}
+/^---[ \t]*$/ { close_entry(); inpkg = 0; next }
+/^[^ #]/ {
+  close_entry()
+  top = $0; sub(/:.*/, "", top); gsub(/'/, "", top)
+  inpkg = (top == "packages")
+  if (top !~ /^(lockfileVersion|settings|importers|packages|snapshots)$/) bad("top-level key '" top "' is not allowed")
+  next
+}
+inpkg && /^  [^ ]/ { close_entry(); entry = $0; next }
+inpkg && /^    resolution:/ {
+  v = $0
+  if (sub(/^    resolution: \{integrity: sha512-/, "", v) && sub(/\}$/, "", v) && v ~ /^[A-Za-z0-9+\/]+=*$/ && length(v) == 88) got = 1
+  else bad("resolution is not a plain registry integrity: " $0)
+  next
+}
+/^ +(overrides|patchedDependencies|pnpmfileChecksum|packageExtensionsChecksum|catalogs|ignoredOptionalDependencies):/ { bad("forbidden key under a top-level section: " $0) }
+/^    (deprecated|engines):/ { next }
+/\\/ { bad("a backslash escape could hide a source from this check: " $0) }
+/tarball:|type: git|repo:|commit:|directory:/ { bad("non-registry source: " $0) }
+/(^|[ '@\"(:])(git\+|git:|github:|gitlab:|bitbucket:|https?:|file:|link:|workspace:|npm:|portal:)/ { bad("URL, git, file, link, workspace or alias source: " $0) }
+END { close_entry(); exit (n > 0) }
+AWK
+  if out=$(awk "$prog" "$f"); then
+    echo "ui lockfile: ok"
+  else
+    echo "$out" | head -20 >&2
+    echo "ui lockfile: refused (decision 0323); the human reviews the lockfile diff" >&2
+    return 1
+  fi
+}
+
+# Decision 0320: the generated typed client must be exactly what openapi-typescript makes from
+# docs/generated/openapi.json (a hand edit or a stale file fails). Needs `ui:setup` first.
+gen_check() {
+  local tmp gen="$ui/src/api/generated/schema.d.ts"
+  [ -f "$root/docs/generated/openapi.json" ] || fail "docs/generated/openapi.json is missing"
+  [ -f "$gen" ] || fail "ui/src/api/generated/schema.d.ts is missing; run: mise run ui:gen"
+  [ -d "$ui/node_modules" ] || fail "ui/node_modules is missing; run: mise run ui:setup"
+  tmp=$(mktemp "${TMPDIR:-/tmp}/ui-schema.XXXXXX")
+  if ! pnpm_in_ui exec openapi-typescript ../docs/generated/openapi.json -o "$tmp" >/dev/null 2>&1; then
+    rm -f "$tmp"; fail "openapi-typescript failed (its peer range needs TypeScript 5; see decision 0320)"
+  fi
+  if ! cmp -s "$tmp" "$gen"; then rm -f "$tmp"; fail "the generated client is out of date or edited; run: mise run ui:gen"; fi
+  rm -f "$tmp"
+  echo "ui gen-check: ok"
 }
 
 # Decision 0303: the UI's own test floor. `count` runs Vitest with the JSON reporter and prints the total.
@@ -140,12 +206,14 @@ floor() {
 
 case "$cmd" in
   guard) guard ;;
+  lockcheck) lockcheck "${2:-}" ;;
+  gen-check) gen_check ;;
   setup) guard; pnpm_in_ui install --frozen-lockfile --ignore-scripts ;;
   test) pnpm_in_ui run test ;;
   count) count ;;
   floor) floor ;;
   fast) guard; pnpm_in_ui run typecheck; pnpm_in_ui run lint ;;
-  check) guard; pnpm_in_ui run typecheck; pnpm_in_ui run lint; pnpm_in_ui run test; floor; pnpm_in_ui run build ;;
+  check) guard; gen_check; pnpm_in_ui run typecheck; pnpm_in_ui run lint; pnpm_in_ui run test; floor; pnpm_in_ui run build ;;
   audit)   # advisory: production advisories at high or above fail; dev-tool advisories are reported only
     pnpm_in_ui audit --prod --audit-level high
     pnpm_in_ui audit --dev --audit-level high || echo "ui: dev-dependency advisories found (reported, not failing)" >&2 ;;

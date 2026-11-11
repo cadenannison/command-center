@@ -74,6 +74,22 @@ run = "bash scripts/ui.sh fast"
 description = "ui gates: guard, typecheck, lint, vitest, test floor, build"
 run = "bash scripts/ui.sh check"
 
+[tasks."ui:gen"]
+description = "Regenerate the typed /v1 client (ui/src/api/generated/schema.d.ts) from docs/generated/openapi.json"
+run = "cd ui && pnpm run gen"
+
+[tasks."ui:gen:check"]
+description = "Fail when the generated typed client differs from what openapi-typescript makes from openapi.json"
+run = "bash scripts/ui.sh gen-check"
+
+[tasks."ui:lock:check"]
+description = "Fail when ui/pnpm-lock.yaml has a non-registry source, a missing integrity, or a forbidden key"
+run = "bash scripts/ui.sh lockcheck"
+
+[tasks."ui:e2e"]
+description = "Playwright smoke test with axe (needs an installed browser; not part of check)"
+run = "cd ui && pnpm run build && pnpm run test:e2e"
+
 [tasks."ui:test"]
 description = "ui unit and component tests (vitest)"
 run = "bash scripts/ui.sh test"
