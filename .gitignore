@@ -255,3 +255,5 @@ node_modules/
 ui/playwright-report/
 ui/test-results/
 *.tsbuildinfo
+
+!ui/src/lib/
