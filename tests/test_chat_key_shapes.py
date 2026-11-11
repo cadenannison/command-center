@@ -1,10 +1,11 @@
 """A key pasted into the address or model field is refused, never stored and never shown again.
 
-An address is tested with core.redact (decision 0258). A model name has its own, narrower rule
-(decision 0270): a known key prefix, one unbroken run of 32 or more letters and digits, or more than
-100 characters. Both are best effort, so a key of another shape still gets through, which the AI
-card's text says: keys go on the key card. The invented keys are built from parts so no scanner
-sees a real-looking literal.
+An address is tested with core.redact plus its own rules (decisions 0258, 0291). A model name has
+its own rule (decisions 0270, 0290): a known key prefix, an email shape, a run of 32 or more
+letters and digits or 24 or more hex digits, a `user:password` shape, or more than 200 characters.
+Both are best effort, so a key of another shape still gets through, which the AI card's text
+says: keys go on the key card. The invented keys are built from parts so no scanner sees a
+real-looking literal.
 """
 
 import re
@@ -13,7 +14,11 @@ from pathlib import Path
 
 import pytest
 
-from command_center.core.chat import looks_like_api_key, model_name_looks_like_api_key
+from command_center.core.chat import (
+    address_holds_api_key,
+    looks_like_api_key,
+    model_name_looks_like_api_key,
+)
 from command_center.services.chat_settings import ChatDefaults, ChatSettings, normalise_provider
 from command_center.services.errors import ChatNotConfiguredError, InvalidChatSettingError
 from fakes import InMemoryAppSettingStore
@@ -51,7 +56,15 @@ LONG_REAL_NAMES = [
     "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free",
     "NousResearch-Hermes-3-Llama-3-1-8B",
 ]
+BEDROCK_ARN = (
+    "arn:aws:bedrock:us-east-1:123456789012:application-inference-profile/"
+    "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
+)
 HOSTED_MODELS = [
+    BEDROCK_ARN,
+    "claude-3-5-sonnet@20240620",
+    "claude-3-5-sonnet-v2@20241022",
+    "gemini-pro@001",
     "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free",
     "mistralai/Mixtral-8x7B-Instruct-v0.1",
     "anthropic/claude-3.5-sonnet:beta",
@@ -75,8 +88,19 @@ MODEL_KEYS = [
     "f" * 40,
     PLAIN_RUN,
     "k" * 33,
-    "a-b." * 26 + "c",  # 105 characters, no key shape: refused for its length
-    "a" * 101,
+    "a-b." * 51 + "c",  # 205 characters, no key shape: refused for its length
+    "a" * 201,
+    "fw" + "_3Zq8Hk2LmN5pR7sT9vW1xY3a",
+    "sk" + "_live_" + "fake1234",
+    "sk" + "_test_" + "fake1234",
+    "AS" + "IA" + "FAKE1234EXAMPLE",
+    "0123456789abcdef01234567",  # 24 hex characters, the shortest refused run
+    "ABCDEF0123456789abcdef0123456789-x",
+    "bob" + "@" + "example.com",
+    "bob" + "@" + "mail-server.example.com",
+    "a.b+c" + "@" + "sub.example.org",
+    "user" + ":" + "pw1234567890",
+    "alice:Fake1234Pass",
 ]
 
 
@@ -107,10 +131,10 @@ def test_a_model_name_run_of_31_is_accepted_and_32_is_refused() -> None:
     assert not model_name_looks_like_api_key("x" * 31 + "-" + "y" * 31)
 
 
-def test_a_model_name_of_100_characters_is_accepted_and_101_is_not() -> None:
-    name = "ab-" * 33 + "c"  # 100 characters, runs of 2
+def test_a_model_name_of_200_characters_is_accepted_and_201_is_not() -> None:
+    name = "ab-" * 66 + "cd"  # 200 characters, runs of 2
 
-    assert len(name) == 100
+    assert len(name) == 200
     assert not model_name_looks_like_api_key(name)
     assert model_name_looks_like_api_key(name + "d")
 
@@ -175,13 +199,13 @@ def test_a_prefixed_value_is_refused_as_the_model_without_echoing_it(name: str) 
 
 
 def test_a_model_name_over_the_length_limit_is_refused_without_echoing_it() -> None:
-    name = "a-b." * 26  # 104 characters, no key shape
+    name = "a-b." * 51  # 204 characters, no key shape
 
     with pytest.raises(InvalidChatSettingError) as raised:
         _ = normalise_provider("ollama", None, name)
 
     assert name not in str(raised.value)
-    assert "100" in str(raised.value)
+    assert "200" in str(raised.value)
 
 
 @pytest.mark.parametrize("key", KEYS)
@@ -408,3 +432,153 @@ def test_a_percent_encoded_key_in_the_path_is_refused_without_echoing_it(key: st
 
     assert encoded not in str(raised.value)
     assert "API key" in str(raised.value)
+
+
+# --- card C5: key-shaped names and addresses (decisions 0290 to 0294) ----------------------------
+
+_MIXED = "a1B2c3D4e5F6g7H8i9J0"  # 20 characters: lower, upper and a digit
+KEY_ADDRESSES = [
+    "https://api.example.com/v1;key=abc123def",
+    "https://api.example.com/v1/token=abc12345",
+    "https://api.example.com/v1/KEY=abc12345",
+    "https://api.example.com/v1/Bearer-abc",
+    "https://api.example.com/BEARER",
+    f"https://api.example.com/v1/{_MIXED}",
+    f"https://{_MIXED}.example.com/v1",
+    f"https://api.{_MIXED}/v1",
+    "https://a1B2c3D4e5F6g7H8%69J0k.example.com/v1",
+    "https://api.example.com/v1/" + "AS" + "IAIOSFODNN7EXAMPLE",
+    "https://api.example.com/v1/" + "fw" + "_abc",
+    "https://api.example.com/v1/" + "sk" + "_live_abc",
+    "https://api.example.com/v1/" + "gh" + "o_abc",
+    "https://api.example.com/v1;" + "a",
+    "https://api.example.com/v1%3Bkey%3Dabc123def",
+]
+REAL_ADDRESSES = [
+    "https://openrouter.ai/api/v1",
+    "https://api.groq.com/openai/v1",
+    "https://api.together.xyz/v1",
+    "http://localhost:11434",
+    "http://localhost:1234/v1",
+    "https://x.openai.azure.com/openai/deployments/gpt-4o",
+    "http://192.168.1.20:8080/v1",
+]
+
+
+@pytest.mark.parametrize("address", KEY_ADDRESSES)
+def test_a_key_shaped_address_is_recognised(address: str) -> None:
+    assert address_holds_api_key(address)
+
+
+@pytest.mark.parametrize(
+    "address",
+    [
+        "openrouter.ai/api/v1",
+        "api.groq.com/openai/v1",
+        "localhost:11434",
+        *REAL_ADDRESSES,
+    ],
+)
+def test_a_real_endpoint_is_not_taken_for_a_key(address: str) -> None:
+    assert not address_holds_api_key(address)
+
+
+@pytest.mark.parametrize("address", KEY_ADDRESSES)
+def test_a_key_shaped_address_is_refused_by_the_service_without_echoing_it(address: str) -> None:
+    with pytest.raises(InvalidChatSettingError) as raised:
+        _ = normalise_provider("openai_compatible", address, "m")
+
+    assert address not in str(raised.value)
+    assert "API key" in str(raised.value)
+
+
+@pytest.mark.parametrize("address", REAL_ADDRESSES)
+def test_a_real_endpoint_is_accepted_by_the_service(address: str) -> None:
+    assert normalise_provider("openai_compatible", address, "m")[1] == address
+
+
+def test_a_label_or_segment_of_19_mixed_characters_is_accepted_and_20_is_refused() -> None:
+    assert not address_holds_api_key(f"https://api.example.com/v1/{_MIXED[:19]}")
+    assert not address_holds_api_key(f"https://{_MIXED[:19]}.example.com/v1")
+    assert address_holds_api_key(f"https://api.example.com/v1/{_MIXED}")
+
+
+@pytest.mark.parametrize(
+    "part", ["abcd1efgh2ijkl3mnop4", "ABCD1EFGH2IJKL3MNOP4", "AbCdEfGhIjKlMnOpQrSt"]
+)
+def test_a_long_segment_that_does_not_mix_case_and_a_digit_is_accepted(part: str) -> None:
+    assert not address_holds_api_key(f"https://api.example.com/v1/{part}")
+
+
+@pytest.mark.parametrize("address", KEY_ADDRESSES)
+def test_a_key_shaped_address_is_neither_stored_nor_shown_again(
+    rig: WebChatRig, address: str
+) -> None:
+    html = save(rig, kind="openai_compatible", base_url=address, model="m")
+
+    assert address not in html
+    assert field_value(html, "ai-base-url") is None
+    assert rig.chat.store.get("chat.base_url") is None
+
+
+@pytest.mark.parametrize("address", REAL_ADDRESSES)
+def test_a_real_endpoint_is_saved_and_shown_again(rig: WebChatRig, address: str) -> None:
+    html = save(rig, kind="openai_compatible", base_url=address, model="m")
+
+    assert field_value(html, "ai-base-url") == address
+    assert rig.chat.store.get("chat.base_url") == address
+
+
+def test_a_bedrock_inference_profile_arn_is_longer_than_100_characters() -> None:
+    assert len(BEDROCK_ARN) > 100
+    assert not model_name_looks_like_api_key(BEDROCK_ARN)
+
+
+def test_a_hex_run_of_23_is_accepted_and_24_is_refused() -> None:
+    assert not model_name_looks_like_api_key("model-" + "a" * 23)
+    assert model_name_looks_like_api_key("model-" + "a" * 24)
+
+
+def test_a_colon_then_a_short_or_digitless_run_is_accepted() -> None:
+    assert not model_name_looks_like_api_key("user:pw1234567")  # 9 characters
+    assert not model_name_looks_like_api_key("llama:abcdefghijklmnop")  # no digit
+    assert not model_name_looks_like_api_key("llama3.1:8b-instruct-q4_K_M")
+
+
+def test_a_colon_then_a_run_of_10_with_a_digit_is_refused() -> None:
+    assert model_name_looks_like_api_key("user:pw12345678")
+    assert model_name_looks_like_api_key("arn:aws:x:y:pw1234567890:z")
+
+
+def test_only_a_twelve_digit_account_id_between_colons_in_an_arn_is_exempt() -> None:
+    assert not model_name_looks_like_api_key("arn:aws:bedrock:us-east-1:123456789012:foo/bar")
+    assert model_name_looks_like_api_key("user:123456789012:foo")  # not an arn
+    assert model_name_looks_like_api_key("arn:aws:bedrock:us-east-1:123456789012")  # at the end
+    assert model_name_looks_like_api_key("arn:aws:bedrock:us-east-1:12345678901:foo")  # 11 digits
+    assert model_name_looks_like_api_key("arn:aws:bedrock:us-east-1:1234567890123:foo")  # 13
+
+
+@pytest.mark.parametrize("prefix", ["AS" + "IA", "fw" + "_", "sk" + "_live_", "sk" + "_test_"])
+def test_the_new_key_prefixes_decide_even_for_a_short_model_name(prefix: str) -> None:
+    assert model_name_looks_like_api_key(prefix + "x")
+
+
+def test_an_email_shaped_model_name_is_refused_as_a_key_shape() -> None:
+    with pytest.raises(InvalidChatSettingError) as raised:
+        _ = normalise_provider("ollama", None, "a" + "@" + "b.co")
+
+    assert "API key" in str(raised.value)
+
+
+@pytest.mark.parametrize(
+    "name",
+    ["claude-3-5-sonnet@20240620", "claude-3-5-sonnet-v2@20241022", "m@001", "m@v2.1", "a@b"],
+)
+def test_an_at_sign_without_a_host_after_it_is_not_taken_for_an_email(name: str) -> None:
+    assert not model_name_looks_like_api_key(name)
+    assert normalise_provider("openai_compatible", "https://api.example.com/v1", name)[2] == name
+
+
+@pytest.mark.parametrize("name", ["m@host.com", "m@x.y", "m@a-b.example.com", "m@a1.b"])
+def test_an_at_sign_then_a_host_like_part_is_taken_for_an_email(name: str) -> None:
+    assert model_name_looks_like_api_key(name)

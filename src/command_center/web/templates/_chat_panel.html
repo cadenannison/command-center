@@ -11,6 +11,7 @@
 <input type="hidden" id="chat-conversation" name="conversation_id" value="">
 <label for="chat-message">Your question</label>
 {{ message_box(disabled=not c.enabled or c.problem) }}
+<p class="note" id="chat-message-note">What you type here is sent to the provider exactly as written.</p>
 <div class="actions"><button type="submit" id="chat-send"{% if not c.enabled or c.problem %} disabled{% endif %}>Send</button><span class="busy" id="chat-busy">Waiting for the assistant…</span></div>
 </form>
 <div class="actions">{{ new_chat() }}</div>

@@ -28,7 +28,7 @@ MODEL_KEY = "chat.model"
 HISTORY_KEY = "chat.include_history"
 NOTES_KEY = "chat.include_notes"
 MAX_URL_LENGTH = 300
-MAX_MODEL_LENGTH = 100
+MAX_MODEL_LENGTH = 200
 _ON = "on"
 _OFF = "off"
 _MODEL = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:/@+-]*")
@@ -79,7 +79,7 @@ def normalise_provider(
     if name is not None and model_name_looks_like_api_key(name):
         raise InvalidChatSettingError(_KEY_IN_FIELD.format(field="model name"))
     if name is not None and not _MODEL.fullmatch(name):
-        msg = "The model name must be 1 to 100 letters, digits or . _ : / @ + -"
+        msg = f"The model name must be 1 to {MAX_MODEL_LENGTH} letters, digits or . _ : / @ + -"
         raise InvalidChatSettingError(msg)
     if chosen == "gemini":
         if address is not None:

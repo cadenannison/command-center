@@ -232,6 +232,13 @@ def test_the_disclosure_says_in_plain_words_that_email_is_never_included(
     assert "Never: email" in rig.page("/chat")
 
 
+def test_the_page_says_the_typed_message_is_sent_exactly_as_written(rig: WebChatRig) -> None:
+    html = rig.page("/chat")
+
+    assert "What you type here is sent to the provider exactly as written." in html
+    assert html.index("<textarea") < html.index("What you type here is sent")
+
+
 def test_both_opt_ins_are_off_by_default(rig: WebChatRig) -> None:
     html = rig.page("/chat")
 

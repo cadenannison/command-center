@@ -41,10 +41,29 @@ _GROUP_LABELS = {"done_by_you": "done by you", "done_by_source": "done at source
 _NEUTRALISE = str.maketrans({"<": "\u2039", ">": "\u203a"})
 
 _KEY_PREFIXES = ("sk-", "AIza", "ghp_")
-_MODEL_KEY_PREFIXES = ("sk-", "AIza", "ghp_", "gho_", "ghu_", "ghs_", "github_pat_", "AKIA")
+_MODEL_KEY_PREFIXES = (
+    "sk-",
+    "AIza",
+    "ghp_",
+    "gho_",
+    "ghu_",
+    "ghs_",
+    "github_pat_",
+    "AKIA",
+    "ASIA",
+    "fw_",
+    "sk_live_",
+    "sk_test_",
+)
 _SLACK_PREFIX = re.compile(r"xox[baprs]-")
 _LONG_RUN = re.compile(r"[A-Za-z0-9]{32}")
-MAX_MODEL_NAME_LENGTH = 100
+_HEX_RUN = re.compile(r"[0-9A-Fa-f]{24}")
+_EMAIL_SHAPE = re.compile(r"[^@]@[A-Za-z][A-Za-z0-9-]*\.[A-Za-z]")
+_PASSWORD_RUN = re.compile(r"(?<=:)[A-Za-z0-9]{10,}")
+_KEY_RUN = re.compile(r"[A-Za-z0-9]{20,}")
+_ADDRESS_MARKERS = (";", "key=", "token=", "bearer")
+_ACCOUNT_ID_LENGTH = 12
+MAX_MODEL_NAME_LENGTH = 200
 
 _INSTRUCTIONS = (
     "You are a read-only assistant for a personal dashboard.\n"
@@ -77,44 +96,94 @@ def looks_like_api_key(text: str) -> bool:
 
 
 def model_name_looks_like_api_key(name: str) -> bool:
-    """Whether a model name is shaped like an API key (decision 0270).
+    """Whether a model name is shaped like an API key (decisions 0270 and 0290).
 
-    True when the stripped name starts with a known key prefix (`sk-`, `AIza`, `ghp_`, `gho_`,
-    `ghu_`, `ghs_`, `github_pat_`, `AKIA`, `xox[baprs]-`), holds one unbroken run of 32 or more
-    letters and digits (any other character, such as `- . _ : /`, ends a run), or is longer than
-    100 characters. It does not use `redact`: real hosted names such as
+    True when the stripped name starts with a known key prefix (`sk-`, `sk_live_`, `sk_test_`,
+    `AIza`, `ghp_`, `gho_`, `ghu_`, `ghs_`, `github_pat_`, `AKIA`, `ASIA`, `fw_`, `xox[baprs]-`),
+    holds an email shape (text, `@`, then letters, a dot and a letter; `name@20240620` is a
+    version and passes), a run of 32 or more letters and digits (any other character, such as
+    `- . _ : /`, ends a run), a run of 24 or more hex digits, or a `user:password` shape (a colon
+    then a run of 10 or more letters and digits with a digit in it), or is longer than 200
+    characters. It does not use `redact`: real hosted names such as
     `meta-llama/Llama-3.3-70B-Instruct-Turbo-Free` are long but made of short runs. Best effort: a
     key of another shape passes. Addresses keep `looks_like_api_key` and `address_holds_api_key`.
     """
     value = name.strip()
     return (
         len(value) > MAX_MODEL_NAME_LENGTH
-        or value.startswith(_MODEL_KEY_PREFIXES)
-        or _SLACK_PREFIX.match(value) is not None
+        or _has_key_prefix(value)
+        or _EMAIL_SHAPE.search(value) is not None
         or _LONG_RUN.search(value) is not None
+        or _HEX_RUN.search(value) is not None
+        or _holds_password_shape(value)
     )
 
 
 def address_holds_api_key(address: str) -> bool:
-    """Whether the host or any path segment of a server address looks like a key.
+    """Whether a server address carries a key (decisions 0258 and 0291).
 
-    The host is tested label by label with `redact` alone: a whole host would trip its URL rule
-    (`www.example.com`) and an IP literal its IPv4 rule, so a LAN server would be refused. A path
-    segment is tested as typed and percent-decoded.
+    Refused: `;`, `key=`, `token=` or `bearer` anywhere (as typed or percent-decoded, any case); a
+    host label or path segment that is 20 or more letters and digits mixing upper case, lower case
+    and a digit; a path segment that starts with a key prefix. The host is also tested label by
+    label with `redact` alone: a whole host would trip its URL rule (`www.example.com`) and an IP
+    literal its IPv4 rule, so a LAN server would be refused. A path segment is tested as typed and
+    percent-decoded. The host labels are read from the netloc as typed, since `hostname` lowercases.
     """
+    text = address.strip()
+    if any(marker in form.lower() for form in (text, unquote(text)) for marker in _ADDRESS_MARKERS):
+        return True
     try:
-        parts = urlsplit(address.strip())
+        parts = urlsplit(text)
         host, path = parts.hostname or "", parts.path
     except ValueError:
         return False
-    if (
-        host
-        and not _is_ip_literal(host)
-        and any(redact(label) != label for label in host.split("."))
-    ):
-        return True
+    if host and not _is_ip_literal(host):
+        if any(redact(label) != label for label in host.split(".")):
+            return True
+        labels = _raw_host(parts.netloc).split(".")
+        if any(_is_mixed_key_run(form) for label in labels for form in (label, unquote(label))):
+            return True
     segments = [part for part in path.split("/") if part]
-    return any(looks_like_api_key(part) or looks_like_api_key(unquote(part)) for part in segments)
+    return any(
+        looks_like_api_key(form) or _has_key_prefix(form) or _is_mixed_key_run(form)
+        for part in segments
+        for form in (part, unquote(part))
+    )
+
+
+def _has_key_prefix(value: str) -> bool:
+    return value.startswith(_MODEL_KEY_PREFIXES) or _SLACK_PREFIX.match(value) is not None
+
+
+def _is_mixed_key_run(part: str) -> bool:
+    return (
+        _KEY_RUN.fullmatch(part) is not None
+        and any(c.isupper() for c in part)
+        and any(c.islower() for c in part)
+        and any(c.isdigit() for c in part)
+    )
+
+
+def _holds_password_shape(value: str) -> bool:
+    """A colon then 10 or more letters and digits with a digit; an ARN's account id is exempt."""
+    for found in _PASSWORD_RUN.finditer(value):
+        run = found.group()
+        if not any(c.isdigit() for c in run):
+            continue
+        is_account_id = (
+            value.startswith("arn:")
+            and run.isdigit()
+            and len(run) == _ACCOUNT_ID_LENGTH
+            and value[found.end() : found.end() + 1] == ":"
+        )
+        if not is_account_id:
+            return True
+    return False
+
+
+def _raw_host(netloc: str) -> str:
+    host = netloc.rpartition("@")[2]
+    return host.rsplit(":", 1)[0] if ":" in host and not host.startswith("[") else host
 
 
 def _is_ip_literal(host: str) -> bool:
