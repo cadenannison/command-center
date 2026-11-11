@@ -1,0 +1,11 @@
+# pnpm settings for ui/ (decisions 0301 and 0315). pnpm 12 reads these from this file; ui/.npmrc is read
+# for registry and auth settings only, so none of them belong there. No `packages` key: ui/ is the one
+# project. Keep one key per line (scripts/ui.sh guard rejects a flow mapping).
+ignoreScripts: true
+saveExact: true
+minimumReleaseAge: 10080
+minimumReleaseAgeStrict: true
+minimumReleaseAgeExclude: []
+strictDepBuilds: true
+blockExoticSubdeps: true
+trustPolicy: no-downgrade

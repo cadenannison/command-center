@@ -9,3 +9,8 @@ updates:
     directory: "/"
     schedule: { interval: "weekly" }
     cooldown: { default-days: 7 }
+  - package-ecosystem: "npm"          # reads ui/pnpm-lock.yaml; scripts/ui.sh guard still checks every proposal
+    directory: "/ui"
+    schedule: { interval: "weekly" }
+    cooldown: { default-days: 7 }       # same as minimumReleaseAge (10080 minutes), decision 0301
+    open-pull-requests-limit: 5

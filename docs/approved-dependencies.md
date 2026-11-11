@@ -19,7 +19,6 @@ Versions are not listed here; the lockfile pins them.
 - `@tanstack/react-query`
 - `@tanstack/react-router`
 - `radix-ui` - the primitives shadcn components use
-- `@radix-ui/*` - the same primitives, scoped packages
 - `class-variance-authority`
 - `clsx`
 - `tailwind-merge`
@@ -47,6 +46,8 @@ Versions are not listed here; the lockfile pins them.
 - `eslint-plugin-react-hooks`
 - `globals`
 - `prettier`
+- `openapi-typescript` - dev only, generates the TypeScript types from docs/generated/openapi.json
+- `openapi-fetch` - small typed fetch wrapper that consumes those types
 
 An OpenAPI client generator is not approved: the scaffold task proposes one by name, with registry
 facts, for approval.

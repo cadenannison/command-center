@@ -8,24 +8,27 @@ ideas not yet accepted live in `docs/backlog.md`. This file holds neither.
 2026-11-11.
 
 ## In flight
-No task is in progress. Uncommitted in the working tree, for the human to review and commit: the K1 and
-K1b docs (decisions 0300-0304, `docs/approved-dependencies.md`, the UI agents, backlog items, README table,
-generated indexes) and H2 (decision 0310, `tests/test_redact_gaps.py`). There is no `ui/` directory yet.
-The guard and rule changes for the UI are a patch at `$TMPDIR/k1-guard.patch` (AGENTS.md,
-`docs/standards.md`, CI `ui` job, `mise.toml` `ui:*` tasks, `scripts/ui.sh`, `scripts/hooks/guard-bash.sh`,
-`.gitleaks.toml`, `.claude/settings.json`, CODEOWNERS, PR template). Until it is applied, AGENTS.md still
-says the UI is Jinja + HTMX. One known gap in it: the guard does not read `ui/pnpm-lock.yaml` (0301).
+P1a (the `ui/` skeleton) is in progress and uncommitted: `ui/package.json` (no dependencies, pnpm 12.14.0
+pinned), `tsconfig.json`, `vite.config.ts`, `vitest.config.ts`, `eslint.config.js`, `index.html`, and
+decisions 0315 and 0316. No source code yet; P1b writes it. K1, K1b, H1 and H2 are committed (the UI
+decisions 0300-0304, the UI guard and CI job, the `ui:*` mise tasks, the redact timing budget 0310).
+Agents may not write `ui/pnpm-workspace.yaml`, the lockfile or `mise.toml`, so these wait on the human, in
+`$TMPDIR/p1a-guard.patch` (`git apply` it): the `pnpm = "12.14.0"` pin in `mise.toml`,
+`ui/pnpm-workspace.yaml` (the supply-chain settings; pnpm 12 ignores them in `.npmrc`, decision 0315) and a
+Dependabot entry for `/ui`. Still needed after that: `ui/pnpm-lock.yaml` (the guard requires it) and the
+approved dev dependencies installed with the frozen flags. Until then `mise run check:fast` fails in its
+`ui:fast` step (decision 0316). The guard does not read the lockfile contents (0301).
 
 ## Gate state
-`mise run test:count` prints 4894. `.test-floor` is 4856 in the working tree; the human raises it to 4894
-with the commit. `mise run check:fast` passes. The intermittent redaction idempotence failure noted
-earlier has not been reproduced.
+`mise run test:count` prints 4894 and `.test-floor` is 4894. The Python gates pass. `ui:fast` fails until
+the human steps above are done. Not yet shown by test: that `minimumReleaseAge` rejects a too-new
+version and that `strictDepBuilds` fails an unreviewed build script (0315 Hedge).
 
 ## Next
-- The human applies the K1 guard patch (`git apply`) and commits it as its own commit.
-- P1: scaffold `ui/` (decisions 0300-0304): the lockfile guard check, the pnpm pin, `ui:test:count`,
-  `minimumReleaseAge` tested, Dependabot for `ui/`, the generated client, the CSP header (an api task),
-  `ui/.test-floor`. Then port the widgets one by one, each with its /v1 endpoint (0302).
+- The human applies `p1a-guard.patch`, creates the lockfile and installs; then P1b: the source files, the
+  `ui:test:count` parse, `ui/.test-floor`, the generated client (an OpenAPI generator needs approval with
+  registry facts), the CSP header (an api task). Then port the widgets one by one, each with its /v1
+  endpoint (0302).
 - Design after P1.
 - Remaining backlog (`docs/backlog.md`): Postgres sync vs check-off deadlock retry (0233),
   `CHAT_TRUST_ENV` opt-in (0225), move the `base.html` error handler to a static file if a CSP is added
@@ -41,7 +44,8 @@ earlier has not been reproduced.
 
 ## Known quirks
 - `guard-bash.sh` blocks a Bash command that merely contains words like "commit" after "git" (for
-  example inside a heredoc of prose). Put such text in a file with the Write or Edit tool instead.
+  example inside a heredoc of prose), and any command that mentions `pnpm` next to "install". Put such
+  text in a file with the Write or Edit tool instead.
 - Untracked scratch files in `src/`, `tests/` or `docs/` can change `gen:check` locally only (0287).
 - `test:for` prints at most 15 "(indirect)" tests, then "+N more" (decision 0285); it cannot list the rest.
 - A full `mise run check` once took over 10 minutes under load; the test stage alone is about 90 s.
@@ -53,4 +57,4 @@ earlier has not been reproduced.
 3. Find a file in `docs/generated/module-index.md`. Decisions behind it: grep its path in
    `docs/generated/decisions-by-file.md`, then the numbers in `docs/generated/decision-index.md`. Do not
    read either index whole.
-4. Tests for a source file: `mise run test:for -- <src path>`.
+4. Tests for a source file: `mise run test:for -- src/command_center/core/redact.py`.

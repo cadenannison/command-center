@@ -41,7 +41,7 @@ Each line is a path and the decisions that name it. Look a number up with `grep 
 - docs/mobile.md: 0249 0304
 - docs/runbook.md: 0192
 - docs/sources.md: 0191 0192
-- mise.toml: 0252 0301 0303
+- mise.toml: 0252 0301 0303 0315
 - pyproject.toml: 0043 0050 0092
 - scripts/gen-decision-index: 0082
 - scripts/gen_decision_index.py: 0087 0251 0287
