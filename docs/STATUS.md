@@ -8,27 +8,27 @@ ideas not yet accepted live in `docs/backlog.md`. This file holds neither.
 2026-11-11.
 
 ## In flight
-P1a (the `ui/` skeleton) is in progress and uncommitted: `ui/package.json` (no dependencies, pnpm 12.14.0
-pinned), `tsconfig.json`, `vite.config.ts`, `vitest.config.ts`, `eslint.config.js`, `index.html`, and
-decisions 0315 and 0316. No source code yet; P1b writes it. K1, K1b, H1 and H2 are committed (the UI
-decisions 0300-0304, the UI guard and CI job, the `ui:*` mise tasks, the redact timing budget 0310).
-Agents may not write `ui/pnpm-workspace.yaml`, the lockfile or `mise.toml`, so these wait on the human, in
-`$TMPDIR/p1a-guard.patch` (`git apply` it): the `pnpm = "12.14.0"` pin in `mise.toml`,
-`ui/pnpm-workspace.yaml` (the supply-chain settings; pnpm 12 ignores them in `.npmrc`, decision 0315) and a
-Dependabot entry for `/ui`. Still needed after that: `ui/pnpm-lock.yaml` (the guard requires it) and the
-approved dev dependencies installed with the frozen flags. Until then `mise run check:fast` fails in its
-`ui:fast` step (decision 0316). The guard does not read the lockfile contents (0301).
+P1b (UI scaffold, plumbing only) is written and uncommitted: `ui/src` (app shell, TanStack Query and Router,
+`/today` through the typed client with loading, empty, error and stale states, tokens and a light, dark and
+system switcher, Button, Card, Badge, Skeleton), `ui/e2e` and `ui/playwright.config.ts` (smoke test with axe,
+not run: no browser installed), `mise run ui:gen`, decisions 0320-0324. P1a is committed. It is BLOCKED on
+the human by decision 0324: the locked `typescript@7.0.2` breaks eslint (typescript-eslint) and the client
+generator (openapi-typescript needs the TS 5 compiler API), so `ui:fast` fails and
+`ui/src/api/generated/schema.d.ts` does not exist (typecheck fails on that one import). Human steps: set
+`typescript` to `5.9.3` in `ui/package.json` and re-lock; `git apply $TMPDIR/p1b-guard.patch` (lockfile
+check, `gen-check`, Playwright CI steps, mise tasks); `mise run ui:gen`; create `ui/.test-floor` with the
+count `mise run ui:test:count` prints; install the Playwright browser; then `mise run ui:check`. Not yet an
+api task: the CSP header and serving `ui/dist` with an SPA fallback from FastAPI.
 
 ## Gate state
-`mise run test:count` prints 4894 and `.test-floor` is 4894. The Python gates pass. `ui:fast` fails until
-the human steps above are done. Not yet shown by test: that `minimumReleaseAge` rejects a too-new
-version and that `strictDepBuilds` fails an unreviewed build script (0315 Hedge).
+`mise run test:count` prints 4894 and `.test-floor` is 4894. The Python gates pass. `ui:test:count` prints
+33 (Vitest passes; build passes); `ui:fast` fails (0324). Not yet shown by test: that `minimumReleaseAge`
+rejects a too-new version, that `strictDepBuilds` fails an unreviewed build script (0315 Hedge), and the
+Playwright test.
 
 ## Next
-- The human applies `p1a-guard.patch`, creates the lockfile and installs; then P1b: the source files, the
-  `ui:test:count` parse, `ui/.test-floor`, the generated client (an OpenAPI generator needs approval with
-  registry facts), the CSP header (an api task). Then port the widgets one by one, each with its /v1
-  endpoint (0302).
+- The human unblocks P1b (above); then the CSP header and static serving (api task), then port the widgets
+  one by one, each with its /v1 endpoint (0302).
 - Design after P1.
 - Remaining backlog (`docs/backlog.md`): Postgres sync vs check-off deadlock retry (0233),
   `CHAT_TRUST_ENV` opt-in (0225), move the `base.html` error handler to a static file if a CSP is added

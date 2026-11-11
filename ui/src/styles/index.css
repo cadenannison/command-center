@@ -1,0 +1,44 @@
+@import "tailwindcss";
+@import "./tokens.css";
+
+/* Tailwind utilities map to the tokens; no raw value lives here. */
+@theme inline {
+  --color-bg: var(--cc-bg);
+  --color-surface: var(--cc-surface);
+  --color-fg: var(--cc-fg);
+  --color-muted: var(--cc-muted);
+  --color-border: var(--cc-border);
+  --color-accent: var(--cc-accent);
+  --color-accent-fg: var(--cc-accent-fg);
+  --color-danger: var(--cc-danger);
+  --color-danger-fg: var(--cc-danger-fg);
+  --color-focus: var(--cc-focus);
+  --spacing-1: var(--cc-space-1);
+  --spacing-2: var(--cc-space-2);
+  --spacing-3: var(--cc-space-3);
+  --spacing-4: var(--cc-space-4);
+  --spacing-6: var(--cc-space-6);
+  --spacing-8: var(--cc-space-8);
+  --radius-sm: var(--cc-radius-sm);
+  --radius-md: var(--cc-radius-md);
+  --radius-lg: var(--cc-radius-lg);
+  --font-sans: var(--cc-font-sans);
+  --font-mono: var(--cc-font-mono);
+  --text-sm: var(--cc-text-sm);
+  --text-base: var(--cc-text-base);
+  --text-lg: var(--cc-text-lg);
+  --text-xl: var(--cc-text-xl);
+}
+
+@layer base {
+  body {
+    background-color: var(--cc-bg);
+    color: var(--cc-fg);
+    font-family: var(--cc-font-sans);
+    font-size: var(--cc-text-base);
+  }
+  :focus-visible {
+    outline: 2px solid var(--cc-focus);
+    outline-offset: 2px;
+  }
+}

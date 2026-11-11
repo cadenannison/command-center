@@ -11,7 +11,7 @@ Each line is a path and the decisions that name it. Look a number up with `grep 
 - .claude/agents/storage-engineer.md: 0254 0286
 - .claude/agents/web-engineer.md: 0254 0286
 - .claude/allow-test-edits: 0183
-- .github/workflows/ci.yml: 0083 0091 0301 0303
+- .github/workflows/ci.yml: 0083 0091 0301 0303 0323
 - .gitleaks.toml: 0014
 - AGENTS.md: 0250 0285
 - CLAUDE.md: 0254
@@ -41,7 +41,7 @@ Each line is a path and the decisions that name it. Look a number up with `grep 
 - docs/mobile.md: 0249 0304
 - docs/runbook.md: 0192
 - docs/sources.md: 0191 0192
-- mise.toml: 0252 0301 0303 0315
+- mise.toml: 0252 0301 0303 0315 0320 0323
 - pyproject.toml: 0043 0050 0092
 - scripts/gen-decision-index: 0082
 - scripts/gen_decision_index.py: 0087 0251 0287
@@ -53,7 +53,7 @@ Each line is a path and the decisions that name it. Look a number up with `grep 
 - scripts/smoke-distributed.sh: 0078 0079 0084 0093
 - scripts/test-floor.sh: 0303
 - scripts/tests_for.py: 0252 0285
-- scripts/ui.sh: 0301 0303
+- scripts/ui.sh: 0301 0303 0320 0323
 - src/command_center/adapters/CLAUDE.md: 0250 0288
 - src/command_center/adapters/caldav_apple.py: 0031
 - src/command_center/adapters/canvas.py: 0032 0041 0042 0046 0081

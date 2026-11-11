@@ -1,0 +1,65 @@
+/* Design tokens: neutral placeholder values only (task P1b, decision 0322). Components and Tailwind read
+   these names, never raw values, so the later design pass changes this file and nothing else.
+   Theme: no data-theme attribute follows the system; data-theme="light" or "dark" forces one. */
+:root {
+  --cc-bg: #ffffff;
+  --cc-surface: #f5f5f5;
+  --cc-fg: #1a1a1a;
+  --cc-muted: #5c5c5c;
+  --cc-border: #d4d4d4;
+  --cc-accent: #2f5fd0;
+  --cc-accent-fg: #ffffff;
+  --cc-danger: #b3261e;
+  --cc-danger-fg: #ffffff;
+  --cc-focus: #2f5fd0;
+
+  --cc-space-1: 0.25rem;
+  --cc-space-2: 0.5rem;
+  --cc-space-3: 0.75rem;
+  --cc-space-4: 1rem;
+  --cc-space-6: 1.5rem;
+  --cc-space-8: 2rem;
+
+  --cc-radius-sm: 0.25rem;
+  --cc-radius-md: 0.5rem;
+  --cc-radius-lg: 0.75rem;
+
+  --cc-font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --cc-font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  --cc-text-sm: 0.875rem;
+  --cc-text-base: 1rem;
+  --cc-text-lg: 1.25rem;
+  --cc-text-xl: 1.75rem;
+
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  --cc-bg: #121212;
+  --cc-surface: #1e1e1e;
+  --cc-fg: #ececec;
+  --cc-muted: #a3a3a3;
+  --cc-border: #3a3a3a;
+  --cc-accent: #8ab4ff;
+  --cc-accent-fg: #101010;
+  --cc-danger: #f2b8b5;
+  --cc-danger-fg: #101010;
+  --cc-focus: #8ab4ff;
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --cc-bg: #121212;
+    --cc-surface: #1e1e1e;
+    --cc-fg: #ececec;
+    --cc-muted: #a3a3a3;
+    --cc-border: #3a3a3a;
+    --cc-accent: #8ab4ff;
+    --cc-accent-fg: #101010;
+    --cc-danger: #f2b8b5;
+    --cc-danger-fg: #101010;
+    --cc-focus: #8ab4ff;
+    color-scheme: dark;
+  }
+}
