@@ -11,7 +11,7 @@ ideas not yet accepted live in `docs/backlog.md`. This file holds neither.
 P1b (UI scaffold, plumbing only) is written and uncommitted: `ui/src` (app shell, TanStack Query and Router,
 `/today` through the typed client with loading, empty, error and stale states, tokens and a light, dark and
 system switcher, Button, Card, Badge, Skeleton), `ui/e2e` and `ui/playwright.config.ts` (smoke test with axe,
-not run: no browser installed), `mise run ui:gen`, decisions 0320-0324. P1a is committed. It is BLOCKED on
+not run: no browser installed), `mise run ui:gen`, decisions 0320-0324. P1c (decision 0325) adds reduced-motion CSS and Playwright `reducedMotion` to de-flake the axe check (mid-transition color blends); e2e not run by the agent (sandbox blocks port binding), the human runs `mise run ui:e2e` a few times. P1a is committed. It is BLOCKED on
 the human by decision 0324: the locked `typescript@7.0.2` breaks eslint (typescript-eslint) and the client
 generator (openapi-typescript needs the TS 5 compiler API), so `ui:fast` fails and
 `ui/src/api/generated/schema.d.ts` does not exist (typecheck fails on that one import). Human steps: set
