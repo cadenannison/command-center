@@ -1,0 +1,20 @@
+# 0350. Layout model choices: compaction, auto-arrange, columns and source rules
+
+Status: accepted
+
+Context: Task R1 builds the widget registry and the layout model (pure logic in `ui/src/layout/`) from decisions 0331 and 0335 and the spec. The spec leaves several details open. Each choice below is one the code had to make.
+Decision:
+- Widget ids are `needs_me`, `tasks`, `events`, `canvas`, `learningsuite`, `owed_replies`, `my_tasks`, `week`, `weather`. They are persisted, so permanent. `summary` is a kind but has no grid definition; a layout item with that id is dropped.
+- Compaction is push-down only. The item just placed, moved or resized settles first; every other unpinned item then settles in reading order (y, then x, then id) and, if it hits a settled item, moves down to just below it. Nothing moves up, so a gap left by a moved widget stays until Auto-arrange. Pinned items are fixed obstacles.
+- Pinned items cannot be moved or resized by `move` or `resize` (no-op); the user unpins first. A moved item dropped onto a pinned one lands below it.
+- Auto-arrange is dense packing: unpinned items in reading order each take the first free spot scanning rows from the top and columns from the left, around pinned items. "Even spacing" means no gaps an item below could fill; the CSS gap between cells is a style matter.
+- Columns: 12 at 1200 px and wider, 8 from 800 px, 4 below. The stored layout is always in 12-column coordinates. `fitToColumns` is a view for 8 or 4 columns (clamp width and x, push down; a pinned item that would overlap another pinned one is unpinned in the view only). It is never stored.
+- Sources: each widget lists allowed and default sources. The kind rule applies to every widget except `needs_me`, including `week` (one kind per widget: calendar week or task workload; the Student template uses Canvas and LearningSuite). `canCombine` is true for zero or one source. Whether gmail counts as tasks depends on the owed-replies toggle, which is runtime state, so layout validation treats gmail as tasks and never drops it; rendering filters by the toggle.
+- Sanitize rounds numbers, clamps to widget limits and 12 columns, drops items with a bad id, unknown widget or non-finite geometry, drops duplicate ids, keeps at most 50 items, drops anything pushed below row 500, unpins a pinned item that overlaps an earlier pinned one, keeps only primitive options (20 keys at most), and writes sources in registry order. A second pass changes nothing. An unknown version (missing, non-integer, below 1 or above current) is an error. Migrations are a table keyed by version; none exist yet.
+- Templates are size lists packed by auto-arrange. Main, Student, Work and Minimal come from the prototype's lists; Gmail becomes `owed_replies` and `tasks` in Main merges Canvas, LearningSuite and My tasks. A test pins Main's exact coordinates.
+- History keeps 100 steps; reset is an undoable change; a change equal to the present is not recorded.
+Alternative: Upward gravity as in react-grid-layout (rejected: it collapses the gaps a user left on purpose, and 0331 says widgets below move down to make room). Letting a pinned item be dragged (rejected: "pinned items never move"). Storing the layout per column count (rejected: three layouts to keep in step before any widget exists).
+Reason: Each choice is the simplest rule that keeps the grid overlap-free, deterministic and testable, and none changes the persisted keys.
+Consequences: Editing while the window is narrower than 12 columns would write the narrowed layout back; the UI task should edit only at 12 columns or keep the 12-column layout and edit the view. Breakpoints may change without a migration. Changing the compaction order changes where items land, so tests pin it.
+Where: `ui/src/layout/` (registry.ts, grid.ts, validate.ts, sanitize-grid.ts, history.ts, defaults.ts); tests beside each file.
+Revisit when: free placement and pinning ship in the UI (0331), edit mode on small windows is designed, or real users want gaps to close.

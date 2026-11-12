@@ -19,9 +19,12 @@ restyle. Open for the human: `OFL-Sora.txt` was not in `docs/design/assets/`, so
 `ui/public/fonts/` (the font license must travel with the font). Not yet an api task: the CSP header and
 serving `ui/dist` with an SPA fallback from FastAPI.
 
+R1 (widget registry and layout model, pure logic, `ui/src/layout/`) is written and uncommitted, decision 0350.
+Nothing renders it yet. Open for the edit-mode UI task: edit only at 12 columns (0350 Consequences).
+
 ## Gate state
 `mise run test:count` prints 4894 and `.test-floor` is 4894. The Python gates pass. `ui:test:count` prints
-168 (Vitest, `ui:fast` and the build pass; `ui/.test-floor` is still 33, the human raises it). Not yet shown by test: that `minimumReleaseAge`
+304 (Vitest and `ui:fast` pass; the build was last run at 168 tests; `ui/.test-floor` is still 33, the human raises it). Not yet shown by test: that `minimumReleaseAge`
 rejects a too-new version, that `strictDepBuilds` fails an unreviewed build script (0315 Hedge), and the
 Playwright test.
 
