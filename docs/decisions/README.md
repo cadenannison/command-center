@@ -52,9 +52,10 @@ Ranges on disk today (each block is contiguous; the numbers between blocks are r
 | 0345-0346 | 0345-0346 (tasks T1b, T1c: tailwind-merge text-caption and contrast test, four AA token values) |
 | 0350 | 0350 (task R1: widget registry and layout model, compaction, auto-arrange, columns, source rules) |
 | 0355-0358 | 0355-0358 (task R2: layout validation, dashboard and display tables with revisions, phone read-only policy, container wiring) |
+| 0360-0363 | 0360-0363 (task R3: dashboard grid geometry, editing, saving, route and data; 0364 unused) |
 
 Reserved gaps between those blocks: 0059, 0061-0069, 0096-0099, 0107-0109, 0117-0119, 0132-0139,
-0142-0149, 0154-0159, 0173-0179, 0185-0189, 0193-0199, 0204-0209, 0214-0219, 0226-0229, 0234-0239, 0259, 0263-0269, 0271-0279, 0293-0299, 0305-0309, 0311-0314, 0326-0329, 0337-0339.
+0142-0149, 0154-0159, 0173-0179, 0185-0189, 0193-0199, 0204-0209, 0214-0219, 0226-0229, 0234-0239, 0259, 0263-0269, 0271-0279, 0293-0299, 0305-0309, 0311-0314, 0326-0329, 0337-0339, 0359, 0364.
 
 The table is read from the files, so it shows where numbers were used, not how wide each card's
 allocation was: a block may have been given more numbers than it used. If you need a number and
