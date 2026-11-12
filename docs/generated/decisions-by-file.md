@@ -20,22 +20,26 @@ Each line is a path and the decisions that name it. Look a number up with `grep 
 - docs/MAP.md: 0024 0043 0081 0087
 - docs/STATUS.md: 0250 0287
 - docs/approved-dependencies.md: 0301
-- docs/backlog.md: 0302
+- docs/backlog.md: 0336
 - docs/contracts/adapters.md: 0015 0024 0028 0036 0041 0046 0081 0095 0140 0225 0288
-- docs/contracts/api.md: 0020 0023 0025 0037 0052 0085 0086 0171 0302
+- docs/contracts/api.md: 0020 0023 0025 0037 0052 0085 0086 0171
 - docs/contracts/core.md: 0015 0017 0024 0028 0034 0040 0089 0110 0111 0240 0262 0280 0281 0282
 - docs/contracts/services.md: 0019 0024 0025 0026 0028 0029 0035 0037 0038 0040 0052 0056 0084 0085 0086 0256 0257
 - docs/contracts/storage.md: 0016 0027 0028 0035 0040 0111 0192 0232
 - docs/contracts/web.md: 0039 0172 0190 0192 0256 0257 0292
 - docs/decisions/0008-ui.md: 0300
 - docs/decisions/0212-one-global-htmx-error-listener-is-inline-in-the-base-template.md: 0301
+- docs/design/README.md: 0330
+- docs/design/prototype.html: 0330
+- docs/design/spec.md: 0330
+- docs/design/tokens.json: 0330
 - docs/distributed-mode.md: 0076 0077 0078 0085 0086 0090
 - docs/first-run.md: 0078 0140 0191 0192
 - docs/generated/: 0025
 - docs/generated/decision-index.md: 0082 0087
 - docs/generated/decisions-by-file.md: 0251
 - docs/generated/module-index.md: 0252
-- docs/generated/openapi.json: 0110 0124 0249 0300 0302
+- docs/generated/openapi.json: 0110 0124 0249 0300
 - docs/gmail-setup.md: 0191
 - docs/mobile-api-notes.md: 0124 0130 0131 0249 0304
 - docs/mobile.md: 0249 0304

@@ -1,6 +1,6 @@
 # 0302. Every widget has a JSON endpoint under /v1, and the API stays capability-complete for a future assistant
 
-Status: accepted
+Status: superseded in part by 0336 (the name Instinct only; the rest stands)
 
 Context: Today some pages are rendered by `web` from services directly and have no JSON twin, so a client other than the Jinja pages (the new UI, the phone app, a future assistant) cannot do what those pages do. A working-name assistant, Instinct (backlog), is planned to act for the user over the same API.
 Decision: The new UI talks to the app only through /v1.

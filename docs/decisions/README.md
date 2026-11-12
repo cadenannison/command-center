@@ -44,9 +44,11 @@ Ranges on disk today (each block is contiguous; the numbers between blocks are r
 | 0290-0292 | 0290-0292 (task C5: chat key shapes) |
 | 0300-0304 | 0300-0304 (task K1: TypeScript UI foundation) |
 | 0310 | 0310 (task H2: redact timing budget) |
+| 0325 | 0325 (task P1c: reduced motion) |
+| 0330-0336 | 0330-0336 (task D1: design reference, widgets, urgency, privacy copy, Dismiss, accessibility, assistant) |
 
 Reserved gaps between those blocks: 0059, 0061-0069, 0096-0099, 0107-0109, 0117-0119, 0132-0139,
-0142-0149, 0154-0159, 0173-0179, 0185-0189, 0193-0199, 0204-0209, 0214-0219, 0226-0229, 0234-0239, 0259, 0263-0269, 0271-0279, 0293-0299, 0305-0309, 0311-0314.
+0142-0149, 0154-0159, 0173-0179, 0185-0189, 0193-0199, 0204-0209, 0214-0219, 0226-0229, 0234-0239, 0259, 0263-0269, 0271-0279, 0293-0299, 0305-0309, 0311-0314, 0326-0329, 0337-0339.
 
 The table is read from the files, so it shows where numbers were used, not how wide each card's
 allocation was: a block may have been given more numbers than it used. If you need a number and

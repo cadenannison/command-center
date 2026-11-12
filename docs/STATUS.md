@@ -5,7 +5,7 @@ task ends: edit the lines, do not append a log. Decisions and their reasons live
 ideas not yet accepted live in `docs/backlog.md`. This file holds neither.
 
 ## Last updated
-2026-11-11.
+2026-11-12.
 
 ## In flight
 P1b (UI scaffold, plumbing only) is written and uncommitted: `ui/src` (app shell, TanStack Query and Router,
@@ -29,7 +29,7 @@ Playwright test.
 ## Next
 - The human unblocks P1b (above); then the CSP header and static serving (api task), then port the widgets
   one by one, each with its /v1 endpoint (0302).
-- Design after P1.
+- Design reference is in `docs/design/` (D1, decisions 0330-0336, uncommitted): read `design/README.md`, then the spec section a task implements. Widgets come after the P1b unblock.
 - Remaining backlog (`docs/backlog.md`): Postgres sync vs check-off deadlock retry (0233),
   `CHAT_TRUST_ENV` opt-in (0225), move the `base.html` error handler to a static file if a CSP is added
   (0212), pairing refresh-row purge, `GeminiIntegration.validate` catch-all, save chats,

@@ -99,8 +99,30 @@ Status is one of `proposed` (written down, not yet decided), `accepted` (we will
 - Idea: every event and task links to its source. Each adapter carries a link field on the `Event` it builds (a new optional field in core; the API adds it as an additive /v1 field, decision 0302), the URL goes through `core/urlcheck` before it is stored or shown, and the new UI renders it as a link that opens in a new tab with `rel="noopener noreferrer"`. A source with no stable URL leaves the field empty.
 - Touches: `core` (the `Event` shape and the link check), every adapter in `adapters/` (Canvas, CalDAV, iCal feed, Gmail), `storage` (a column, additive), `api` (the field), `ui/` (the link), and `docs/contracts/` for each. A new decision. A link must never carry a token or an email body; the redaction rule is unchanged because a link is not sent to a summary provider.
 
-## Instinct: personal assistant over the /v1 API (future)
-- Status: proposed (working name; decision 0302 keeps the API open for it)
+## Assistant: part of the AI chat, over the /v1 API (future)
+- Status: proposed (decision 0302 keeps the API open for it; decision 0336 folds it into the AI chat and retires the name Instinct)
 - Why: a personal assistant that can do anything the UI can, by voice or text, is the long-term reason to keep the API capability-complete.
 - Idea: an assistant that acts only through the /v1 endpoints, with the same validation and secret rules as the UI. Open questions for its own design record: how it authenticates (a scoped credential rather than the user's), whether its actions are logged and reversible, what it may read (AGENTS.md rule 6 redaction applies), and which provider runs it (opt-in and off by default, like the summaries).
 - Touches: nothing yet. Not designed; do not start before the UI ports the widgets and the API is complete (decisions 0300, 0302).
+
+## Design: items specified but not in the prototype yet
+- Status: proposed (from `design/spec.md`, "Later"; pinning and free placement are decided in 0331 as after version 1)
+- Why: the spec describes these but the prototype does not show them, so none has a task yet.
+
+| Item | Intent |
+| --- | --- |
+| Plan my day (later) | Ghost blocks on the timeline proposing when to do today's tasks; nothing is scheduled until confirmed |
+| Per-source trust drawer (later) | What each source can read, when it last synced, and a disconnect control |
+| Free placement and pinning | As described under Layout and Motion in the spec |
+| Time-blocking | Drag a task onto the calendar grid to block time; undo through the shared toast |
+| Command palette | Cmd+K grows from quick capture into search and commands |
+| Shortcut hints | Togglable, never covering content |
+| End-of-day wrap-up | Review of done, snoozed and carried-over items |
+| Notifications | In-app and macOS, with quiet hours |
+| Menu-bar mini view | Now / Next and the top of Needs me |
+| AI-suggested estimates | Shown only as a sample chip today |
+| Gmail client ID step | Setup shows a plain Google sign-in; the build uses a bring-your-own client |
+| Persistence | Source colors, new dashboards and connections reset on reload in the prototype |
+| More sources and platforms | Stocks, Outlook, user-pickable palettes, then a simplified iPhone layout from the same tokens |
+
+Not in scope: keyboard-first email triage.
