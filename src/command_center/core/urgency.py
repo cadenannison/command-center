@@ -132,6 +132,8 @@ def _reasons(event: Event, now: datetime) -> list[UrgencyReason]:
     found: list[UrgencyReason] = []
     if event.kind in _DUE_KINDS and event.due is not None:
         found.extend(_due(event.due.astimezone(UTC) - now))
+    elif event.kind in _DUE_KINDS:
+        found.append(UrgencyReason(code="no_due", points=0, text="No due date"))
     if event.kind == "task" and event.source == LOCAL_SOURCE:
         found.append(
             UrgencyReason(

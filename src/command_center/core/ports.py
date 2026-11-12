@@ -118,6 +118,20 @@ class EventStore(Protocol):
         """Return events in window (optionally only these kinds), ordered by time then id."""
         ...
 
+    def undated_open(
+        self,
+        kinds: Collection[EventKind],
+        limit: int,
+        *,
+        user_id: str = "local",
+    ) -> list[Event]:
+        """Return open events of these kinds with no start and no due time (the ones query skips).
+
+        Open means the stored status is not "done". At most limit, newest `fetched_at` first,
+        then id. A limit below 1 returns [].
+        """
+        ...
+
     def replace(
         self,
         source: str,

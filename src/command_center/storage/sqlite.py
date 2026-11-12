@@ -116,6 +116,29 @@ class SqliteEventStore:
         with self._sessions() as session:
             return [_to_event(row) for row in session.scalars(statement)]
 
+    def undated_open(
+        self,
+        kinds: Collection[EventKind],
+        limit: int,
+        *,
+        user_id: str = "local",
+    ) -> list[Event]:
+        if limit < 1:
+            return []
+        statement = (
+            select(_EventRow)
+            .where(
+                _EventRow.user_id == user_id,
+                _EventRow.anchor.is_(None),
+                _EventRow.kind.in_(list(kinds)),
+                or_(_EventRow.status.is_(None), _EventRow.status != "done"),
+            )
+            .order_by(_EventRow.fetched_at.desc(), _EventRow.id)
+            .limit(limit)
+        )
+        with self._sessions() as session:
+            return [_to_event(row) for row in session.scalars(statement)]
+
 
 def replace_events(  # noqa: PLR0913, PLR0917
     session: Session,

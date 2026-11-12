@@ -5,7 +5,7 @@ from datetime import UTC, date, datetime, tzinfo
 
 from command_center.core.ledger import overlay_marks
 from command_center.core.ports import Clock, EventStore, ItemLedger
-from command_center.core.schema import Event
+from command_center.core.schema import Event, EventKind
 from command_center.core.scoring import urgency
 from command_center.core.urgency import TaskItem, task_items
 from command_center.core.windows import TimeWindow, day_window, month_window, week_window
@@ -13,6 +13,8 @@ from command_center.services.horizon import horizon_window
 
 ATTENTION_URGENCY = 70
 _ATTENTION_EMAIL_STATUSES = frozenset({"owed", "overdue"})
+UNDATED_TASK_CAP = 200
+_UNDATED_KINDS: tuple[EventKind, ...] = ("task", "assignment")
 
 
 class AgendaService:
@@ -83,7 +85,12 @@ class AgendaService:
         """Tasks, assignments and email within the sync horizon, ranked with their reasons."""
         now = self._now()
         stored = await asyncio.to_thread(self._events.query, horizon_window(now))
-        return task_items(await self._marked(stored), now)
+        undated = await asyncio.to_thread(
+            self._events.undated_open, _UNDATED_KINDS, UNDATED_TASK_CAP
+        )
+        # Marks apply after the cap, so a task the user checked off is dropped here (0372).
+        open_undated = [e for e in await self._marked(undated) if e.status != "done"]
+        return task_items([*await self._marked(stored), *open_undated], now)
 
     def _now(self) -> datetime:
         return self._clock.now().astimezone(self._tz)

@@ -124,6 +124,25 @@ class InMemoryEventStore:
         ]
         return sorted(hits, key=lambda e: (_anchor_utc(e), e.id))
 
+    def undated_open(
+        self,
+        kinds: Collection[EventKind],
+        limit: int,
+        *,
+        user_id: str = "local",
+    ) -> list[Event]:
+        hits = [
+            event
+            for (owner, _), event in self._events.items()
+            if owner == user_id
+            and event.kind in kinds
+            and _anchor(event) is None
+            and event.status != "done"
+        ]
+        hits.sort(key=lambda e: e.id)
+        hits.sort(key=lambda e: e.fetched_at, reverse=True)
+        return hits[: max(limit, 0)]
+
 
 def _anchor(event: Event) -> datetime | None:
     return event.start if event.start is not None else event.due

@@ -171,7 +171,7 @@ Each line is a path and the decisions that name it. Look a number up with `grep 
 - tests/auth_rig.py: 0213 0248
 - tests/canvas_support.py: 0042
 - tests/conftest.py: 0055
-- tests/fakes.py: 0028 0040 0111
+- tests/fakes.py: 0028 0040 0111 0372
 - tests/fetch_support.py: 0088
 - tests/generation_support.py: 0080
 - tests/keyring_support.py: 0055
@@ -299,6 +299,7 @@ Each line is a path and the decisions that name it. Look a number up with `grep 
 - tests/test_tests_for.py: 0252
 - tests/test_tests_for_indirect.py: 0285
 - tests/test_tests_for_limits.py: 0285
+- tests/test_undated_tasks.py: 0372
 - tests/test_urlcheck_chat.py: 0160 0168
 - tests/test_urlcheck_key_transport.py: 0220
 - tests/test_weather_adapter.py: 0045
