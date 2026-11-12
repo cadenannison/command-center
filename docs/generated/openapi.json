@@ -180,6 +180,65 @@
         "title": "DailySummary",
         "type": "object"
       },
+      "Dashboard": {
+        "additionalProperties": false,
+        "description": "A stored dashboard. `revision` starts at 1 and rises by one on every replace.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "layout": {
+            "$ref": "#/components/schemas/Layout"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "integer"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "position",
+          "layout",
+          "revision",
+          "updated_at"
+        ],
+        "title": "Dashboard",
+        "type": "object"
+      },
+      "DashboardInput": {
+        "additionalProperties": false,
+        "description": "What a client sends to create a dashboard or replace one.",
+        "properties": {
+          "layout": {
+            "$ref": "#/components/schemas/Layout"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "layout"
+        ],
+        "title": "DashboardInput",
+        "type": "object"
+      },
       "DeviceInfo": {
         "description": "A paired phone. Carries no credential.",
         "properties": {
@@ -209,6 +268,189 @@
           "last_seen_at"
         ],
         "title": "DeviceInfo",
+        "type": "object"
+      },
+      "DisplayInput": {
+        "additionalProperties": false,
+        "description": "The display settings a client sends. Nothing about an AI provider or a secret lives here.",
+        "properties": {
+          "density": {
+            "default": "comfortable",
+            "enum": [
+              "comfortable",
+              "compact"
+            ],
+            "title": "Density",
+            "type": "string"
+          },
+          "glow": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "default": 1.0,
+            "ge": 0,
+            "le": 1.6,
+            "title": "Glow"
+          },
+          "high_contrast": {
+            "default": false,
+            "title": "High Contrast",
+            "type": "boolean"
+          },
+          "owed_replies_as_tasks": {
+            "default": false,
+            "title": "Owed Replies As Tasks",
+            "type": "boolean"
+          },
+          "privacy_mode": {
+            "default": false,
+            "title": "Privacy Mode",
+            "type": "boolean"
+          },
+          "source_colors": {
+            "maxProperties": 16,
+            "patternProperties": {
+              "^[a-z][a-z0-9_]{0,15}$": {
+                "enum": [
+                  "violet",
+                  "rose",
+                  "teal",
+                  "amber",
+                  "sky",
+                  "silver",
+                  "green",
+                  "pink"
+                ],
+                "type": "string"
+              }
+            },
+            "title": "Source Colors",
+            "type": "object"
+          },
+          "text_scale": {
+            "default": 100,
+            "maximum": 150.0,
+            "minimum": 90.0,
+            "title": "Text Scale",
+            "type": "integer"
+          },
+          "theme": {
+            "default": "system",
+            "enum": [
+              "light",
+              "dark",
+              "system"
+            ],
+            "title": "Theme",
+            "type": "string"
+          }
+        },
+        "title": "DisplayInput",
+        "type": "object"
+      },
+      "DisplaySettings": {
+        "additionalProperties": false,
+        "description": "Stored display settings. Revision 0 means nothing has been saved yet (the defaults).",
+        "properties": {
+          "density": {
+            "default": "comfortable",
+            "enum": [
+              "comfortable",
+              "compact"
+            ],
+            "title": "Density",
+            "type": "string"
+          },
+          "glow": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "default": 1.0,
+            "ge": 0,
+            "le": 1.6,
+            "title": "Glow"
+          },
+          "high_contrast": {
+            "default": false,
+            "title": "High Contrast",
+            "type": "boolean"
+          },
+          "owed_replies_as_tasks": {
+            "default": false,
+            "title": "Owed Replies As Tasks",
+            "type": "boolean"
+          },
+          "privacy_mode": {
+            "default": false,
+            "title": "Privacy Mode",
+            "type": "boolean"
+          },
+          "revision": {
+            "default": 0,
+            "title": "Revision",
+            "type": "integer"
+          },
+          "source_colors": {
+            "maxProperties": 16,
+            "patternProperties": {
+              "^[a-z][a-z0-9_]{0,15}$": {
+                "enum": [
+                  "violet",
+                  "rose",
+                  "teal",
+                  "amber",
+                  "sky",
+                  "silver",
+                  "green",
+                  "pink"
+                ],
+                "type": "string"
+              }
+            },
+            "title": "Source Colors",
+            "type": "object"
+          },
+          "text_scale": {
+            "default": 100,
+            "maximum": 150.0,
+            "minimum": 90.0,
+            "title": "Text Scale",
+            "type": "integer"
+          },
+          "theme": {
+            "default": "system",
+            "enum": [
+              "light",
+              "dark",
+              "system"
+            ],
+            "title": "Theme",
+            "type": "string"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "title": "DisplaySettings",
         "type": "object"
       },
       "ErrorBody": {
@@ -459,6 +701,117 @@
         "title": "HistoryDay",
         "type": "object"
       },
+      "Layout": {
+        "additionalProperties": false,
+        "description": "The layout document: version 1 and its items.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/LayoutItem"
+            },
+            "maxItems": 50,
+            "title": "Items",
+            "type": "array"
+          },
+          "version": {
+            "maximum": 1.0,
+            "minimum": 1.0,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "items"
+        ],
+        "title": "Layout",
+        "type": "object"
+      },
+      "LayoutItem": {
+        "additionalProperties": false,
+        "description": "One placed widget, in the UI's own keys (`ui/src/layout/types.ts`).",
+        "properties": {
+          "h": {
+            "maximum": 64.0,
+            "minimum": 1.0,
+            "title": "H",
+            "type": "integer"
+          },
+          "id": {
+            "pattern": "^[A-Za-z0-9_-]{1,64}$",
+            "title": "Id",
+            "type": "string"
+          },
+          "options": {
+            "maxProperties": 20,
+            "patternProperties": {
+              "^[A-Za-z][A-Za-z0-9_]{0,39}$": {
+                "anyOf": [
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "maximum": 1000000.0,
+                    "minimum": -1000000.0,
+                    "type": "integer"
+                  }
+                ]
+              }
+            },
+            "title": "Options",
+            "type": "object"
+          },
+          "pinned": {
+            "title": "Pinned",
+            "type": "boolean"
+          },
+          "sources": {
+            "items": {
+              "pattern": "^[a-z][a-z0-9_]{0,15}$",
+              "type": "string"
+            },
+            "maxItems": 12,
+            "title": "Sources",
+            "type": "array"
+          },
+          "w": {
+            "maximum": 12.0,
+            "minimum": 1.0,
+            "title": "W",
+            "type": "integer"
+          },
+          "widgetId": {
+            "pattern": "^[A-Za-z0-9_-]{1,64}$",
+            "title": "Widgetid",
+            "type": "string"
+          },
+          "x": {
+            "exclusiveMaximum": 12.0,
+            "minimum": 0.0,
+            "title": "X",
+            "type": "integer"
+          },
+          "y": {
+            "exclusiveMaximum": 500.0,
+            "minimum": 0.0,
+            "title": "Y",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "widgetId",
+          "x",
+          "y",
+          "w",
+          "h",
+          "pinned",
+          "sources",
+          "options"
+        ],
+        "title": "LayoutItem",
+        "type": "object"
+      },
       "LedgerEntry": {
         "description": "One line of history: an item that was done or that vanished from its source.",
         "properties": {
@@ -608,6 +961,26 @@
           "refresh_token"
         ],
         "title": "RefreshRequest",
+        "type": "object"
+      },
+      "ReorderInput": {
+        "additionalProperties": false,
+        "description": "The dashboards' ids in the order wanted; it must name every dashboard exactly once.",
+        "properties": {
+          "ids": {
+            "items": {
+              "pattern": "^[A-Za-z0-9_-]{1,64}$",
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "ids"
+        ],
+        "title": "ReorderInput",
         "type": "object"
       },
       "SecretStatus": {
@@ -1201,6 +1574,455 @@
         ]
       }
     },
+    "/v1/dashboards": {
+      "get": {
+        "description": "Every dashboard in position order, each with its layout and revision.",
+        "operationId": "list_dashboards_v1_dashboards_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Dashboard"
+                  },
+                  "title": "Response List Dashboards V1 Dashboards Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "DeviceToken": []
+          }
+        ],
+        "summary": "List dashboards",
+        "tags": [
+          "dashboards"
+        ]
+      },
+      "post": {
+        "description": "Add a dashboard in the last position, at revision 1. 409 at 20 dashboards.",
+        "operationId": "create_dashboard_v1_dashboards_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DashboardInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Dashboard"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "DeviceToken": []
+          }
+        ],
+        "summary": "Create a dashboard",
+        "tags": [
+          "dashboards"
+        ]
+      }
+    },
+    "/v1/dashboards/order": {
+      "put": {
+        "description": "Set the order. `ids` must be every dashboard exactly once, else 409 (a stale list).",
+        "operationId": "reorder_dashboards_v1_dashboards_order_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReorderInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Dashboard"
+                  },
+                  "title": "Response Reorder Dashboards V1 Dashboards Order Put",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "DeviceToken": []
+          }
+        ],
+        "summary": "Reorder dashboards",
+        "tags": [
+          "dashboards"
+        ]
+      }
+    },
+    "/v1/dashboards/{dashboard_id}": {
+      "delete": {
+        "description": "Delete a dashboard. 409 when `If-Match` is not the stored revision.",
+        "operationId": "delete_dashboard_v1_dashboards__dashboard_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dashboard_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,64}$",
+              "title": "Dashboard Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The revision this change is based on, as `\"3\"`. Required on a replace.",
+            "in": "header",
+            "name": "if-match",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The revision this change is based on, as `\"3\"`. Required on a replace.",
+              "title": "If-Match"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "428": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Precondition Required"
+          }
+        },
+        "security": [
+          {
+            "DeviceToken": []
+          }
+        ],
+        "summary": "Delete a dashboard",
+        "tags": [
+          "dashboards"
+        ]
+      },
+      "get": {
+        "description": "One dashboard; its revision is also the `ETag`.",
+        "operationId": "get_dashboard_v1_dashboards__dashboard_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dashboard_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,64}$",
+              "title": "Dashboard Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Dashboard"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "DeviceToken": []
+          }
+        ],
+        "summary": "Get a dashboard",
+        "tags": [
+          "dashboards"
+        ]
+      },
+      "put": {
+        "description": "Replace name and layout. 409 when `If-Match` is not the stored revision.",
+        "operationId": "replace_dashboard_v1_dashboards__dashboard_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dashboard_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,64}$",
+              "title": "Dashboard Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The revision this change is based on, as `\"3\"`. Required on a replace.",
+            "in": "header",
+            "name": "if-match",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The revision this change is based on, as `\"3\"`. Required on a replace.",
+              "title": "If-Match"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DashboardInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Dashboard"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "428": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Precondition Required"
+          }
+        },
+        "security": [
+          {
+            "DeviceToken": []
+          }
+        ],
+        "summary": "Replace a dashboard",
+        "tags": [
+          "dashboards"
+        ]
+      }
+    },
     "/v1/devices": {
       "get": {
         "description": "Every paired phone, oldest first.",
@@ -1280,6 +2102,148 @@
         "summary": "Revoke a paired device",
         "tags": [
           "devices"
+        ]
+      }
+    },
+    "/v1/display-settings": {
+      "get": {
+        "description": "The stored display settings, or the defaults at revision 0 when none are saved.",
+        "operationId": "get_display_settings_v1_display_settings_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DisplaySettings"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "DeviceToken": []
+          }
+        ],
+        "summary": "Get the display settings",
+        "tags": [
+          "dashboards"
+        ]
+      },
+      "put": {
+        "description": "Replace every setting. `If-Match` is the revision read (`\"0\"` before the first save).",
+        "operationId": "replace_display_settings_v1_display_settings_put",
+        "parameters": [
+          {
+            "description": "The revision this change is based on, as `\"3\"`. Required on a replace.",
+            "in": "header",
+            "name": "if-match",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The revision this change is based on, as `\"3\"`. Required on a replace.",
+              "title": "If-Match"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DisplayInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DisplaySettings"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "428": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Precondition Required"
+          }
+        },
+        "security": [
+          {
+            "DeviceToken": []
+          }
+        ],
+        "summary": "Replace the display settings",
+        "tags": [
+          "dashboards"
         ]
       }
     },

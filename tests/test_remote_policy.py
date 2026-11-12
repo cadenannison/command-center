@@ -62,6 +62,14 @@ POLICY: dict[tuple[str, str], str] = {
     ("DELETE", "/v1/items/{item_id}/done"): DENIED,
     ("PUT", "/v1/items/{item_id}/notes"): DENIED,
     ("DELETE", "/v1/items/{item_id}/notes"): DENIED,
+    ("GET", "/v1/dashboards"): READ,  # layouts and display settings: read-only to a phone (0357)
+    ("GET", "/v1/dashboards/{dashboard_id}"): READ,
+    ("GET", "/v1/display-settings"): READ,
+    ("POST", "/v1/dashboards"): DENIED,  # every dashboard and display write is loopback-only
+    ("PUT", "/v1/dashboards/order"): DENIED,
+    ("PUT", "/v1/dashboards/{dashboard_id}"): DENIED,
+    ("DELETE", "/v1/dashboards/{dashboard_id}"): DENIED,
+    ("PUT", "/v1/display-settings"): DENIED,
     ("GET", "/v1/devices"): READ,
     ("DELETE", "/v1/devices/{device_id}"): DENIED,
     ("PUT", "/v1/settings/{source}"): DENIED,

@@ -48,6 +48,7 @@ One line per module: its first docstring sentence. Use it to find the file you n
 - `agenda.py`: Read routes: events in a window, the day/week/month agenda and the attention list.
 - `auth.py`: Who needs a token: the Host header decides.
 - `chat_routes.py`: Read-only chat about the agenda: loopback only, 404 while chat is off (0160-0169).
+- `dashboards.py`: Dashboards and display settings (decisions 0355 to 0358).
 - `deps.py`: Request-scoped access to the wired services.
 - `errors.py`: Error bodies and the handlers that keep request content (credentials) out of them.
 - `factory.py`: Builds the FastAPI application around a service container.
@@ -62,6 +63,7 @@ One line per module: its first docstring sentence. Use it to find the file you n
 
 ## core/
 - `chat.py`: Read-only AI chat: turn capping, the redacted context body and the trusted system prompt.
+- `dashboards.py`: Dashboards and display settings: the shapes the server stores and the pure rules they obey.
 - `errors.py`: Failure classes for source adapters.
 - `geocode.py`: City search building blocks: what a candidate place is and what a query may look like (0180).
 - `hosts.py`: Host-header classification: loopback, an allowed remote name, or rejected.
@@ -95,6 +97,7 @@ One line per module: its first docstring sentence. Use it to find the file you n
 - `chat_settings.py`: The stored chat settings: opt-in, provider and what context may be sent (decisions 0160-0166).
 - `container.py`: The set of services a process serves; built by a composition root, consumed by the api.
 - `credential_fields.py`: Which credential keys are secret, per source: the one place that decides (decision 0100).
+- `dashboards.py`: Dashboards and display settings behind /v1 (decisions 0355 to 0358).
 - `errors.py`: Failure classes the services raise for their callers (the api maps them to responses).
 - `geocode.py`: City search for the weather form: a rate limit and redacted failures around a Geocoder (0180).
 - `horizon.py`: The span of time the app syncs and watches for attention items.
@@ -114,6 +117,7 @@ One line per module: its first docstring sentence. Use it to find the file you n
 - `sqlite.py`: SQLAlchemy EventStore.
 - `sqlite_app_settings.py`: SQLAlchemy AppSettingStore: a small key-value table, one row per user and key.
 - `sqlite_completions.py`: The completions table: append-only entries, one per completion (decision 0131).
+- `sqlite_dashboards.py`: SQLAlchemy stores for dashboards and display settings (decisions 0355 to 0357).
 - `sqlite_devices.py`: SQLAlchemy DeviceStore: pairing tokens, paired phones and their credential hashes.
 - `sqlite_generations.py`: SQLAlchemy GenerationStore: one counter per user and source.
 - `sqlite_items.py`: SQLAlchemy ItemLedger: notes, check-offs, history and the user's own tasks (decision 0120).

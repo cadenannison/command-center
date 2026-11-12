@@ -49,6 +49,11 @@ def test_the_walker_finds_the_known_write_routes(rig: AuthRig) -> None:
         ("DELETE", "/v1/items/{item_id}/notes"),
         ("POST", "/v1/chat"),
         ("DELETE", "/v1/chat/{conversation_id}"),
+        ("POST", "/v1/dashboards"),
+        ("PUT", "/v1/dashboards/order"),
+        ("PUT", "/v1/dashboards/{dashboard_id}"),
+        ("DELETE", "/v1/dashboards/{dashboard_id}"),
+        ("PUT", "/v1/display-settings"),
     }
 
 

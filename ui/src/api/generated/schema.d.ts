@@ -114,6 +114,78 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/dashboards": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List dashboards
+         * @description Every dashboard in position order, each with its layout and revision.
+         */
+        get: operations["list_dashboards_v1_dashboards_get"];
+        put?: never;
+        /**
+         * Create a dashboard
+         * @description Add a dashboard in the last position, at revision 1. 409 at 20 dashboards.
+         */
+        post: operations["create_dashboard_v1_dashboards_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/dashboards/order": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Reorder dashboards
+         * @description Set the order. `ids` must be every dashboard exactly once, else 409 (a stale list).
+         */
+        put: operations["reorder_dashboards_v1_dashboards_order_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/dashboards/{dashboard_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a dashboard
+         * @description One dashboard; its revision is also the `ETag`.
+         */
+        get: operations["get_dashboard_v1_dashboards__dashboard_id__get"];
+        /**
+         * Replace a dashboard
+         * @description Replace name and layout. 409 when `If-Match` is not the stored revision.
+         */
+        put: operations["replace_dashboard_v1_dashboards__dashboard_id__put"];
+        post?: never;
+        /**
+         * Delete a dashboard
+         * @description Delete a dashboard. 409 when `If-Match` is not the stored revision.
+         */
+        delete: operations["delete_dashboard_v1_dashboards__dashboard_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/devices": {
         parameters: {
             query?: never;
@@ -149,6 +221,30 @@ export interface paths {
          * @description Delete a device; its access and refresh tokens stop working at once.
          */
         delete: operations["revoke_device_v1_devices__device_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/display-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get the display settings
+         * @description The stored display settings, or the defaults at revision 0 when none are saved.
+         */
+        get: operations["get_display_settings_v1_display_settings_get"];
+        /**
+         * Replace the display settings
+         * @description Replace every setting. `If-Match` is the revision read (`"0"` before the first save).
+         */
+        put: operations["replace_display_settings_v1_display_settings_put"];
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -574,6 +670,35 @@ export interface components {
             priorities?: string[];
         };
         /**
+         * Dashboard
+         * @description A stored dashboard. `revision` starts at 1 and rises by one on every replace.
+         */
+        Dashboard: {
+            /** Id */
+            id: string;
+            layout: components["schemas"]["Layout"];
+            /** Name */
+            name: string;
+            /** Position */
+            position: number;
+            /** Revision */
+            revision: number;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * DashboardInput
+         * @description What a client sends to create a dashboard or replace one.
+         */
+        DashboardInput: {
+            layout: components["schemas"]["Layout"];
+            /** Name */
+            name: string;
+        };
+        /**
          * DeviceInfo
          * @description A paired phone. Carries no credential.
          */
@@ -592,6 +717,107 @@ export interface components {
             last_seen_at: string;
             /** Name */
             name: string;
+        };
+        /**
+         * DisplayInput
+         * @description The display settings a client sends. Nothing about an AI provider or a secret lives here.
+         */
+        DisplayInput: {
+            /**
+             * Density
+             * @default comfortable
+             * @enum {string}
+             */
+            density: "comfortable" | "compact";
+            /**
+             * Glow
+             * @default 1
+             */
+            glow: number;
+            /**
+             * High Contrast
+             * @default false
+             */
+            high_contrast: boolean;
+            /**
+             * Owed Replies As Tasks
+             * @default false
+             */
+            owed_replies_as_tasks: boolean;
+            /**
+             * Privacy Mode
+             * @default false
+             */
+            privacy_mode: boolean;
+            /** Source Colors */
+            source_colors?: {
+                [key: string]: "violet" | "rose" | "teal" | "amber" | "sky" | "silver" | "green" | "pink";
+            };
+            /**
+             * Text Scale
+             * @default 100
+             */
+            text_scale: number;
+            /**
+             * Theme
+             * @default system
+             * @enum {string}
+             */
+            theme: "light" | "dark" | "system";
+        };
+        /**
+         * DisplaySettings
+         * @description Stored display settings. Revision 0 means nothing has been saved yet (the defaults).
+         */
+        DisplaySettings: {
+            /**
+             * Density
+             * @default comfortable
+             * @enum {string}
+             */
+            density: "comfortable" | "compact";
+            /**
+             * Glow
+             * @default 1
+             */
+            glow: number;
+            /**
+             * High Contrast
+             * @default false
+             */
+            high_contrast: boolean;
+            /**
+             * Owed Replies As Tasks
+             * @default false
+             */
+            owed_replies_as_tasks: boolean;
+            /**
+             * Privacy Mode
+             * @default false
+             */
+            privacy_mode: boolean;
+            /**
+             * Revision
+             * @default 0
+             */
+            revision: number;
+            /** Source Colors */
+            source_colors?: {
+                [key: string]: "violet" | "rose" | "teal" | "amber" | "sky" | "silver" | "green" | "pink";
+            };
+            /**
+             * Text Scale
+             * @default 100
+             */
+            text_scale: number;
+            /**
+             * Theme
+             * @default system
+             * @enum {string}
+             */
+            theme: "light" | "dark" | "system";
+            /** Updated At */
+            updated_at?: string | null;
         };
         /**
          * ErrorBody
@@ -693,6 +919,42 @@ export interface components {
             gone?: components["schemas"]["LedgerEntry"][];
         };
         /**
+         * Layout
+         * @description The layout document: version 1 and its items.
+         */
+        Layout: {
+            /** Items */
+            items: components["schemas"]["LayoutItem"][];
+            /** Version */
+            version: number;
+        };
+        /**
+         * LayoutItem
+         * @description One placed widget, in the UI's own keys (`ui/src/layout/types.ts`).
+         */
+        LayoutItem: {
+            /** H */
+            h: number;
+            /** Id */
+            id: string;
+            /** Options */
+            options: {
+                [key: string]: boolean | number;
+            };
+            /** Pinned */
+            pinned: boolean;
+            /** Sources */
+            sources: string[];
+            /** W */
+            w: number;
+            /** Widgetid */
+            widgetId: string;
+            /** X */
+            x: number;
+            /** Y */
+            y: number;
+        };
+        /**
          * LedgerEntry
          * @description One line of history: an item that was done or that vanished from its source.
          */
@@ -755,6 +1017,14 @@ export interface components {
         RefreshRequest: {
             /** Refresh Token */
             refresh_token: string;
+        };
+        /**
+         * ReorderInput
+         * @description The dashboards' ids in the order wanted; it must name every dashboard exactly once.
+         */
+        ReorderInput: {
+            /** Ids */
+            ids: string[];
         };
         /**
          * SecretStatus
@@ -1106,6 +1376,319 @@ export interface operations {
             };
         };
     };
+    list_dashboards_v1_dashboards_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Dashboard"][];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    create_dashboard_v1_dashboards_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DashboardInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Dashboard"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationErrorBody"];
+                };
+            };
+        };
+    };
+    reorder_dashboards_v1_dashboards_order_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReorderInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Dashboard"][];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationErrorBody"];
+                };
+            };
+        };
+    };
+    get_dashboard_v1_dashboards__dashboard_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dashboard_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Dashboard"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationErrorBody"];
+                };
+            };
+        };
+    };
+    replace_dashboard_v1_dashboards__dashboard_id__put: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description The revision this change is based on, as `"3"`. Required on a replace. */
+                "if-match"?: string | null;
+            };
+            path: {
+                dashboard_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DashboardInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Dashboard"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationErrorBody"];
+                };
+            };
+            /** @description Precondition Required */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    delete_dashboard_v1_dashboards__dashboard_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description The revision this change is based on, as `"3"`. Required on a replace. */
+                "if-match"?: string | null;
+            };
+            path: {
+                dashboard_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationErrorBody"];
+                };
+            };
+            /** @description Precondition Required */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
     list_devices_v1_devices_get: {
         parameters: {
             query?: never;
@@ -1160,6 +1743,107 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ValidationErrorBody"];
+                };
+            };
+        };
+    };
+    get_display_settings_v1_display_settings_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DisplaySettings"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    replace_display_settings_v1_display_settings_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description The revision this change is based on, as `"3"`. Required on a replace. */
+                "if-match"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DisplayInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DisplaySettings"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationErrorBody"];
+                };
+            };
+            /** @description Precondition Required */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
                 };
             };
         };

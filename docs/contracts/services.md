@@ -8,6 +8,7 @@ Application logic. Depends on core ports only; never an adapter, storage or fram
 - `queued_sync`: `QueuedSyncService`, `SYNCING_MESSAGE`, `QUEUE_FAILED_MESSAGE` (the api's sync in distributed mode).
 - `agenda`: `AgendaService`, `ATTENTION_URGENCY`.
 - `items`: `ItemService` (check-off, undo, notes, local tasks, history; decision 0120).
+- `dashboards`: `DashboardService` (list_all, get, create, replace, delete, reorder, display, replace_display; decisions 0356 to 0358). `Container.dashboards` is the last field; None answers 404 on the dashboard routes.
 - `settings`: `SettingsService`, `DISCONNECT_FAILED_MESSAGE`, `DISCONNECT_INCOMPLETE_MESSAGE`, `UNVERIFIED_PREFIX`, `UNVERIFIED_MESSAGE`, `NOTHING_TO_SAVE_MESSAGE`, `NOT_CONNECTED_MESSAGE`.
 - `credential_fields`: `NON_SECRET_KEYS`, `is_secret(source, key)` (the one place that says which credential keys may be shown back; unlisted means secret; decision 0100).
 - `setup_checklist`: `SetupItem`, `SetupState`, `build_checklist(items, now)`.

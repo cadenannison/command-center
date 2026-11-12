@@ -12,6 +12,7 @@ SAMPLE = {
     "device_id": "no-such-device",
     "item_id": "no-such-item",
     "conversation_id": "no-such-chat",
+    "dashboard_id": "no-such-dashboard",
 }
 SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
 

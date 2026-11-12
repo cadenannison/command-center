@@ -55,6 +55,7 @@ from command_center.services.agenda import AgendaService
 from command_center.services.chat import ChatService
 from command_center.services.chat_settings import ChatConfig, ChatDefaults, ChatSettings
 from command_center.services.container import Container
+from command_center.services.dashboards import DashboardService
 from command_center.services.geocode import GeocodeService
 from command_center.services.horizon import horizon_window
 from command_center.services.items import ItemService
@@ -67,6 +68,10 @@ from command_center.services.summary_control import SummaryControl
 from command_center.services.sync import SyncService
 from command_center.storage.sqlite import create_event_store
 from command_center.storage.sqlite_app_settings import create_app_setting_store
+from command_center.storage.sqlite_dashboards import (
+    create_dashboard_store,
+    create_display_settings_store,
+)
 from command_center.storage.sqlite_devices import create_device_store
 from command_center.storage.sqlite_generations import create_generation_store
 from command_center.storage.sqlite_items import create_item_ledger
@@ -258,6 +263,12 @@ def build_container(settings: Settings | None = None) -> Container:
         geocode=GeocodeService(OpenMeteoGeocoder(), clock),
         items=items,
         chat=chat,
+        dashboards=DashboardService(
+            create_dashboard_store(settings.database_url),
+            create_display_settings_store(settings.database_url),
+            clock,
+            UuidIdSource(),
+        ),
     )
 
 

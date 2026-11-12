@@ -5,6 +5,7 @@ from datetime import date, datetime
 from typing import Literal, Protocol
 
 from command_center.core.chat import ChatMessage
+from command_center.core.dashboards import Dashboard, DisplaySettings, Layout
 from command_center.core.geocode import GeocodeCandidate
 from command_center.core.jobs import DeadLetter, DeadReport, Job, SyncReport
 from command_center.core.ledger import ItemMark, LedgerEntry
@@ -254,6 +255,71 @@ class AppSettingStore(Protocol):
 
     def set(self, key: str, value: str, *, user_id: str = "local") -> None:
         """Store value under key, replacing any existing value."""
+        ...
+
+
+class DashboardStore(Protocol):
+    """Synchronous store of a user's dashboards. Writes are compare-and-set on the revision."""
+
+    def list_all(self, *, user_id: str = "local") -> list[Dashboard]:
+        """Return every dashboard, ordered by position then id."""
+        ...
+
+    def get(self, dashboard_id: str, *, user_id: str = "local") -> Dashboard | None:
+        """Return the dashboard, or None."""
+        ...
+
+    def add(
+        self, dashboard_id: str, name: str, layout: Layout, now: datetime, *, user_id: str = "local"
+    ) -> Dashboard:
+        """Add a dashboard at revision 1 in the last position.
+
+        Raises DashboardLimitError at the cap.
+        """
+        ...
+
+    def replace(  # noqa: PLR0913
+        self,
+        dashboard_id: str,
+        expected_revision: int,
+        name: str,
+        layout: Layout,
+        now: datetime,
+        *,
+        user_id: str = "local",
+    ) -> Dashboard:
+        """Replace name and layout and raise the revision by one, in one atomic step.
+
+        Raises DashboardNotFoundError for an unknown id and RevisionConflictError when the stored
+        revision is not expected_revision.
+        """
+        ...
+
+    def delete(self, dashboard_id: str, expected_revision: int, *, user_id: str = "local") -> None:
+        """Delete with the same rules as replace."""
+        ...
+
+    def reorder(self, ids: Sequence[str], *, user_id: str = "local") -> list[Dashboard]:
+        """Set positions to ids; raises DashboardSetError unless ids is exactly the stored set."""
+        ...
+
+
+class DisplaySettingsStore(Protocol):
+    """Synchronous store of one row of display settings per user."""
+
+    def get(self, *, user_id: str = "local") -> DisplaySettings:
+        """Return the stored settings, or the defaults at revision 0 when none are saved."""
+        ...
+
+    def replace(
+        self,
+        settings: DisplaySettings,
+        expected_revision: int,
+        now: datetime,
+        *,
+        user_id: str = "local",
+    ) -> DisplaySettings:
+        """Store settings at expected_revision + 1; raises RevisionConflictError on a mismatch."""
         ...
 
 

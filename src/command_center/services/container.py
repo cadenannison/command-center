@@ -5,6 +5,7 @@ from dataclasses import dataclass
 
 from command_center.services.agenda import AgendaService
 from command_center.services.chat import ChatService
+from command_center.services.dashboards import DashboardService
 from command_center.services.geocode import GeocodeService
 from command_center.services.items import ItemService
 from command_center.services.pairing import PairingService
@@ -38,6 +39,8 @@ class Container:
     # None answers 404 on the chat routes. Even when built, chat sends nothing until the user opts
     # in: `ChatService` checks the stored switch before it builds a provider (decision 0160).
     chat: ChatService | None = None
+    # None answers 404 on the dashboard and display-settings routes (decision 0358).
+    dashboards: DashboardService | None = None
 
     async def summary_service(self) -> SummaryService | None:
         """The service that may be called now: the control's when there is one, else `summary`.

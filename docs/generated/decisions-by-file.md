@@ -85,6 +85,7 @@ Each line is a path and the decisions that name it. Look a number up with `grep 
 - src/command_center/api/CLAUDE.md: 0250
 - src/command_center/api/auth.py: 0106
 - src/command_center/api/chat_routes.py: 0169 0249
+- src/command_center/api/dashboards.py: 0357
 - src/command_center/api/deps.py: 0021
 - src/command_center/api/errors.py: 0023
 - src/command_center/api/factory.py: 0021
@@ -92,10 +93,11 @@ Each line is a path and the decisions that name it. Look a number up with `grep 
 - src/command_center/api/policy.py: 0126 0165 0182
 - src/command_center/api/settings.py: 0020 0023 0025
 - src/command_center/api/summary_routes.py: 0037
-- src/command_center/app.py: 0021 0053 0057 0058 0072 0073 0074 0105 0112 0115 0140 0161 0170 0181
+- src/command_center/app.py: 0021 0053 0057 0058 0072 0073 0074 0105 0112 0115 0140 0161 0170 0181 0358
 - src/command_center/config.py: 0036 0057 0070 0072 0073 0161
 - src/command_center/core/CLAUDE.md: 0250
 - src/command_center/core/chat.py: 0164 0258 0270 0290 0291
+- src/command_center/core/dashboards.py: 0355
 - src/command_center/core/errors.py: 0024
 - src/command_center/core/geocode.py: 0180
 - src/command_center/core/ledger.py: 0125 0130
@@ -126,6 +128,7 @@ Each line is a path and the decisions that name it. Look a number up with `grep 
 - src/command_center/storage/sqlite.py: 0016 0027 0028 0121 0128 0231 0233
 - src/command_center/storage/sqlite_app_settings.py: 0111
 - src/command_center/storage/sqlite_completions.py: 0131 0247
+- src/command_center/storage/sqlite_dashboards.py: 0356
 - src/command_center/storage/sqlite_items.py: 0120 0122 0128 0130 0131 0231 0233
 - src/command_center/storage/sqlite_ledger.py: 0120 0121 0122 0130 0131 0230 0233
 - src/command_center/storage/sqlite_ledger_tables.py: 0131
@@ -212,6 +215,10 @@ Each line is a path and the decisions that name it. Look a number up with `grep 
 - tests/test_core_ledger_range.py: 0123
 - tests/test_core_pairing.py: 0057
 - tests/test_cross_site_writes.py: 0060
+- tests/test_dashboard_store.py: 0356
+- tests/test_dashboards_api.py: 0357
+- tests/test_dashboards_core.py: 0355
+- tests/test_dashboards_remote.py: 0357
 - tests/test_desktop_launch_agent_environment.py: 0060
 - tests/test_distributed_connect.py: 0074 0086
 - tests/test_end_to_end.py: 0053 0054 0113
@@ -259,7 +266,7 @@ Each line is a path and the decisions that name it. Look a number up with `grep 
 - tests/test_redact_agenda.py: 0280 0281 0283 0284
 - tests/test_redact_gaps.py: 0240 0241 0242 0243 0244 0255 0260 0261 0310
 - tests/test_redact_urls_and_tokens.py: 0089
-- tests/test_remote_policy.py: 0060 0126 0182 0203 0211 0213
+- tests/test_remote_policy.py: 0060 0126 0182 0203 0211 0213 0357
 - tests/test_report_stream_contract.py: 0071
 - tests/test_scheduler.py: 0053
 - tests/test_schema_guard.py: 0232 0247

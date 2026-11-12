@@ -8,22 +8,23 @@ ideas not yet accepted live in `docs/backlog.md`. This file holds neither.
 2026-11-12.
 
 ## In flight
-T1 (design tokens, themes and base components in `ui/`) is written and uncommitted, decisions 0340-0343 and 0345 (T1b: the pressed-button contrast bug was tailwind-merge dropping the on-fill color; a browserless contrast test, `ui/src/styles/contrast.test.ts`, its known-failures list is now empty after 0346 changed four tokens.json values to reach AA; prototype and spec keep the originals):
-the real tokens in `ui/src/styles/tokens.css` (dark default, light, high contrast), display settings as
-`<html>` attributes (`ui/src/lib/display.tsx`: contrast, density, glow 0 to 1.6, text scale 90 to 150),
-self-hosted Sora, `.glass` and glow, AppBackdrop, Button, Card, Badge, Skeleton, Pill, SourceDot, and a
-dev-only `/gallery`. Vitest: a drift test of tokens.css against `docs/design/tokens.json`, Pill and display
-tests. Not run by the agent: `ui/e2e-gallery` (axe in dark, light and high contrast, and the Sora tnum
-width check; run it with the dev server config `ui/playwright.gallery.config.ts`) and `ui/e2e` after the
-restyle. Open for the human: `OFL-Sora.txt` was not in `docs/design/assets/`, so it is not yet in
-`ui/public/fonts/` (the font license must travel with the font). Not yet an api task: the CSP header and
-serving `ui/dist` with an SPA fallback from FastAPI.
+T1 (design tokens, themes, base components in `ui/`, decisions 0340-0343, 0345, 0346) is written and
+uncommitted: tokens in `ui/src/styles/tokens.css`, display settings as `<html>` attributes
+(`ui/src/lib/display.tsx`), self-hosted Sora, `.glass`, base components, a dev-only `/gallery`. Not run by the
+agent: `ui/e2e-gallery` (axe in three themes, Sora tnum width; config `ui/playwright.gallery.config.ts`) and
+`ui/e2e`. Open for the human: `OFL-Sora.txt` is not in `docs/design/assets/`, so not in `ui/public/fonts/`.
+Not yet an api task: the CSP header and serving `ui/dist` with an SPA fallback from FastAPI.
 
-R1 (widget registry and layout model, pure logic, `ui/src/layout/`) is written and uncommitted, decision 0350.
-Nothing renders it yet. Open for the edit-mode UI task: edit only at 12 columns (0350 Consequences).
+R1 (widget registry and layout model, `ui/src/layout/`, decision 0350) is written and uncommitted. Nothing
+renders it yet. Open for the edit-mode UI task: edit only at 12 columns (0350 Consequences).
+
+R2 and R2b (dashboards and display settings behind /v1, decisions 0355-0358) are written and uncommitted:
+core validation, two tables with compare-and-set revisions, `api/dashboards.py`, typed client regenerated.
+Postgres runs of `test_dashboard_store.py` need CC_TEST_POSTGRES_URL (the human). The ui layer does not call
+these routes yet.
 
 ## Gate state
-`mise run test:count` prints 4894 and `.test-floor` is 4894. The Python gates pass. `ui:test:count` prints
+`mise run test:count` prints 5004; `.test-floor` is 4894 (the human raises it). The Python gates pass. `ui:test:count` prints
 304 (Vitest and `ui:fast` pass; the build was last run at 168 tests; `ui/.test-floor` is still 33, the human raises it). Not yet shown by test: that `minimumReleaseAge`
 rejects a too-new version, that `strictDepBuilds` fails an unreviewed build script (0315 Hedge), and the
 Playwright test.
@@ -38,8 +39,6 @@ Playwright test.
   summary-provider unification, the schema-guard runtime check, splitting `core/redact.py` into rule
   modules (0280), a `test:for` flag that prints every indirect test (0285), and the pytest-asyncio
   loop-scope setting (the human edits `pyproject.toml`). Also accepted: the city-name weather form.
-- Run a layer agent (adapter-, services-, storage-, api-, web-engineer) on the next real task; none has
-  been tried yet. Watch whether the under-200-word reports hold.
 - Optional: the read-deny list in `.claude/settings.json` (`uv.lock`, `.venv`, caches); only the human
   edits that file. `api-reference.md` lists only method, path and summary, so parameters and schemas
   are only in `openapi.json` (grep it, never read it whole).
@@ -54,9 +53,6 @@ Playwright test.
 
 ## Reading order for a new task
 1. `AGENTS.md` (loaded for you), then the `CLAUDE.md` in the directory you will edit, if there is one.
-2. The one contract for that layer in `docs/contracts/`. Large file: `grep -n '^## '` it, then Read the
-   section you need with offset and limit.
-3. Find a file in `docs/generated/module-index.md`. Decisions behind it: grep its path in
-   `docs/generated/decisions-by-file.md`, then the numbers in `docs/generated/decision-index.md`. Do not
-   read either index whole.
-4. Tests for a source file: `mise run test:for -- src/command_center/core/redact.py`.
+2. The one contract for that layer in `docs/contracts/` (`grep -n '^## '`, then Read a section).
+3. Find a file or its decisions through `docs/generated/` (grep, never read an index whole); tests for a
+   source file: `mise run test:for -- <path>`.
