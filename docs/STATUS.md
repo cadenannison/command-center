@@ -8,21 +8,20 @@ ideas not yet accepted live in `docs/backlog.md`. This file holds neither.
 2026-11-12.
 
 ## In flight
-P1b (UI scaffold, plumbing only) is written and uncommitted: `ui/src` (app shell, TanStack Query and Router,
-`/today` through the typed client with loading, empty, error and stale states, tokens and a light, dark and
-system switcher, Button, Card, Badge, Skeleton), `ui/e2e` and `ui/playwright.config.ts` (smoke test with axe,
-not run: no browser installed), `mise run ui:gen`, decisions 0320-0324. P1c (decision 0325) adds reduced-motion CSS and Playwright `reducedMotion` to de-flake the axe check (mid-transition color blends); e2e not run by the agent (sandbox blocks port binding), the human runs `mise run ui:e2e` a few times. P1a is committed. It is BLOCKED on
-the human by decision 0324: the locked `typescript@7.0.2` breaks eslint (typescript-eslint) and the client
-generator (openapi-typescript needs the TS 5 compiler API), so `ui:fast` fails and
-`ui/src/api/generated/schema.d.ts` does not exist (typecheck fails on that one import). Human steps: set
-`typescript` to `5.9.3` in `ui/package.json` and re-lock; `git apply $TMPDIR/p1b-guard.patch` (lockfile
-check, `gen-check`, Playwright CI steps, mise tasks); `mise run ui:gen`; create `ui/.test-floor` with the
-count `mise run ui:test:count` prints; install the Playwright browser; then `mise run ui:check`. Not yet an
-api task: the CSP header and serving `ui/dist` with an SPA fallback from FastAPI.
+T1 (design tokens, themes and base components in `ui/`) is written and uncommitted, decisions 0340-0343 and 0345 (T1b: the pressed-button contrast bug was tailwind-merge dropping the on-fill color; a browserless contrast test, `ui/src/styles/contrast.test.ts`, its known-failures list is now empty after 0346 changed four tokens.json values to reach AA; prototype and spec keep the originals):
+the real tokens in `ui/src/styles/tokens.css` (dark default, light, high contrast), display settings as
+`<html>` attributes (`ui/src/lib/display.tsx`: contrast, density, glow 0 to 1.6, text scale 90 to 150),
+self-hosted Sora, `.glass` and glow, AppBackdrop, Button, Card, Badge, Skeleton, Pill, SourceDot, and a
+dev-only `/gallery`. Vitest: a drift test of tokens.css against `docs/design/tokens.json`, Pill and display
+tests. Not run by the agent: `ui/e2e-gallery` (axe in dark, light and high contrast, and the Sora tnum
+width check; run it with the dev server config `ui/playwright.gallery.config.ts`) and `ui/e2e` after the
+restyle. Open for the human: `OFL-Sora.txt` was not in `docs/design/assets/`, so it is not yet in
+`ui/public/fonts/` (the font license must travel with the font). Not yet an api task: the CSP header and
+serving `ui/dist` with an SPA fallback from FastAPI.
 
 ## Gate state
 `mise run test:count` prints 4894 and `.test-floor` is 4894. The Python gates pass. `ui:test:count` prints
-33 (Vitest passes; build passes); `ui:fast` fails (0324). Not yet shown by test: that `minimumReleaseAge`
+168 (Vitest, `ui:fast` and the build pass; `ui/.test-floor` is still 33, the human raises it). Not yet shown by test: that `minimumReleaseAge`
 rejects a too-new version, that `strictDepBuilds` fails an unreviewed build script (0315 Hedge), and the
 Playwright test.
 

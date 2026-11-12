@@ -112,7 +112,7 @@ Three rail screens share one centered column (900px max) in the same glass langu
 
 ## Later
 
-These are specified by the brief but not in the [prototype](https://claude.ai/artifact/7qyjWjjwU1fsEXZtFCXCgS) yet.
+These are specified by the brief but not in the prototype yet.
 
 | Item | Intent |
 | --- | --- |

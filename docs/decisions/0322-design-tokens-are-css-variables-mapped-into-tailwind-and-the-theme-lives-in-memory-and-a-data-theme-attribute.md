@@ -1,6 +1,6 @@
 # 0322. Design tokens are CSS variables mapped into Tailwind, and the theme lives in memory and a data-theme attribute
 
-Status: accepted
+Status: accepted; its placeholder values and Tailwind names are superseded by 0340 and 0343 (the theme API and in-memory choice still stand)
 
 Context: P1b asks for tokens (color, spacing, radius, type), Tailwind mapped to them, and light, dark and follow-system themes, with neutral placeholder values and no design decisions. AGENTS.md rule 7 and decision 0301 forbid localStorage for credentials and inline script and style; `eslint.config.js` bans `localStorage` outright.
 Decision:

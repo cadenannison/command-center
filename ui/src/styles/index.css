@@ -1,45 +1,164 @@
 @import "tailwindcss";
 @import "./tokens.css";
 
+/* Sora, self-hosted (decision 0341). swap: text shows in the UI font until the file arrives. */
+@font-face {
+  font-family: "Sora";
+  src: url("/fonts/sora.woff2") format("woff2");
+  font-weight: 100 800;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* Tailwind utilities map to the tokens; no raw value lives here. */
 @theme inline {
-  --color-bg: var(--cc-bg);
-  --color-surface: var(--cc-surface);
-  --color-fg: var(--cc-fg);
-  --color-muted: var(--cc-muted);
-  --color-border: var(--cc-border);
-  --color-accent: var(--cc-accent);
-  --color-accent-fg: var(--cc-accent-fg);
-  --color-danger: var(--cc-danger);
-  --color-danger-fg: var(--cc-danger-fg);
-  --color-focus: var(--cc-focus);
-  --spacing-1: var(--cc-space-1);
-  --spacing-2: var(--cc-space-2);
-  --spacing-3: var(--cc-space-3);
-  --spacing-4: var(--cc-space-4);
-  --spacing-6: var(--cc-space-6);
-  --spacing-8: var(--cc-space-8);
-  --radius-sm: var(--cc-radius-sm);
-  --radius-md: var(--cc-radius-md);
-  --radius-lg: var(--cc-radius-lg);
-  --font-sans: var(--cc-font-sans);
+  --color-bg: var(--cc-bgc);
+  --color-fg: var(--cc-text);
+  --color-muted: var(--cc-text2);
+  --color-subtle: var(--cc-text3);
+  --color-accent: var(--cc-ice);
+  --color-accent-fg: var(--cc-on-ice);
+  --color-danger: var(--cc-over);
+  --color-danger-fg: var(--cc-on-over);
+  --color-focus: var(--cc-ice);
+  --color-glass: var(--cc-glass);
+  --color-bar: var(--cc-bar);
+  --color-pop: var(--cc-pop);
+  --color-edge: var(--cc-edge);
+  --color-line: var(--cc-line);
+  --color-line2: var(--cc-line2);
+  --color-chip: var(--cc-chip);
+  --radius-widget: var(--cc-radius-widget);
+  --radius-control: var(--cc-radius-control);
+  --radius-chip: var(--cc-radius-chip);
+  --radius-pill: var(--cc-radius-pill);
+  --radius-block: var(--cc-radius-block);
+  --font-sans: var(--cc-font-ui);
+  --font-display: var(--cc-font-display);
   --font-mono: var(--cc-font-mono);
-  --text-sm: var(--cc-text-sm);
-  --text-base: var(--cc-text-base);
-  --text-lg: var(--cc-text-lg);
-  --text-xl: var(--cc-text-xl);
+  --text-caption: var(--cc-text-caption);
+  --ease-cc: var(--cc-ease);
 }
 
 @layer base {
+  html {
+    font-size: calc(16px * var(--cc-text-scale));
+  }
   body {
-    background-color: var(--cc-bg);
-    color: var(--cc-fg);
-    font-family: var(--cc-font-sans);
-    font-size: var(--cc-text-base);
+    margin: 0;
+    min-height: 100vh;
+    background-color: var(--cc-bgc);
+    color: var(--cc-text);
+    font-family: var(--cc-font-ui);
+    font-size: calc(var(--cc-font-base) * var(--cc-text-scale));
+    line-height: 1.4;
   }
   :focus-visible {
-    outline: 2px solid var(--cc-focus);
+    outline: 2px solid var(--cc-ice);
     outline-offset: 2px;
+  }
+}
+
+@layer components {
+  /* Source selection: a data-source attribute picks the glow color and the label ink. */
+  [data-source="cal"] {
+    --cc-src: var(--cc-src-cal);
+    --cc-ink: var(--cc-ink-cal);
+  }
+  [data-source="canvas"] {
+    --cc-src: var(--cc-src-canvas);
+    --cc-ink: var(--cc-ink-canvas);
+  }
+  [data-source="ls"] {
+    --cc-src: var(--cc-src-ls);
+    --cc-ink: var(--cc-ink-ls);
+  }
+  [data-source="gmail"] {
+    --cc-src: var(--cc-src-gmail);
+    --cc-ink: var(--cc-ink-gmail);
+  }
+  [data-source="wx"] {
+    --cc-src: var(--cc-src-wx);
+    --cc-ink: var(--cc-ink-wx);
+  }
+  [data-source="manual"] {
+    --cc-src: var(--cc-src-manual);
+    --cc-ink: var(--cc-ink-manual);
+  }
+
+  /* Priority 1 to 10 fills. The number is printed by the component; the text color never changes. */
+  [data-priority="1"] { --cc-p: var(--cc-p1); }
+  [data-priority="2"] { --cc-p: var(--cc-p2); }
+  [data-priority="3"] { --cc-p: var(--cc-p3); }
+  [data-priority="4"] { --cc-p: var(--cc-p4); }
+  [data-priority="5"] { --cc-p: var(--cc-p5); }
+  [data-priority="6"] { --cc-p: var(--cc-p6); }
+  [data-priority="7"] { --cc-p: var(--cc-p7); }
+  [data-priority="8"] { --cc-p: var(--cc-p8); }
+  [data-priority="9"] { --cc-p: var(--cc-p9); }
+  [data-priority="10"] { --cc-p: var(--cc-p10); }
+
+  /* Tabular figures for times, priorities and badges. */
+  .tnum {
+    font-feature-settings: "tnum";
+  }
+
+  /* The glass shell: translucent fill, light blur, edge highlight and a scrim behind the text. */
+  .glass {
+    position: relative;
+    isolation: isolate;
+    border-radius: var(--cc-radius-widget);
+    background-color: var(--cc-glass);
+    backdrop-filter: var(--cc-blur);
+    -webkit-backdrop-filter: var(--cc-blur);
+    box-shadow: inset 0 1px 0 var(--cc-edge);
+    color: var(--cc-text);
+  }
+  .glass::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    background: var(--cc-scrim);
+    pointer-events: none;
+  }
+
+  /* Source glow on a glass surface: inset ring plus two outer shadows, all scaled by data-glow.
+     The color comes from data-source (the ice color when none is set). */
+  .glow {
+    --cc-glow-rgb: var(--cc-src, var(--cc-icergb));
+    box-shadow:
+      inset 0 1px 0 var(--cc-edge),
+      inset 0 0 0 1px rgb(var(--cc-glow-rgb) / calc(var(--cc-glow-ring-alpha) * var(--cc-glow))),
+      0 0 var(--cc-glow-inner-blur) rgb(var(--cc-glow-rgb) / calc(var(--cc-glow-inner-alpha) * var(--cc-glow))),
+      0 0 var(--cc-glow-outer-blur) rgb(var(--cc-glow-rgb) / calc(var(--cc-glow-outer-alpha) * var(--cc-glow)));
+  }
+
+  /* The page backdrop: color orbs over the base gradient, behind everything. */
+  .app-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background: var(--cc-orbs);
+    background-color: var(--cc-bgc);
+    pointer-events: none;
+  }
+
+  /* Loading shimmer: the only looping motion in the app (spec, Motion). */
+  .shimmer {
+    background-image: linear-gradient(90deg, var(--cc-chip), var(--cc-line2), var(--cc-chip));
+    background-size: 200% 100%;
+    animation: cc-shimmer 1.4s linear infinite;
+  }
+}
+
+@keyframes cc-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
   }
 }
 

@@ -1,18 +1,106 @@
-/* Design tokens: neutral placeholder values only (task P1b, decision 0322). Components and Tailwind read
-   these names, never raw values, so the later design pass changes this file and nothing else.
-   Theme: no data-theme attribute follows the system; data-theme="light" or "dark" forces one. */
-:root {
-  --cc-bg: #ffffff;
-  --cc-surface: #f5f5f5;
-  --cc-fg: #1a1a1a;
-  --cc-muted: #5c5c5c;
-  --cc-border: #d4d4d4;
-  --cc-accent: #2f5fd0;
-  --cc-accent-fg: #ffffff;
-  --cc-danger: #b3261e;
-  --cc-danger-fg: #ffffff;
-  --cc-focus: #2f5fd0;
+/* Design tokens (task T1, decisions 0322 and 0340). Values are copied by hand from docs/design/tokens.json;
+   ui/src/styles/tokens.test.ts fails when a token is missing here or its value differs.
+   Theme: dark is the default. No data-theme attribute follows prefers-color-scheme (light only when the
+   system asks for light); data-theme="light" or "dark" forces one.
+   Display settings are attributes on <html>, each read by a rule below (no inline style, decision 0301):
+     data-contrast="high"       opaque surfaces, no blur, stronger hairlines
+     data-density="compact"     compact rows (comfortable otherwise)
+     data-glow="0".."1.6"       glow intensity in steps of 0.1
+     data-text-scale="90".."150" text scale in percent, steps of 5 */
 
+:root {
+  /* Dark theme (default) */
+  --cc-bgc: #07090d;
+  --cc-text: #f2f6fb;
+  --cc-text2: #b4c0d0;
+  --cc-text3: #9aa9bd;
+  --cc-ice: #8fd3ff;
+  --cc-icergb: 143 211 255;
+  --cc-over: #ff9aa6;
+  --cc-on-ice: #07090d;
+  --cc-on-over: #07090d;
+
+  --cc-glass: rgb(12 17 25/0.46);
+  --cc-bar: rgb(10 14 20/0.55);
+  --cc-pop: #101620;
+  --cc-edge: rgb(255 255 255/0.28);
+  --cc-line: rgb(255 255 255/0.10);
+  --cc-line2: rgb(255 255 255/0.18);
+  --cc-chip: rgb(255 255 255/0.09);
+  --cc-scrim: rgb(7 9 13/0.28);
+
+  --cc-src-cal: 167 139 250;
+  --cc-src-canvas: 255 122 138;
+  --cc-src-ls: 79 224 200;
+  --cc-src-gmail: 255 194 92;
+  --cc-src-wx: 124 199 255;
+  --cc-src-manual: 197 208 222;
+
+  --cc-ink-cal: #bba6fc;
+  --cc-ink-canvas: #ff9aa6;
+  --cc-ink-ls: #6fead6;
+  --cc-ink-gmail: #ffcb75;
+  --cc-ink-wx: #9ad6ff;
+  --cc-ink-manual: #c5d0de;
+
+  --cc-orbs: radial-gradient(46vw 40vh at 8% 6%,rgb(60 130 255/.40),transparent 70%),radial-gradient(40vw 40vh at 94% 34%,rgb(40 200 190/.26),transparent 70%),radial-gradient(52vw 46vh at 50% 108%,rgb(120 90 255/.34),transparent 70%),linear-gradient(160deg,#0B1018,#07090D);
+
+  --cc-blur: blur(18px) saturate(1.4);
+  color-scheme: dark;
+
+  /* Priority 1 to 10 (same in every theme) */
+  --cc-p1: #34c17c;
+  --cc-p2: #62c76c;
+  --cc-p3: #93cd5e;
+  --cc-p4: #bfcf52;
+  --cc-p5: #e3c94a;
+  --cc-p6: #f2b844;
+  --cc-p7: #f69f42;
+  --cc-p8: #f58545;
+  --cc-p9: #f26a52;
+  --cc-p10: #ef4b5c;
+  --cc-pill-text: #0a0d12;
+
+  /* Shape */
+  --cc-radius-widget: 18px;
+  --cc-radius-control: 10px;
+  --cc-radius-chip: 8px;
+  --cc-radius-pill: 11px;
+  --cc-radius-block: 4px;
+  --cc-target: 32px;
+  --cc-target-chip: 24px;
+  --cc-target-small: 28px;
+
+  /* Glow (the multiplier comes from data-glow, default 1) */
+  --cc-glow: 1;
+  --cc-glow-ring-alpha: 0.42;
+  --cc-glow-inner-blur: 22px;
+  --cc-glow-inner-alpha: 0.36;
+  --cc-glow-outer-blur: 64px;
+  --cc-glow-outer-alpha: 0.18;
+
+  /* Density (rows and grid) */
+  --cc-row: 3.1rem;
+  --cc-row-comfortable: 3.1rem;
+  --cc-row-compact: 2.5rem;
+  --cc-gap: 14px;
+  --cc-row-unit: 40px;
+
+  /* Type: html font-size is 16px times the scale and body text is base 14px times the scale; captions never go under 11px */
+  --cc-text-scale: 1;
+  --cc-font-base: 14px;
+  --cc-font-display: "Sora", var(--cc-font-ui);
+  --cc-font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+  --cc-font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  --cc-text-caption: max(11px, calc(12px * var(--cc-text-scale)));
+
+  /* Motion */
+  --cc-fast: 140ms;
+  --cc-base: 240ms;
+  --cc-checkoff: 420ms;
+  --cc-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  /* Spacing scale */
   --cc-space-1: 0.25rem;
   --cc-space-2: 0.5rem;
   --cc-space-3: 0.75rem;
@@ -20,46 +108,149 @@
   --cc-space-6: 1.5rem;
   --cc-space-8: 2rem;
 
-  --cc-radius-sm: 0.25rem;
-  --cc-radius-md: 0.5rem;
-  --cc-radius-lg: 0.75rem;
+  /* Grid */
+  --cc-zoom-min: 0.7;
+  --cc-zoom-max: 1.3;
+}
 
-  --cc-font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --cc-font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
-  --cc-text-sm: 0.875rem;
-  --cc-text-base: 1rem;
-  --cc-text-lg: 1.25rem;
-  --cc-text-xl: 1.75rem;
-
+/* Light theme: forced ... */
+:root[data-theme="light"] {
+  --cc-bgc: #eef3f9;
+  --cc-text: #0e1622;
+  --cc-text2: #3f4e62;
+  --cc-text3: #4a596d;
+  --cc-ice: #08589a;
+  --cc-icergb: 40 140 230;
+  --cc-over: #a21e34;
+  --cc-on-ice: #ffffff;
+  --cc-on-over: #ffffff;
+  --cc-glass: rgb(255 255 255/0.68);
+  --cc-bar: rgb(255 255 255/0.6);
+  --cc-pop: #fff;
+  --cc-edge: rgb(255 255 255/0.95);
+  --cc-line: rgb(20 40 70/0.12);
+  --cc-line2: rgb(20 40 70/0.2);
+  --cc-chip: rgb(20 40 70/0.07);
+  --cc-scrim: rgb(255 255 255/0.3);
+  --cc-src-cal: 124 92 240;
+  --cc-src-canvas: 226 61 88;
+  --cc-src-ls: 13 160 138;
+  --cc-src-gmail: 224 150 20;
+  --cc-src-wx: 40 140 230;
+  --cc-src-manual: 110 126 148;
+  --cc-ink-cal: #5b36c9;
+  --cc-ink-canvas: #b4233c;
+  --cc-ink-ls: #08705f;
+  --cc-ink-gmail: #8a5500;
+  --cc-ink-wx: #0a64b0;
+  --cc-ink-manual: #465569;
+  --cc-orbs: radial-gradient(46vw 40vh at 8% 6%,rgb(120 190 255/.60),transparent 70%),radial-gradient(40vw 40vh at 94% 34%,rgb(140 228 216/.50),transparent 70%),radial-gradient(52vw 46vh at 50% 108%,rgb(182 166 255/.50),transparent 70%),linear-gradient(160deg,#F8FAFD,#E9EFF7);
   color-scheme: light;
 }
 
-:root[data-theme="dark"] {
-  --cc-bg: #121212;
-  --cc-surface: #1e1e1e;
-  --cc-fg: #ececec;
-  --cc-muted: #a3a3a3;
-  --cc-border: #3a3a3a;
-  --cc-accent: #8ab4ff;
-  --cc-accent-fg: #101010;
-  --cc-danger: #f2b8b5;
-  --cc-danger-fg: #101010;
-  --cc-focus: #8ab4ff;
-  color-scheme: dark;
-}
-
-@media (prefers-color-scheme: dark) {
+/* ... or because the system asks for light and nothing is forced. */
+@media (prefers-color-scheme: light) {
   :root:not([data-theme]) {
-    --cc-bg: #121212;
-    --cc-surface: #1e1e1e;
-    --cc-fg: #ececec;
-    --cc-muted: #a3a3a3;
-    --cc-border: #3a3a3a;
-    --cc-accent: #8ab4ff;
-    --cc-accent-fg: #101010;
-    --cc-danger: #f2b8b5;
-    --cc-danger-fg: #101010;
-    --cc-focus: #8ab4ff;
-    color-scheme: dark;
+    --cc-bgc: #eef3f9;
+    --cc-text: #0e1622;
+    --cc-text2: #3f4e62;
+    --cc-text3: #4a596d;
+    --cc-ice: #08589a;
+    --cc-icergb: 40 140 230;
+    --cc-over: #a21e34;
+    --cc-on-ice: #ffffff;
+    --cc-on-over: #ffffff;
+    --cc-glass: rgb(255 255 255/0.68);
+    --cc-bar: rgb(255 255 255/0.6);
+    --cc-pop: #fff;
+    --cc-edge: rgb(255 255 255/0.95);
+    --cc-line: rgb(20 40 70/0.12);
+    --cc-line2: rgb(20 40 70/0.2);
+    --cc-chip: rgb(20 40 70/0.07);
+    --cc-scrim: rgb(255 255 255/0.3);
+    --cc-src-cal: 124 92 240;
+    --cc-src-canvas: 226 61 88;
+    --cc-src-ls: 13 160 138;
+    --cc-src-gmail: 224 150 20;
+    --cc-src-wx: 40 140 230;
+    --cc-src-manual: 110 126 148;
+    --cc-ink-cal: #5b36c9;
+    --cc-ink-canvas: #b4233c;
+    --cc-ink-ls: #08705f;
+    --cc-ink-gmail: #8a5500;
+    --cc-ink-wx: #0a64b0;
+    --cc-ink-manual: #465569;
+    --cc-orbs: radial-gradient(46vw 40vh at 8% 6%,rgb(120 190 255/.60),transparent 70%),radial-gradient(40vw 40vh at 94% 34%,rgb(140 228 216/.50),transparent 70%),radial-gradient(52vw 46vh at 50% 108%,rgb(182 166 255/.50),transparent 70%),linear-gradient(160deg,#F8FAFD,#E9EFF7);
+    color-scheme: light;
   }
 }
+
+/* High contrast: opaque surfaces, stronger hairlines, text 3 raised to text 2, no blur. Dark first, then
+   the light variants, which are more specific so they win over the dark block. */
+:root[data-contrast="high"] {
+  --cc-glass: #0d1118;
+  --cc-bar: #0a0e14;
+  --cc-line: rgb(255 255 255/0.3);
+  --cc-text3: #b4c0d0;
+  --cc-blur: none;
+  --cc-scrim: transparent;
+}
+
+:root[data-contrast="high"][data-theme="light"] {
+  --cc-glass: #fff;
+  --cc-bar: #fff;
+  --cc-line: rgb(20 40 70/0.4);
+  --cc-text3: #3f4e62;
+  --cc-blur: none;
+  --cc-scrim: transparent;
+}
+
+@media (prefers-color-scheme: light) {
+  :root[data-contrast="high"]:not([data-theme]) {
+    --cc-glass: #fff;
+    --cc-bar: #fff;
+    --cc-line: rgb(20 40 70/0.4);
+    --cc-text3: #3f4e62;
+    --cc-blur: none;
+    --cc-scrim: transparent;
+  }
+}
+
+/* Density */
+:root[data-density="compact"] {
+  --cc-row: var(--cc-row-compact);
+}
+
+/* Glow intensity, 0 to 1.6 in steps of 0.1 */
+:root[data-glow="0"] { --cc-glow: 0; }
+:root[data-glow="0.1"] { --cc-glow: 0.1; }
+:root[data-glow="0.2"] { --cc-glow: 0.2; }
+:root[data-glow="0.3"] { --cc-glow: 0.3; }
+:root[data-glow="0.4"] { --cc-glow: 0.4; }
+:root[data-glow="0.5"] { --cc-glow: 0.5; }
+:root[data-glow="0.6"] { --cc-glow: 0.6; }
+:root[data-glow="0.7"] { --cc-glow: 0.7; }
+:root[data-glow="0.8"] { --cc-glow: 0.8; }
+:root[data-glow="0.9"] { --cc-glow: 0.9; }
+:root[data-glow="1"] { --cc-glow: 1; }
+:root[data-glow="1.1"] { --cc-glow: 1.1; }
+:root[data-glow="1.2"] { --cc-glow: 1.2; }
+:root[data-glow="1.3"] { --cc-glow: 1.3; }
+:root[data-glow="1.4"] { --cc-glow: 1.4; }
+:root[data-glow="1.5"] { --cc-glow: 1.5; }
+:root[data-glow="1.6"] { --cc-glow: 1.6; }
+
+/* Text scale, 90 to 150 percent in steps of 5 */
+:root[data-text-scale="90"] { --cc-text-scale: 0.9; }
+:root[data-text-scale="95"] { --cc-text-scale: 0.95; }
+:root[data-text-scale="100"] { --cc-text-scale: 1; }
+:root[data-text-scale="105"] { --cc-text-scale: 1.05; }
+:root[data-text-scale="110"] { --cc-text-scale: 1.1; }
+:root[data-text-scale="115"] { --cc-text-scale: 1.15; }
+:root[data-text-scale="120"] { --cc-text-scale: 1.2; }
+:root[data-text-scale="125"] { --cc-text-scale: 1.25; }
+:root[data-text-scale="130"] { --cc-text-scale: 1.3; }
+:root[data-text-scale="135"] { --cc-text-scale: 1.35; }
+:root[data-text-scale="140"] { --cc-text-scale: 1.4; }
+:root[data-text-scale="145"] { --cc-text-scale: 1.45; }
+:root[data-text-scale="150"] { --cc-text-scale: 1.5; }

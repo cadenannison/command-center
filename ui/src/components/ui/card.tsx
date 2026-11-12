@@ -1,8 +1,16 @@
 import type { ComponentProps } from "react";
+import type { SourceId } from "../../lib/sources";
 import { cn } from "../../lib/utils";
 
-export function Card({ className, ...props }: ComponentProps<"div">) {
-  return <div className={cn("rounded-lg border border-border bg-surface text-fg", className)} {...props} />;
+/** A glass surface. With `source` it also glows in that source's color (scaled by the glow setting). */
+export function Card({ className, source, ...props }: ComponentProps<"div"> & { source?: SourceId }) {
+  return (
+    <div
+      className={cn("glass", source && "glow", className)}
+      {...(source ? { "data-source": source } : {})}
+      {...props}
+    />
+  );
 }
 
 export function CardHeader({ className, ...props }: ComponentProps<"div">) {
@@ -10,7 +18,7 @@ export function CardHeader({ className, ...props }: ComponentProps<"div">) {
 }
 
 export function CardTitle({ className, ...props }: ComponentProps<"h2">) {
-  return <h2 className={cn("text-lg font-semibold", className)} {...props} />;
+  return <h2 className={cn("font-display text-lg font-semibold", className)} {...props} />;
 }
 
 export function CardContent({ className, ...props }: ComponentProps<"div">) {

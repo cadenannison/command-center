@@ -4,6 +4,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { createAppQueryClient } from "./api/query-client";
 import { createAppRouter } from "./router";
+import { DisplayProvider } from "./lib/display";
 import { ThemeProvider } from "./lib/theme";
 import "./styles/index.css";
 
@@ -16,9 +17,11 @@ if (!container) throw new Error("index.html has no #root element");
 createRoot(container).render(
   <StrictMode>
     <ThemeProvider>
-      <QueryClientProvider client={queryClient}>
-        <RouterProvider router={router} />
-      </QueryClientProvider>
+      <DisplayProvider>
+        <QueryClientProvider client={queryClient}>
+          <RouterProvider router={router} />
+        </QueryClientProvider>
+      </DisplayProvider>
     </ThemeProvider>
   </StrictMode>,
 );

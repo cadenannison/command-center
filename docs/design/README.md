@@ -13,3 +13,5 @@ Order of authority when they disagree: `spec.md`, then `prototype.html`, then `t
 
 The prototype's Design rules page never ships. The prototype uses inline script and style, which the
 strict CSP (decision 0301) forbids in ui/, so its code is not a starting point for the UI.
+
+Decision 0346: `tokens.json` (and `ui/`) carry four AA-adjusted values (dark text 3 #9AA9BD, light text 3 #4A596D, light overdue #A21E34, light ice #08589A); `prototype.html` and `spec.md` keep the originals.

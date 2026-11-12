@@ -32,7 +32,7 @@ Each line is a path and the decisions that name it. Look a number up with `grep 
 - docs/design/README.md: 0330
 - docs/design/prototype.html: 0330
 - docs/design/spec.md: 0330
-- docs/design/tokens.json: 0330
+- docs/design/tokens.json: 0330 0346
 - docs/distributed-mode.md: 0076 0077 0078 0085 0086 0090
 - docs/first-run.md: 0078 0140 0191 0192
 - docs/generated/: 0025
