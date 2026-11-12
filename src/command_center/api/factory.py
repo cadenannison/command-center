@@ -19,6 +19,7 @@ from command_center.api import (
     settings,
     summary_routes,
     sync,
+    tasks,
 )
 from command_center.api.auth import bearer_scheme, install_auth
 from command_center.api.errors import install_error_handlers
@@ -79,6 +80,7 @@ def create_app(
         chat_routes.router,
         items.router,
         dashboards.router,
+        tasks.router,
         sync.router,
         summary_routes.router,
         pairing_routes.devices_router,

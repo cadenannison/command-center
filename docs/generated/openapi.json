@@ -1139,6 +1139,73 @@
         "title": "TaskInput",
         "type": "object"
       },
+      "TaskItem": {
+        "description": "One row of the Tasks list: the item, whether it is done, and why it ranks where it does.",
+        "properties": {
+          "done": {
+            "title": "Done",
+            "type": "boolean"
+          },
+          "due": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "link": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Link"
+          },
+          "priority": {
+            "title": "Priority",
+            "type": "integer"
+          },
+          "reasons": {
+            "items": {
+              "$ref": "#/components/schemas/UrgencyReason"
+            },
+            "title": "Reasons",
+            "type": "array"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "source",
+          "due",
+          "link",
+          "done",
+          "priority",
+          "reasons"
+        ],
+        "title": "TaskItem",
+        "type": "object"
+      },
       "TaskPatch": {
         "additionalProperties": false,
         "description": "A partial change to a local task; `model_fields_set` says which fields were given.",
@@ -1215,6 +1282,30 @@
           "refresh_token"
         ],
         "title": "TokenResponse",
+        "type": "object"
+      },
+      "UrgencyReason": {
+        "description": "One line of the answer to \"Why is this a 9?\": a short sentence and the points it adds.",
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "points": {
+            "title": "Points",
+            "type": "integer"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "points",
+          "text"
+        ],
+        "title": "UrgencyReason",
         "type": "object"
       },
       "ValidationErrorBody": {
@@ -3332,6 +3423,37 @@
         "summary": "Sync every source now",
         "tags": [
           "sync"
+        ]
+      }
+    },
+    "/v1/tasks": {
+      "get": {
+        "description": "Tasks, assignments and email in the sync horizon: priority 1-10 and why, most urgent first.\n\nSorted by `priority` descending, then `due` ascending (no due time last). Done items stay in\nthe list with `done` true and the lowest priority. `link` is the source's own link or null.",
+        "operationId": "list_tasks_v1_tasks_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TaskItem"
+                  },
+                  "title": "Response List Tasks V1 Tasks Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "DeviceToken": []
+          }
+        ],
+        "summary": "Tasks ranked by urgency, with the reasons",
+        "tags": [
+          "tasks"
         ]
       }
     }

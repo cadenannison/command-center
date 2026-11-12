@@ -580,6 +580,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Tasks ranked by urgency, with the reasons
+         * @description Tasks, assignments and email in the sync horizon: priority 1-10 and why, most urgent first.
+         *
+         *     Sorted by `priority` descending, then `due` ascending (no due time last). Done items stay in
+         *     the list with `done` true and the lowest priority. `link` is the source's own link or null.
+         */
+        get: operations["list_tasks_v1_tasks_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1114,6 +1137,28 @@ export interface components {
             title: string;
         };
         /**
+         * TaskItem
+         * @description One row of the Tasks list: the item, whether it is done, and why it ranks where it does.
+         */
+        TaskItem: {
+            /** Done */
+            done: boolean;
+            /** Due */
+            due: string | null;
+            /** Id */
+            id: string;
+            /** Link */
+            link: string | null;
+            /** Priority */
+            priority: number;
+            /** Reasons */
+            reasons: components["schemas"]["UrgencyReason"][];
+            /** Source */
+            source: string;
+            /** Title */
+            title: string;
+        };
+        /**
          * TaskPatch
          * @description A partial change to a local task; `model_fields_set` says which fields were given.
          */
@@ -1147,6 +1192,18 @@ export interface components {
              * @constant
              */
             token_type: "bearer";
+        };
+        /**
+         * UrgencyReason
+         * @description One line of the answer to "Why is this a 9?": a short sentence and the points it adds.
+         */
+        UrgencyReason: {
+            /** Code */
+            code: string;
+            /** Points */
+            points: number;
+            /** Text */
+            text: string;
         };
         /**
          * ValidationErrorBody
@@ -2590,6 +2647,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SyncState"][];
+                };
+            };
+        };
+    };
+    list_tasks_v1_tasks_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskItem"][];
                 };
             };
         };

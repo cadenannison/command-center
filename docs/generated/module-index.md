@@ -60,6 +60,7 @@ One line per module: its first docstring sentence. Use it to find the file you n
 - `settings.py`: Settings routes.
 - `summary_routes.py`: The opt-in daily summary, always mounted; 404 while summaries are off (decisions 0037, 0053).
 - `sync.py`: Manual sync trigger.
+- `tasks.py`: The ranked task list the Tasks widget reads (decisions 0332, 0371).
 
 ## core/
 - `chat.py`: Read-only AI chat: turn capping, the redacted context body and the trusted system prompt.
@@ -78,6 +79,7 @@ One line per module: its first docstring sentence. Use it to find the file you n
 - `scoring.py`: Deterministic urgency scoring (0-100) and its reason.
 - `summary.py`: Opt-in daily summary: the result model, the redacted prompt and a provider-free fallback.
 - `sync_state.py`: The last sync result of one source: what the settings view shows and workers record.
+- `urgency.py`: Explainable urgency: a 1-10 priority and reasons whose points add up to it (0332, 0370).
 - `urlcheck.py`: SSRF guard for user-supplied URLs.
 - `windows.py`: Day, week and month windows in the user's timezone, built from local midnight (DST-safe).
 

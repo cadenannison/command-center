@@ -11,6 +11,7 @@ No I/O, clock, randomness, environment or globals; time, randomness and ids come
 - `dashboards`: `Layout`, `LayoutItem`, `Dashboard`, `DashboardInput`, `ReorderInput`, `DisplayInput`, `DisplaySettings`, `layout_json`, `parse_layout`, `clean_name`, the limits (`MAX_LAYOUT_BYTES` 64 KB, `MAX_LAYOUT_ITEMS` 50, `MAX_DASHBOARDS` 20) and the failures `RevisionConflictError`, `DashboardNotFoundError`, `DashboardLimitError`, `DashboardSetError`. Pure validation of the layout document and display settings (decisions 0355, 0356); ports `DashboardStore` and `DisplaySettingsStore` are in `ports`.
 - `scoring`: `urgency`.
 - `priority`: `priority`, `MAX_PRIORITY`.
+- `urgency`: `assess`, `task_items`, `Urgency`, `UrgencyReason`, `TaskItem`, and the weight tables (`DUE_BANDS`, `OVERDUE_POINTS`, `EMAIL_POINTS`, ...). Explainable 1-10 priority (decisions 0332, 0370).
 - `ledger`: `LedgerEntry` (computed `completed_by`: "user" for done_by_you, "source" for done_by_source, None for gone; stored `reopened`, true only for done_by_source when the source completed the item and later reported it open again, the entry stays on its completion day, decision 0130), `HistoryDay`, `group_history(day, entries)`, `group_history_range(entries, tz) -> list[HistoryDay]` (one day per local date with an entry, ascending; each day built by `group_history`), plus the task/note inputs and mark helpers; `overlay_marks(event, mark)` forces status done only for a user check-off, never for a source completion.
 - `redact`: `redact`, `trim`.
 - `windows`: `TimeWindow`, `day_window`, `week_window`, `month_window`.
@@ -141,6 +142,11 @@ Phone pairing primitives. Token generation is NOT in core: `TokenSource.new_toke
 
 ### Hosts (`hosts.py`)
 `host_name(header)`: lowercase, one trailing dot and an all-ASCII-digit `:port` removed; None, blank, non-ASCII or anything that is not a plain hostname (`[a-z0-9._-]`: whitespace, `/ @ \ ? # [`, a leftover colon so also IPv6 literals) gives `""`, which never matches. `classify_request(host_header, header_names, remote_hosts) -> Exposure` (`LOOPBACK|REMOTE|REJECTED`): a name in `LOOPBACK_HOSTS` (`localhost`, `127.0.0.1`) is LOOPBACK unless any header is a proxy header (`is_proxy_header`: `PROXY_HEADER_NAMES` such as `x-forwarded-for`, `via`, or any `tailscale-*`), then REMOTE. Reason: Tailscale Serve proxies to 127.0.0.1 and a tailnet peer can choose its own Host, so a loopback Host with proxy headers is not trusted as local. A name in `remote_hosts` (compared in lowercase) is REMOTE; everything else is REJECTED. A loopback name in `remote_hosts` does not change the loopback rule.
+
+### Urgency reasons (`urgency.py`; decision 0370)
+- `assess(event, now) -> Urgency{priority, score, reasons[{code, points, text}]}`; `priority = clamp(score, 1, 10)` and `score` is the sum of the points. Naive `now` is ValueError. Pure and deterministic; reads only kind, source, status, due, start, end.
+- Points: overdue +8 (+1 if two days or more late); due in <=6 h +7, <=24 h +6, <=48 h +5, <=7 d +3, <=14 d +1; local task +1; reply owed +3 or overdue +5, plus +1 (waiting 24 h+) or +2 (72 h+); event in progress or starting within 2 h +4, within 24 h +2. A done item has one 0-point reason and priority 1; an item with no reason has one 0-point "Nothing makes this urgent right now". Estimated duration and AI never count.
+- `task_items(events, now) -> list[TaskItem]` keeps kinds task, assignment and email, sorted by priority descending, due ascending (none last), id.
 
 ## Planned (not built yet)
 - Schema for tasks, messages and source status beyond `Event`.

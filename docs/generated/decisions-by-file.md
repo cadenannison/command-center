@@ -93,6 +93,7 @@ Each line is a path and the decisions that name it. Look a number up with `grep 
 - src/command_center/api/policy.py: 0126 0165 0182
 - src/command_center/api/settings.py: 0020 0023 0025
 - src/command_center/api/summary_routes.py: 0037
+- src/command_center/api/tasks.py: 0371
 - src/command_center/app.py: 0021 0053 0057 0058 0072 0073 0074 0105 0112 0115 0140 0161 0170 0181 0358
 - src/command_center/config.py: 0036 0057 0070 0072 0073 0161
 - src/command_center/core/CLAUDE.md: 0250
@@ -107,6 +108,7 @@ Each line is a path and the decisions that name it. Look a number up with `grep 
 - src/command_center/core/resilience.py: 0048
 - src/command_center/core/schema.py: 0110 0124
 - src/command_center/core/scoring.py: 0015 0017
+- src/command_center/core/urgency.py: 0370
 - src/command_center/core/urlcheck.py: 0160 0220 0221
 - src/command_center/services/CLAUDE.md: 0250
 - src/command_center/services/agenda.py: 0019 0038

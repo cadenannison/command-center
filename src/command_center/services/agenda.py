@@ -7,6 +7,7 @@ from command_center.core.ledger import overlay_marks
 from command_center.core.ports import Clock, EventStore, ItemLedger
 from command_center.core.schema import Event
 from command_center.core.scoring import urgency
+from command_center.core.urgency import TaskItem, task_items
 from command_center.core.windows import TimeWindow, day_window, month_window, week_window
 from command_center.services.horizon import horizon_window
 
@@ -77,6 +78,12 @@ class AgendaService:
         scored = await self._scored(horizon_window(now))
         needing = [event for event in scored if _needs_attention(event)]
         return sorted(needing, key=lambda e: (-e.urgency, _anchor(e), e.id))
+
+    async def tasks(self) -> list[TaskItem]:
+        """Tasks, assignments and email within the sync horizon, ranked with their reasons."""
+        now = self._now()
+        stored = await asyncio.to_thread(self._events.query, horizon_window(now))
+        return task_items(await self._marked(stored), now)
 
     def _now(self) -> datetime:
         return self._clock.now().astimezone(self._tz)
