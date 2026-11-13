@@ -32,6 +32,8 @@ function stubApi(handler: Handler) {
       calls.push(call);
       // The Summary card above the grid reads GET /v1/summary: it gets its own valid answer, so it never adds an error state.
       if (call.path === "/v1/summary") return json(SUMMARY);
+      // The Needs me widget reads GET /v1/needs-me: an empty list, so it never adds an error state.
+      if (call.path === "/v1/needs-me") return json([]);
       return handler(call);
     }),
   );
@@ -178,14 +180,15 @@ describe("DashboardPage saving", () => {
     expect(await screen.findByTestId("widget-events-9")).toBeInTheDocument();
     expect(screen.queryByTestId("widget-events-2")).not.toBeInTheDocument();
     expect(gets).toBe(2);
-    // The exact requests: the dashboards list twice (load, then the 409 refetch), one events read for the Events widget
+    // The exact requests: the dashboards list twice (load, then the 409 refetch), one events read for the Events widget,
+    // one needs-me read for the Needs me widget (the first layout has it; the latest one does not)
     // and one summary read for the Summary card (one per day per mount: the remount after the 409 reuses the cache).
     expect(
       calls
         .filter((c) => c.method === "GET")
         .map((c) => c.path)
         .sort(),
-    ).toEqual(["/v1/dashboards", "/v1/dashboards", "/v1/events", "/v1/summary"]);
+    ).toEqual(["/v1/dashboards", "/v1/dashboards", "/v1/events", "/v1/needs-me", "/v1/summary"]);
     expect(screen.getByText(/Showing the latest version/).closest("[role=status]")).toHaveFocus();
   });
 

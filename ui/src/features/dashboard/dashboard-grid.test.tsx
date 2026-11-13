@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { Layout } from "../../layout";
+import type { Layout, LayoutItem } from "../../layout";
 import { DashboardGrid } from "./dashboard-grid";
 import { fireResize, installGridEnv, json, MINIMAL } from "./test-support";
 
@@ -55,8 +55,10 @@ describe("DashboardGrid at 12 columns", () => {
   });
 
   it("shows the tier in each placeholder body, and the Events widget renders its own content", async () => {
-    setup({ edit: false });
-    expect(within(screen.getByTestId(/^widget-needs/)).getAllByText(/^W\d · H\d · 7×10$/).length).toBeGreaterThan(0);
+    // Needs me, Tasks, Events, Weather and Week render their own content now, so a Canvas widget (still a placeholder) carries the check.
+    const canvasItem: LayoutItem = { id: "canvas-3", widgetId: "canvas", x: 0, y: 10, w: 7, h: 10, pinned: false, sources: ["canvas" as const], options: {} };
+    setup({ edit: false, layout: { ...MINIMAL, items: [...MINIMAL.items, canvasItem] } });
+    expect(within(screen.getByTestId("widget-canvas-3")).getAllByText(/^W\d · H\d · 7×10$/).length).toBeGreaterThan(0);
     const events = screen.getByTestId("widget-events-2");
     expect(await within(events).findByText("Nothing on your calendar.")).toBeInTheDocument();
     expect(within(events).queryByText(/^W\d · H\d · 5×10$/)).not.toBeInTheDocument();

@@ -16,6 +16,7 @@ import {
 } from "./editing";
 import { cellsMoved, gridHeight, metricsFor, rectOf, type Metrics } from "./metrics";
 import { EventsWidget } from "./events-widget";
+import { NeedsMeWidget } from "./needs-me-widget";
 import { TasksWidget } from "./tasks-widget";
 import { WeatherWidget } from "./weather-widget";
 import { WeekWidget } from "./week-widget";
@@ -353,7 +354,9 @@ export function DashboardGrid({ layout, zoom, edit, onChange, onAnnounce, stateF
             )}
             style={live}
           >
-            {item.widgetId === "tasks" && def ? (
+            {item.widgetId === "needs_me" && def ? (
+              <NeedsMeWidget {...shellProps} widthTier={tier(item.w, item.h, def).w} heightTier={tier(item.w, item.h, def).h} />
+            ) : item.widgetId === "tasks" && def ? (
               <TasksWidget {...shellProps} widthTier={tier(item.w, item.h, def).w} heightTier={tier(item.w, item.h, def).h} />
             ) : item.widgetId === "events" && def ? (
               <EventsWidget {...shellProps} widthTier={tier(item.w, item.h, def).w} heightTier={tier(item.w, item.h, def).h} />

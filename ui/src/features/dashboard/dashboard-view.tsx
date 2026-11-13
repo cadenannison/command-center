@@ -129,9 +129,21 @@ export function DashboardView({ dashboard, flushRef, onConflict, onSaved }: Dash
     };
   }, [conflicted, onConflict]);
 
-  const announce = useCallback((text: string) => {
-    setAnnouncement((old) => ({ text, n: old.n + 1 }));
+  // A delayed announcement is dropped when anything is announced after it, so a stale "Added ..." can never
+  // overwrite a newer "Undone." (decision 0388).
+  const pendingAnnounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancelPending = useCallback(() => {
+    if (pendingAnnounce.current !== null) clearTimeout(pendingAnnounce.current);
+    pendingAnnounce.current = null;
   }, []);
+  useEffect(() => cancelPending, [cancelPending]);
+  const announce = useCallback(
+    (text: string) => {
+      cancelPending();
+      setAnnouncement((old) => ({ text, n: old.n + 1 }));
+    },
+    [cancelPending],
+  );
   const onChange = useCallback((layout: Layout) => {
     dispatch({ type: "apply", layout });
   }, []);
@@ -140,11 +152,13 @@ export function DashboardView({ dashboard, flushRef, onConflict, onSaved }: Dash
   // they cause is announced a moment after they close.
   const announceLater = useCallback(
     (text: string) => {
-      setTimeout(() => {
+      cancelPending();
+      pendingAnnounce.current = setTimeout(() => {
+        pendingAnnounce.current = null;
         announce(text);
       }, 100);
     },
-    [announce],
+    [announce, cancelPending],
   );
 
   // Focus that must land after a control unmounted (Done, or a removed widget's menu). Set in a handler, applied after

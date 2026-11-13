@@ -26,6 +26,8 @@ function stubApi(handler: Handler) {
       const call: Call = { method: input.method, path: new URL(input.url).pathname, ifMatch: input.headers.get("if-match") };
       calls.push(call);
       if (call.path === "/v1/summary") return Promise.resolve(json(SUMMARY));
+      // The Needs me widget reads GET /v1/needs-me: an empty list, so it never adds an error state.
+      if (call.path === "/v1/needs-me") return Promise.resolve(json([]));
       return Promise.resolve(handler(call));
     }),
   );

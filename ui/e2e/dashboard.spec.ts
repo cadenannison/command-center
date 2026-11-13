@@ -68,6 +68,7 @@ async function stubDashboards(page: Page): Promise<unknown[]> {
   await stubTasks(page);
   // The Events widget and the Summary card read these; stubbed so edit-mode axe sees them with data, not an unmocked route.
   await page.route("**/v1/events**", (route) => route.fulfill({ json: [] }));
+  await page.route("**/v1/needs-me**", (route) => route.fulfill({ json: [] }));
   await page.route("**/v1/summary**", (route) =>
     route.fulfill({
       json: {
