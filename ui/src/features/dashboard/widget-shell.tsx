@@ -44,6 +44,8 @@ export interface WidgetShellProps {
   readonly headerProps?: ComponentProps<"div"> | undefined;
   /** In edit mode: the drag handle, its own button beside the heading (decision 0374). */
   readonly handleProps?: ComponentProps<"button"> | undefined;
+  /** In edit mode: the per-widget menu button, beside the drag handle and outside the heading. */
+  readonly menu?: ReactNode;
   readonly children?: ReactNode;
   readonly className?: string;
 }
@@ -115,6 +117,7 @@ export function WidgetShell({
   lifted = false,
   headerProps,
   handleProps,
+  menu,
   children,
   className,
 }: WidgetShellProps) {
@@ -157,6 +160,7 @@ export function WidgetShell({
         ) : (
           <span className="tnum flex-none text-caption text-muted">{editing && tierBadge ? tierBadge : status}</span>
         )}
+        {editing && menu}
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-2">
         <Body state={state}>{children}</Body>

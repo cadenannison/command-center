@@ -5,16 +5,30 @@ import {
   DEFAULT_LAYOUTS,
   ZOOM_MAX,
   ZOOM_MIN,
+  addWidget,
   canRedo,
   canUndo,
   columnsForWidth,
   fitToColumns,
   historyReducer,
+  getWidget,
   initHistory,
+  preset,
+  remove,
+  resize,
   sanitizeLayout,
+  setPinned,
   type Layout,
+  type LayoutItem,
+  type SizePreset,
+  type TemplateName,
 } from "../../layout";
 import { DashboardGrid } from "./dashboard-grid";
+import { downloadText } from "./download";
+import { EditToolbar } from "./edit-toolbar";
+import { addBlocker, exportDocument, nextItemId, presetState, sizeText } from "./edit-model";
+import { WidgetMenu } from "./widget-menu";
+import { layoutToWire } from "./wire";
 import { SummaryCard } from "./summary-card";
 import { replaceDashboard } from "./dashboards-api";
 import { LayoutSaver, type SaveStatus } from "./layout-saver";
@@ -122,11 +136,120 @@ export function DashboardView({ dashboard, flushRef, onConflict, onSaved }: Dash
     dispatch({ type: "apply", layout });
   }, []);
 
+  // Dialogs hide the rest of the page from assistive technology while open, live region included, so what
+  // they cause is announced a moment after they close.
+  const announceLater = useCallback(
+    (text: string) => {
+      setTimeout(() => {
+        announce(text);
+      }, 100);
+    },
+    [announce],
+  );
+
+  // Focus that must land after a control unmounted (Done, or a removed widget's menu). Set in a handler, applied after
+  // the commit and after Radix has finished returning focus to a trigger that no longer exists.
+  // The widget menus portal into this section, which sits inside the page's <main> (router.tsx).
+  const [portalRoot, setPortalRoot] = useState<HTMLElement | null>(null);
+  const editRef = useRef<HTMLButtonElement>(null);
+  const addRef = useRef<HTMLButtonElement>(null);
+  const focusNext = useRef<"edit" | "add" | null>(null);
+  useEffect(() => {
+    const target = focusNext.current;
+    if (!target) return;
+    focusNext.current = null;
+    setTimeout(() => {
+      (target === "edit" ? editRef : addRef).current?.focus();
+    }, 0);
+  });
+
   const toggleEdit = () => {
     if (edit) void saver.flush();
     setEdit(!edit);
     announce(edit ? "Edit mode off." : "Edit mode on. Move to a widget header and press Enter to pick it up.");
   };
+  const done = () => {
+    focusNext.current = "edit";
+    toggleEdit();
+  };
+
+  const titleOf = (item: LayoutItem): string => getWidget(item.widgetId)?.title ?? item.widgetId;
+  const where = (item: LayoutItem): string =>
+    `column ${String(item.x + 1)}, row ${String(item.y + 1)}, ${String(item.w)} wide, ${String(item.h)} tall`;
+
+  const onAdd = (widgetId: string) => {
+    const layout = history.present;
+    const name = getWidget(widgetId)?.title ?? widgetId;
+    const blocker = addBlocker(layout, widgetId);
+    if (blocker) {
+      announceLater(`${name} was not added. ${blocker}`);
+      return;
+    }
+    const id = nextItemId(layout, widgetId);
+    const next = addWidget(layout, widgetId, id, 12);
+    const added = next.items.find((i) => i.id === id);
+    if (!added) {
+      announceLater(`${name} was not added.`);
+      return;
+    }
+    dispatch({ type: "apply", layout: next });
+    announceLater(`Added ${name} at ${where(added)}.`);
+  };
+  const onUndo = () => {
+    dispatch({ type: "undo" });
+    announce("Undone.");
+  };
+  const onRedo = () => {
+    dispatch({ type: "redo" });
+    announce("Redone.");
+  };
+  const onReset = (template: TemplateName, label: string) => {
+    const layout = DEFAULT_LAYOUTS[template];
+    if (JSON.stringify(layoutToWire(layout)) === JSON.stringify(layoutToWire(history.present))) {
+      announceLater(`The layout already matches the ${label} template.`);
+      return;
+    }
+    dispatch({ type: "apply", layout });
+    announceLater(`Applied the ${label} template: ${String(layout.items.length)} widgets. Undo brings the previous layout back.`);
+  };
+  const onExport = () => {
+    const file = exportDocument(dashboardName, history.present);
+    downloadText(file.filename, file.content);
+    announce(`Exported ${file.filename}.`);
+  };
+  const itemMenu = (item: LayoutItem) => (
+    <WidgetMenu
+      item={item}
+      title={titleOf(item)}
+      container={portalRoot}
+      onRemove={() => {
+        focusNext.current = "add";
+        dispatch({ type: "apply", layout: remove(history.present, item.id) });
+        announce(`${titleOf(item)} removed. Undo brings it back.`);
+      }}
+      onSize={(name: SizePreset) => {
+        const state = presetState(item, name);
+        if (state.disabled) {
+          announce(`${titleOf(item)} cannot be resized: ${state.reason ?? ""}`);
+          return;
+        }
+        const def = getWidget(item.widgetId);
+        const size = def ? preset(name, def) : state.size;
+        const next = resize(history.present, item.id, size.w, size.h, 12);
+        dispatch({ type: "apply", layout: next });
+        const after = next.items.find((i) => i.id === item.id);
+        announce(`${titleOf(item)} resized to ${sizeText(after ?? size)}.`);
+      }}
+      onPin={(pinned) => {
+        dispatch({ type: "apply", layout: setPinned(history.present, item.id, pinned) });
+        announce(
+          pinned
+            ? `${titleOf(item)} pinned. It cannot be moved or resized.`
+            : `${titleOf(item)} unpinned. It can be moved and resized again.`,
+        );
+      }}
+    />
+  );
 
   const shown = useMemo(() => fitToColumns(history.present, cols), [history.present, cols]);
   const readOnly = cols !== 12;
@@ -145,9 +268,10 @@ export function DashboardView({ dashboard, flushRef, onConflict, onSaved }: Dash
   const savedText = SAVE_TEXT[status.kind];
 
   return (
-    <section aria-label={`${dashboard.name} dashboard`} className="flex flex-col gap-3">
+    <section ref={setPortalRoot} aria-label={`${dashboard.name} dashboard`} className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-3">
         <Button
+          ref={editRef}
           variant={edit ? "default" : "outline"}
           aria-pressed={edit}
           disabled={readOnly}
@@ -156,28 +280,6 @@ export function DashboardView({ dashboard, flushRef, onConflict, onSaved }: Dash
         >
           Edit
         </Button>
-        {edit && !readOnly && (
-          <>
-            <Button
-              variant="outline"
-              disabled={!canUndo(history)}
-              onClick={() => {
-                dispatch({ type: "undo" });
-              }}
-            >
-              Undo
-            </Button>
-            <Button
-              variant="outline"
-              disabled={!canRedo(history)}
-              onClick={() => {
-                dispatch({ type: "redo" });
-              }}
-            >
-              Redo
-            </Button>
-          </>
-        )}
         <label className="flex items-center gap-2 text-caption text-muted">
           Zoom
           <input
@@ -197,6 +299,22 @@ export function DashboardView({ dashboard, flushRef, onConflict, onSaved }: Dash
           {savedText}
         </span>
       </div>
+
+      {edit && !readOnly && (
+        <EditToolbar
+          layout={history.present}
+          dashboardName={dashboardName}
+          canUndo={canUndo(history)}
+          canRedo={canRedo(history)}
+          onAdd={onAdd}
+          onUndo={onUndo}
+          onRedo={onRedo}
+          onReset={onReset}
+          onExport={onExport}
+          onDone={done}
+          addRef={addRef}
+        />
+      )}
 
       {readOnly && (
         <p id="dashboard-readonly" role="status" tabIndex={-1} className="text-caption text-muted">
@@ -258,6 +376,7 @@ export function DashboardView({ dashboard, flushRef, onConflict, onSaved }: Dash
         onAnnounce={announce}
         onColumns={setCols}
         onPickupAbandoned={onPickupAbandoned}
+        itemMenu={itemMenu}
       />
 
       <div role="status" aria-live="polite" aria-atomic="true" className="sr-only" data-testid="live-region">

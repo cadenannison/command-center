@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from "react";
 import { getWidget, tier, type Layout, type LayoutItem } from "../../layout";
 import { sourceName } from "../../components/ui/source-dot";
 import { cn } from "../../lib/utils";
@@ -59,6 +59,8 @@ export interface DashboardGridProps {
   readonly onColumns?: (cols: number) => void;
   /** Called after the announcement when narrowing abandoned a pick-up, so the page can move focus (decision 0374). */
   readonly onPickupAbandoned?: () => void;
+  /** The per-widget menu shown in edit mode, beside the drag handle (edit tools card E1). */
+  readonly itemMenu?: (item: LayoutItem) => ReactNode;
 }
 
 const titleOf = (item: LayoutItem): string => getWidget(item.widgetId)?.title ?? item.widgetId;
@@ -85,7 +87,7 @@ const HANDLES: readonly {
   },
 ];
 
-export function DashboardGrid({ layout, zoom, edit, onChange, onAnnounce, stateFor, onColumns, onPickupAbandoned }: DashboardGridProps) {
+export function DashboardGrid({ layout, zoom, edit, onChange, onAnnounce, stateFor, onColumns, onPickupAbandoned, itemMenu }: DashboardGridProps) {
   const ref = useRef<HTMLDivElement>(null);
   const { width, cols } = useGridSize(ref);
   const editing = edit && cols === 12;
@@ -152,6 +154,8 @@ export function DashboardGrid({ layout, zoom, edit, onChange, onAnnounce, stateF
 
   const startPointer = (event: PointerEvent<HTMLElement>, item: LayoutItem, handle: Handle) => {
     if (!editing || event.button !== 0 || item.pinned || drag) return;
+    // A menu button in the header, or the menu itself (React bubbles through its portal), is not a drag.
+    if (!(event.target instanceof Element) || event.target.closest("[data-no-drag]")) return;
     event.preventDefault();
     if (typeof event.currentTarget.setPointerCapture === "function")
       event.currentTarget.setPointerCapture(event.pointerId);
@@ -301,6 +305,7 @@ export function DashboardGrid({ layout, zoom, edit, onChange, onAnnounce, stateF
           tierBadge: tierLabel(item),
           editing,
           lifted,
+          menu: editing ? itemMenu?.(item) : undefined,
           footerLeft: sources,
           // Pointer drag works from anywhere on the header; the header is not a button, so the heading stays a heading.
           headerProps: editing

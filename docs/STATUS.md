@@ -5,7 +5,7 @@ task ends: edit the lines, do not append a log. Decisions and their reasons live
 ideas not yet accepted live in `docs/backlog.md`. This file holds neither.
 
 ## Last updated
-2026-11-12.
+2026-11-13.
 
 ## In flight
 T1 (tokens, themes, base components, dev-only `/gallery`) and R1 (layout model) are committed. Not run by the
@@ -23,10 +23,11 @@ styles under the CSP, touch drag, a screen reader). Tasks (0373), Week (0377) an
 built; other kinds are still placeholders. Events (0378) is on the grid too; the Summary card (0381, 0382) is pinned above it, not a grid widget. A failed dashboards refetch keeps the grid and edits (0375).
 Weather shows high, low and outlook only: current conditions and hours need a backend card (0376).
 Not run by the agent: `ui/e2e/dashboard-widgets.spec.ts`, `dashboard-events.spec.ts` and `dashboard-summary.spec.ts` (need a browser).
+E1 (edit tools, 0383-0384) is uncommitted; undo and redo shortcuts wait for a setting. Not run: `ui/e2e/dashboard-edit.spec.ts`; Radix under the CSP (0383).
 
 ## Gate state
 `mise run test:count` prints 5004; `.test-floor` is 4894 (the human raises it). The Python gates pass. `ui:test:count` prints
-632 (`ui:check` passes with the build; `ui/.test-floor` is 510, the human raises it). Not yet shown by test: that `minimumReleaseAge`
+678 (`ui:check` passes with the build; `ui/.test-floor` is 632, the human raises it). Not yet shown by test: that `minimumReleaseAge`
 rejects a too-new version, that `strictDepBuilds` fails an unreviewed build script (0315 Hedge), and the
 Playwright test.
 
