@@ -27,7 +27,7 @@ function setup(props: { edit?: boolean; layout?: Layout } = {}) {
   return { onChange, onAnnounce };
 }
 
-const header = (name: string) => screen.getByRole("button", { name: new RegExp(`^${name} W\\d`) });
+const header = (name: string) => screen.getByRole("button", { name: new RegExp(`^Move ${name}, W\\d`) });
 const lastLayout = (fn: ReturnType<typeof vi.fn>): Layout => fn.mock.calls.at(-1)?.[0] as Layout;
 const xOf = (layout: Layout, id: string) => layout.items.find((i) => i.id === id)?.x;
 
@@ -157,7 +157,7 @@ describe("DashboardGrid at 12 columns", () => {
         items: MINIMAL.items.map((i) => (i.id === "events-2" ? { ...i, pinned: true } : i)),
       };
       const { onAnnounce } = setup({ layout: pinned });
-      const h = screen.getByRole("button", { name: /^Events W\d/ });
+      const h = screen.getByRole("button", { name: /^Move Events, W\d/ });
       fireEvent.keyDown(h, { key: "Enter" });
       fireEvent.keyDown(h, { key: "ArrowLeft" });
       expect(onAnnounce).toHaveBeenLastCalledWith("Events is pinned and cannot move or resize.");
@@ -297,7 +297,7 @@ describe("DashboardGrid when the window narrows mid-edit", () => {
     const onAnnounce = vi.fn();
     const props = { layout: MINIMAL, zoom: 100, edit: true, onChange: vi.fn(), onAnnounce };
     const { rerender } = render(<DashboardGrid {...props} />);
-    fireEvent.keyDown(screen.getByRole("button", { name: /^Events W\d/ }), { key: "Enter" });
+    fireEvent.keyDown(screen.getByRole("button", { name: /^Move Events, W\d/ }), { key: "Enter" });
     installGridEnv(900, 1000);
     act(() => {
       fireResize();

@@ -40,7 +40,10 @@ export interface WidgetShellProps {
   readonly footerRight?: string;
   readonly editing?: boolean;
   readonly lifted?: boolean;
+  /** Pointer handlers for dragging by the header. The header itself is never a button: it holds the heading. */
   readonly headerProps?: ComponentProps<"div"> | undefined;
+  /** In edit mode: the drag handle, its own button beside the heading (decision 0374). */
+  readonly handleProps?: ComponentProps<"button"> | undefined;
   readonly children?: ReactNode;
   readonly className?: string;
 }
@@ -111,6 +114,7 @@ export function WidgetShell({
   editing = false,
   lifted = false,
   headerProps,
+  handleProps,
   children,
   className,
 }: WidgetShellProps) {
@@ -125,13 +129,34 @@ export function WidgetShell({
         {...header}
         className={cn(
           "flex h-11 flex-none items-center gap-2 px-4",
-          editing && "cursor-grab touch-none select-none focus-visible:outline-2 focus-visible:outline-offset-[-2px]",
+          editing && "cursor-grab touch-none select-none",
           headerClass,
         )}
       >
         <SourceDot source={source} />
         <h2 className="min-w-0 flex-1 truncate font-display text-base font-semibold">{title}</h2>
-        <span className="tnum flex-none text-caption text-muted">{editing && tierBadge ? tierBadge : status}</span>
+        {editing && handleProps ? (
+          <button
+            type="button"
+            tabIndex={0}
+            {...handleProps}
+            className="tnum inline-flex min-h-7 flex-none cursor-grab touch-none select-none items-center gap-1 rounded-control px-2 text-caption text-muted focus-visible:outline-2 focus-visible:outline-offset-2"
+          >
+            <svg viewBox="0 0 8 12" width="8" height="12" fill="currentColor" aria-hidden="true">
+              <circle cx="2" cy="2" r="1" />
+              <circle cx="6" cy="2" r="1" />
+              <circle cx="2" cy="6" r="1" />
+              <circle cx="6" cy="6" r="1" />
+              <circle cx="2" cy="10" r="1" />
+              <circle cx="6" cy="10" r="1" />
+            </svg>
+            {/* The name is built from content, so it always contains the visible badge text (WCAG 2.5.3). */}
+            <span className="sr-only">{`Move ${title},`}</span>{" "}
+            <span>{tierBadge ?? ""}</span>
+          </button>
+        ) : (
+          <span className="tnum flex-none text-caption text-muted">{editing && tierBadge ? tierBadge : status}</span>
+        )}
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-2">
         <Body state={state}>{children}</Body>

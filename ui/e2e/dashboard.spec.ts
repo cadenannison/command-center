@@ -5,11 +5,11 @@ import { expect, test, type Page } from "@playwright/test";
 // The window is 1440 wide so the grid has 12 columns; one column is about 118px with the 14px gap.
 const COLUMN_PX = 118;
 
-const item = (id: string, widgetId: string, x: number, w: number, sources: string[]) => ({
+const item = (id: string, widgetId: string, x: number, w: number, sources: string[], y = 0) => ({
   id,
   widgetId,
   x,
-  y: 0,
+  y,
   w,
   h: 10,
   pinned: false,
@@ -25,12 +25,47 @@ const dashboard = (revision: number) => ({
   updated_at: "2026-11-12T10:00:00Z",
   layout: {
     version: 1,
-    items: [item("needs_me-1", "needs_me", 0, 7, ["cal"]), item("events-2", "events", 7, 5, ["cal"])],
+    items: [
+      item("needs_me-1", "needs_me", 0, 7, ["cal"]),
+      item("events-2", "events", 7, 5, ["cal"]),
+      // Below the other two, so their positions are unchanged. Wide and tall enough for W3 and H3.
+      item("tasks-3", "tasks", 0, 8, ["canvas", "ls", "manual"], 10),
+    ],
   },
 });
 
+const HOUR = 3_600_000;
+const task = (id: string, title: string, dueOffsetMs: number | null, link: string | null, priority: number) => ({
+  id,
+  title,
+  source: "canvas",
+  due: dueOffsetMs === null ? null : new Date(Date.now() + dueOffsetMs).toISOString(),
+  link,
+  done: false,
+  priority,
+  reasons: [
+    { code: "due_soon", text: "Due soon", points: 4 },
+    { code: "canvas", text: "From Canvas", points: 2 },
+  ],
+});
+
+/** GET /v1/tasks: one open task in each group, one with an http link and the rest with a null link. */
+async function stubTasks(page: Page): Promise<void> {
+  await page.route("**/v1/tasks**", async (route) => {
+    await route.fulfill({
+      json: [
+        task("t1", "Overdue lab report", -3 * HOUR, "https://canvas.example.edu/courses/1/assignments/1", 9),
+        task("t2", "Read chapter 4", 10 * HOUR, null, 6),
+        task("t3", "Group project", 120 * HOUR, null, 3),
+        task("t4", "Buy a notebook", null, null, 1),
+      ],
+    });
+  });
+}
+
 async function stubDashboards(page: Page): Promise<unknown[]> {
   const saved: unknown[] = [];
+  await stubTasks(page);
   await page.route("**/v1/dashboards**", async (route) => {
     const request = route.request();
     if (request.method() === "PUT") {
@@ -52,7 +87,7 @@ test("dragging a header moves the widget one column and saves it", async ({ page
 
   const events = page.getByTestId("widget-events-2");
   await expect(events).toHaveAttribute("data-x", "7");
-  const header = page.getByRole("button", { name: /^Events W\d/ });
+  const header = page.getByRole("button", { name: /^Move Events, W\d/ });
   const box = await header.boundingBox();
   if (!box) throw new Error("no header box");
   const startX = box.x + box.width / 2;
@@ -93,7 +128,7 @@ test("a widget can be moved and resized from the keyboard, with announcements", 
   await page.goto("/dashboard");
   await page.getByRole("button", { name: "Edit" }).click();
 
-  const header = page.getByRole("button", { name: /^Events W\d/ });
+  const header = page.getByRole("button", { name: /^Move Events, W\d/ });
   await header.focus();
   await page.keyboard.press("Enter");
   await expect(page.getByTestId("live-region")).toContainText("Picked up Events");
@@ -109,7 +144,15 @@ test("the dashboard has no axe violations in either theme, with edit mode on", a
   await stubDashboards(page);
   await page.goto("/dashboard");
   await expect(page.getByTestId("widget-events-2")).toBeVisible();
+  // Rows are visible: one per group, so axe sees the pills, the disclosure buttons, the link and the group headings.
+  const tasks = page.getByTestId("widget-tasks-3");
+  await expect(tasks.getByRole("button", { name: "Overdue lab report" })).toBeVisible();
+  await expect(tasks.getByRole("link", { name: "Open Overdue lab report in a new tab" })).toBeVisible();
+  await expect(tasks.getByRole("heading", { level: 3, name: "No due date" })).toBeVisible();
+  await tasks.getByRole("button", { name: "Read chapter 4" }).click();
+  await expect(tasks.getByText("From Canvas")).toBeVisible();
   await page.getByRole("button", { name: "Edit" }).click();
+  await expect(page.getByRole("heading", { level: 2, name: "Tasks" })).toBeVisible();
 
   const light = await new AxeBuilder({ page }).analyze();
   expect(light.violations).toEqual([]);

@@ -1,6 +1,6 @@
 # 0361. Editing: 12 columns only, pointer capture, a keyboard twin, resize from the right, bottom and corner
 
-Status: accepted
+Status: accepted; the header-as-button part is superseded by 0374
 
 Context: Task R3 adds move and resize. Decision 0335 requires a keyboard twin for drag and announcements; decision 0350 says edit only at 12 columns.
 Decision: Edit mode applies only at 12 columns; below that the Edit button is disabled and a status line explains why. Pointer: the header moves a widget and three handles (right edge, bottom edge, bottom-right corner) resize it, with pointer capture and no library. The dragged box follows the pointer; a dashed outline shows the snapped cell, and the other widgets show the result of `move` or `resize` (so they slide). Release commits, Escape or a cancelled pointer reverts. Keyboard: in edit mode a header is `role="button"` with tabindex 0; Enter picks up, arrows move, Shift and arrows resize (a size grows to the right and down), Enter drops, Escape cancels, and leaving the header with Tab drops it where it is. A polite live region announces pick-up, every step ("Events moved to column 7, row 1."), a step that changed nothing, drop and cancel. Pinned widgets neither move nor show handles; no UI pins yet.

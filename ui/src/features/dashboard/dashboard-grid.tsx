@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
-import { getWidget, type Layout, type LayoutItem } from "../../layout";
+import { getWidget, tier, type Layout, type LayoutItem } from "../../layout";
 import { sourceName } from "../../components/ui/source-dot";
 import { cn } from "../../lib/utils";
 import {
@@ -15,7 +15,8 @@ import {
   tierLabel,
 } from "./editing";
 import { cellsMoved, gridHeight, metricsFor, rectOf, type Metrics } from "./metrics";
-import { WidgetShell, type WidgetState } from "./widget-shell";
+import { TasksWidget } from "./tasks-widget";
+import { WidgetShell, type WidgetShellProps, type WidgetState } from "./widget-shell";
 import { useGridSize } from "./use-container-width";
 
 export const HELP_ID = "dashboard-edit-help";
@@ -53,6 +54,8 @@ export interface DashboardGridProps {
   readonly stateFor?: (item: LayoutItem) => WidgetState;
   /** Reports the column count so the page can show the read-only notice. */
   readonly onColumns?: (cols: number) => void;
+  /** Called after the announcement when narrowing abandoned a pick-up, so the page can move focus (decision 0374). */
+  readonly onPickupAbandoned?: () => void;
 }
 
 const titleOf = (item: LayoutItem): string => getWidget(item.widgetId)?.title ?? item.widgetId;
@@ -79,7 +82,7 @@ const HANDLES: readonly {
   },
 ];
 
-export function DashboardGrid({ layout, zoom, edit, onChange, onAnnounce, stateFor, onColumns }: DashboardGridProps) {
+export function DashboardGrid({ layout, zoom, edit, onChange, onAnnounce, stateFor, onColumns, onPickupAbandoned }: DashboardGridProps) {
   const ref = useRef<HTMLDivElement>(null);
   const { width, cols } = useGridSize(ref);
   const editing = edit && cols === 12;
@@ -108,10 +111,12 @@ export function DashboardGrid({ layout, zoom, edit, onChange, onAnnounce, stateF
       heldRef.current = holding;
       return;
     }
-    if (heldRef.current && edit)
+    if (heldRef.current && edit) {
       onAnnounce("The window is too narrow to edit, so the widget you were moving was put back.");
+      onPickupAbandoned?.();
+    }
     heldRef.current = false;
-  }, [editing, holding, edit, onAnnounce]);
+  }, [editing, holding, edit, onAnnounce, onPickupAbandoned]);
 
   const preview = useMemo(() => {
     if (!drag) return null;
@@ -250,7 +255,7 @@ export function DashboardGrid({ layout, zoom, edit, onChange, onAnnounce, stateF
     >
       {editing && (
         <p id={HELP_ID} className="sr-only">
-          Press Enter to pick up a widget. Arrow keys move it, Shift and arrow keys resize it, Enter drops it and Escape
+          Widget drag handle. Press Enter to pick up this widget. Arrow keys move it, Shift and arrow keys resize it, Enter drops it and Escape
           cancels.
         </p>
       )}
@@ -286,6 +291,45 @@ export function DashboardGrid({ layout, zoom, edit, onChange, onAnnounce, stateF
               : rect;
         const title = titleOf(item);
         const sources = item.sources.map(sourceName).join(", ");
+        const shellProps: Omit<WidgetShellProps, "state" | "children"> = {
+          title,
+          source,
+          status: sources,
+          tierBadge: tierLabel(item),
+          editing,
+          lifted,
+          footerLeft: sources,
+          // Pointer drag works from anywhere on the header; the header is not a button, so the heading stays a heading.
+          headerProps: editing
+            ? {
+                onPointerDown: (e) => {
+                  startPointer(e, item, "move");
+                },
+                onPointerMove: movePointer,
+                onPointerUp: (e) => {
+                  endPointer(e, true);
+                },
+                onPointerCancel: (e) => {
+                  endPointer(e, false);
+                },
+              }
+            : undefined,
+          // The handle's name is built from its own content ("Move Events, W2 · H3 · 5×10"); there is no aria-label,
+          // so it always contains its visible text (WCAG 2.5.3). Pick-up instructions and the pinned note come from
+          // aria-describedby.
+          handleProps: editing
+            ? {
+                "aria-describedby": item.pinned ? `${HELP_ID} pinned-${item.id}` : HELP_ID,
+                "aria-pressed": keyed?.id === item.id,
+                onKeyDown: (e) => {
+                  onHeaderKey(e, item);
+                },
+                onBlur: () => {
+                  onHeaderBlur(item);
+                },
+              }
+            : undefined,
+        };
         return (
           <div
             key={item.id}
@@ -301,46 +345,13 @@ export function DashboardGrid({ layout, zoom, edit, onChange, onAnnounce, stateF
             )}
             style={live}
           >
-            <WidgetShell
-              title={title}
-              source={source}
-              status={sources}
-              tierBadge={tierLabel(item)}
-              state={stateFor?.(item) ?? { kind: "ready" }}
-              editing={editing}
-              lifted={lifted}
-              footerLeft={sources}
-              headerProps={
-                editing
-                  ? {
-                      role: "button",
-                      tabIndex: 0,
-                      // No aria-label: the name comes from the visible title and size badge (WCAG 2.5.3, the source dot is
-                      // aria-hidden). Pick-up instructions and the pinned note come from aria-describedby.
-                      "aria-describedby": item.pinned ? `${HELP_ID} pinned-${item.id}` : HELP_ID,
-                      "aria-pressed": keyed?.id === item.id,
-                      onPointerDown: (e) => {
-                        startPointer(e, item, "move");
-                      },
-                      onPointerMove: movePointer,
-                      onPointerUp: (e) => {
-                        endPointer(e, true);
-                      },
-                      onPointerCancel: (e) => {
-                        endPointer(e, false);
-                      },
-                      onKeyDown: (e) => {
-                        onHeaderKey(e, item);
-                      },
-                      onBlur: () => {
-                        onHeaderBlur(item);
-                      },
-                    }
-                  : undefined
-              }
-            >
-              <p className="tnum text-muted">{tierLabel(item)}</p>
-            </WidgetShell>
+            {item.widgetId === "tasks" && def ? (
+              <TasksWidget {...shellProps} widthTier={tier(item.w, item.h, def).w} heightTier={tier(item.w, item.h, def).h} />
+            ) : (
+              <WidgetShell {...shellProps} state={stateFor?.(item) ?? { kind: "ready" }}>
+                <p className="tnum text-muted">{tierLabel(item)}</p>
+              </WidgetShell>
+            )}
             {editing && item.pinned && (
               <span id={`pinned-${item.id}`} className="sr-only">
                 Pinned: it cannot be moved or resized.

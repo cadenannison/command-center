@@ -51,7 +51,7 @@ const widgetX = (id: string) => screen.getByTestId(`widget-${id}`).getAttribute(
 async function moveEventsLeft() {
   const user = userEvent.setup();
   await user.click(await screen.findByRole("button", { name: "Edit" }));
-  const header = screen.getByRole("button", { name: /^Events W\d/ });
+  const header = screen.getByRole("button", { name: /^Move Events, W\d/ });
   fireEvent.keyDown(header, { key: "Enter" });
   fireEvent.keyDown(header, { key: "ArrowLeft" });
   fireEvent.keyDown(header, { key: "Enter" });

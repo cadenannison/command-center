@@ -129,6 +129,18 @@ export function DashboardView({ dashboard, flushRef, onConflict, onSaved }: Dash
 
   const shown = useMemo(() => fitToColumns(history.present, cols), [history.present, cols]);
   const readOnly = cols !== 12;
+
+  // Narrowing mid pick-up unmounts the handle that had focus, which would drop it to <body>. After the grid has
+  // announced it, focus goes to the read-only notice once that notice exists (decision 0374).
+  const refocusReadonly = useRef(false);
+  const onPickupAbandoned = useCallback(() => {
+    refocusReadonly.current = true;
+  }, []);
+  useEffect(() => {
+    if (!readOnly || !refocusReadonly.current) return;
+    refocusReadonly.current = false;
+    document.getElementById("dashboard-readonly")?.focus();
+  }, [readOnly]);
   const savedText = SAVE_TEXT[status.kind];
 
   return (
@@ -186,7 +198,7 @@ export function DashboardView({ dashboard, flushRef, onConflict, onSaved }: Dash
       </div>
 
       {readOnly && (
-        <p id="dashboard-readonly" role="status" className="text-caption text-muted">
+        <p id="dashboard-readonly" role="status" tabIndex={-1} className="text-caption text-muted">
           {`This window shows ${String(cols)} columns, so the dashboard is read-only. Widen it to 12 columns to move or resize widgets.`}
         </p>
       )}
@@ -241,6 +253,7 @@ export function DashboardView({ dashboard, flushRef, onConflict, onSaved }: Dash
         onChange={onChange}
         onAnnounce={announce}
         onColumns={setCols}
+        onPickupAbandoned={onPickupAbandoned}
       />
 
       <div role="status" aria-live="polite" aria-atomic="true" className="sr-only" data-testid="live-region">

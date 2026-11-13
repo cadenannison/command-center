@@ -15,13 +15,13 @@ export function Pill({ priority, className, ...props }: { priority: number } & O
   return (
     <span
       data-priority={value}
-      aria-label={`Priority ${String(value)}`}
       className={cn(
         "tnum inline-flex h-[22px] min-w-[30px] flex-none items-center justify-center rounded-pill bg-(--cc-p) px-2 font-display text-caption font-bold text-(color:--cc-pill-text)",
         className,
       )}
       {...props}
     >
+      <span className="sr-only">Priority </span>
       {value}
     </span>
   );
