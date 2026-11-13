@@ -1,6 +1,7 @@
 import { createRootRoute, createRoute, createRouter, redirect } from "@tanstack/react-router";
 import { lazy, Suspense } from "react";
 import { DashboardPage } from "./features/dashboard/dashboard-page";
+import { HistoryPage } from "./features/history/history-page";
 import { TodayPage } from "./features/today/today-page";
 import { AppShell } from "./shell/app-shell";
 import { NotFoundPage, PlaceholderPage } from "./shell/pages";
@@ -25,7 +26,7 @@ const chatRoute = createRoute({
 const historyRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/history",
-  component: () => <PlaceholderPage title="History" />,
+  component: HistoryPage,
 });
 const focusRoute = createRoute({
   getParentRoute: () => rootRoute,

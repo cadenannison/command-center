@@ -2,6 +2,7 @@ import { useEffect, useId, useState } from "react";
 import { SourceDot } from "../../components/ui/source-dot";
 import { Pill } from "../../components/ui/pill";
 import type { Tier } from "../../layout";
+import { RowActions } from "../items/row-actions";
 import { cn } from "../../lib/utils";
 import { WidgetShell, type WidgetShellProps, type WidgetState } from "./widget-shell";
 import {
@@ -74,18 +75,21 @@ function TaskRow({ item, now, widthTier }: { item: TaskItem; now: number; widthT
       {widthTier >= 3 && reason && !open && <p data-sensitive className="pb-1 text-caption text-muted">{reason.text}</p>}
       <div id={panelId} hidden={!open}>
         {open && (
-          <ul className="flex flex-col gap-1 pb-2 pl-2 text-caption text-muted">
-            {item.reasons.length === 0 && <li>No reasons recorded.</li>}
-            {item.reasons.map((r, i) => (
-              <li key={`${r.code}-${String(i)}`} className="flex gap-2">
-                <span data-sensitive className="flex-1">{r.text}</span>
-                <span className="tnum flex-none">
-                  {formatPoints(r.points)}
-                  <span className="sr-only"> points</span>
-                </span>
-              </li>
-            ))}
-          </ul>
+          <>
+            <ul className="flex flex-col gap-1 pb-2 pl-2 text-caption text-muted">
+              {item.reasons.length === 0 && <li>No reasons recorded.</li>}
+              {item.reasons.map((r, i) => (
+                <li key={`${r.code}-${String(i)}`} className="flex gap-2">
+                  <span data-sensitive className="flex-1">{r.text}</span>
+                  <span className="tnum flex-none">
+                    {formatPoints(r.points)}
+                    <span className="sr-only"> points</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <RowActions item={{ id: item.id, title: item.title }} />
+          </>
         )}
       </div>
     </li>

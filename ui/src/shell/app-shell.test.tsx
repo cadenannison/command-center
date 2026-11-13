@@ -23,6 +23,7 @@ function stub(initial: Record<string, unknown> = {}) {
         puts.push(body);
         return reply({ ...body, revision: 2 });
       }
+      if (new URL(input.url).pathname === "/v1/history") return reply([]);
       return reply({ ...DEFAULT_DOCUMENT, ...initial, revision: 1 });
     }),
   );
@@ -113,7 +114,7 @@ describe("app shell rail", () => {
     expect(screen.getByRole("link", { name: "History" })).toHaveAttribute("aria-current", "page");
     expect(screen.getByRole("link", { name: "Chat" })).not.toHaveAttribute("aria-current");
     expect(screen.getByRole("heading", { name: "History", level: 1 })).toBeInTheDocument();
-    expect(screen.getByText("History is coming soon.")).toBeInTheDocument();
+    expect(await screen.findByText("Nothing done or dismissed in the last 30 days.")).toBeInTheDocument();
   });
 
   it("navigates between placeholder routes", async () => {
