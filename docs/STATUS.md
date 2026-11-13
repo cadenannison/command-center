@@ -14,7 +14,7 @@ agent: `ui/e2e-gallery` (config `ui/playwright.gallery.config.ts`) and `ui/e2e`.
 with an SPA fallback from FastAPI.
 
 R2 and R2b (dashboards routes, 0355-0358) are committed. Postgres runs of `test_dashboard_store.py` need
-CC_TEST_POSTGRES_URL (the human).
+CC_TEST_POSTGRES_URL (the human). E2a (0389) adds `zoom` and `shortcuts` to the display settings (uncommitted).
 
 R3 (the /dashboard grid in `ui/src/features/dashboard/`, decisions 0360-0363) is written and uncommitted:
 tabs, grid, widget shell with its states, edit mode (pointer and keyboard, 12 columns only), debounced

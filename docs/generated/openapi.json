@@ -312,6 +312,11 @@
             "title": "Privacy Mode",
             "type": "boolean"
           },
+          "shortcuts": {
+            "default": true,
+            "title": "Shortcuts",
+            "type": "boolean"
+          },
           "source_colors": {
             "maxProperties": 16,
             "patternProperties": {
@@ -348,6 +353,13 @@
             ],
             "title": "Theme",
             "type": "string"
+          },
+          "zoom": {
+            "default": 100,
+            "maximum": 130.0,
+            "minimum": 70.0,
+            "title": "Zoom",
+            "type": "integer"
           }
         },
         "title": "DisplayInput",
@@ -400,6 +412,11 @@
             "title": "Revision",
             "type": "integer"
           },
+          "shortcuts": {
+            "default": true,
+            "title": "Shortcuts",
+            "type": "boolean"
+          },
           "source_colors": {
             "maxProperties": 16,
             "patternProperties": {
@@ -448,6 +465,13 @@
               }
             ],
             "title": "Updated At"
+          },
+          "zoom": {
+            "default": 100,
+            "maximum": 130.0,
+            "minimum": 70.0,
+            "title": "Zoom",
+            "type": "integer"
           }
         },
         "title": "DisplaySettings",

@@ -22,7 +22,7 @@ Each line is a path and the decisions that name it. Look a number up with `grep 
 - docs/approved-dependencies.md: 0301
 - docs/backlog.md: 0336
 - docs/contracts/adapters.md: 0015 0024 0028 0036 0041 0046 0081 0095 0140 0225 0288
-- docs/contracts/api.md: 0020 0023 0025 0037 0052 0085 0086 0171
+- docs/contracts/api.md: 0020 0023 0025 0037 0052 0085 0086 0171 0389
 - docs/contracts/core.md: 0015 0017 0024 0028 0034 0040 0089 0110 0111 0240 0262 0280 0281 0282
 - docs/contracts/services.md: 0019 0024 0025 0026 0028 0029 0035 0037 0038 0040 0052 0056 0084 0085 0086 0256 0257
 - docs/contracts/storage.md: 0016 0027 0028 0035 0040 0111 0192 0232
@@ -99,7 +99,7 @@ Each line is a path and the decisions that name it. Look a number up with `grep 
 - src/command_center/config.py: 0036 0057 0070 0072 0073 0161
 - src/command_center/core/CLAUDE.md: 0250
 - src/command_center/core/chat.py: 0164 0258 0270 0290 0291
-- src/command_center/core/dashboards.py: 0355
+- src/command_center/core/dashboards.py: 0355 0389
 - src/command_center/core/errors.py: 0024
 - src/command_center/core/geocode.py: 0180
 - src/command_center/core/ledger.py: 0125 0130
@@ -224,6 +224,7 @@ Each line is a path and the decisions that name it. Look a number up with `grep 
 - tests/test_dashboards_core.py: 0355
 - tests/test_dashboards_remote.py: 0357
 - tests/test_desktop_launch_agent_environment.py: 0060
+- tests/test_display_zoom_shortcuts.py: 0389
 - tests/test_distributed_connect.py: 0074 0086
 - tests/test_end_to_end.py: 0053 0054 0113
 - tests/test_file_secret_store.py: 0073

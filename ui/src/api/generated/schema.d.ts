@@ -795,6 +795,11 @@ export interface components {
              * @default false
              */
             privacy_mode: boolean;
+            /**
+             * Shortcuts
+             * @default true
+             */
+            shortcuts: boolean;
             /** Source Colors */
             source_colors?: {
                 [key: string]: "violet" | "rose" | "teal" | "amber" | "sky" | "silver" | "green" | "pink";
@@ -810,6 +815,11 @@ export interface components {
              * @enum {string}
              */
             theme: "light" | "dark" | "system";
+            /**
+             * Zoom
+             * @default 100
+             */
+            zoom: number;
         };
         /**
          * DisplaySettings
@@ -847,6 +857,11 @@ export interface components {
              * @default 0
              */
             revision: number;
+            /**
+             * Shortcuts
+             * @default true
+             */
+            shortcuts: boolean;
             /** Source Colors */
             source_colors?: {
                 [key: string]: "violet" | "rose" | "teal" | "amber" | "sky" | "silver" | "green" | "pink";
@@ -864,6 +879,11 @@ export interface components {
             theme: "light" | "dark" | "system";
             /** Updated At */
             updated_at?: string | null;
+            /**
+             * Zoom
+             * @default 100
+             */
+            zoom: number;
         };
         /**
          * ErrorBody

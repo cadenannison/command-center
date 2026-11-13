@@ -38,6 +38,8 @@ MAX_SOURCE_COLORS = 16
 GLOW_MAX = 1.6
 TEXT_SCALE_MIN = 90
 TEXT_SCALE_MAX = 150
+ZOOM_MIN = 70
+ZOOM_MAX = 130
 
 # Ids are persisted and permanent; the pattern is the UI's own (ui/src/layout/validate.ts).
 ID_PATTERN = r"^[A-Za-z0-9_-]{1,64}$"
@@ -187,6 +189,10 @@ class DisplayInput(BaseModel):
         Field(max_length=MAX_SOURCE_COLORS),
     ] = Field(default_factory=dict)
     owed_replies_as_tasks: StrictBool = False
+    # Added after the first release (decision 0389): absent on write or in an old stored document
+    # means the default, so an older client and an older row still validate.
+    zoom: Annotated[StrictInt, Field(ge=ZOOM_MIN, le=ZOOM_MAX)] = 100
+    shortcuts: StrictBool = True
 
 
 class DisplaySettings(DisplayInput):
