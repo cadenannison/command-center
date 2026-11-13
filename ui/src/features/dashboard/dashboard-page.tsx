@@ -7,6 +7,9 @@ import { DashboardView } from "./dashboard-view";
 import { fetchDashboards } from "./dashboards-api";
 import { dashboardsKey, useCreateMain, useDashboards } from "./use-dashboards";
 
+/** Fixed text: the server's error text is never shown (decision 0375). */
+const REFRESH_FAILED = "Couldn't refresh. Showing your last saved view.";
+
 const CONFLICT_NOTICE =
   "This dashboard was changed somewhere else. Showing the latest version; your last change was not saved.";
 
@@ -87,7 +90,8 @@ export function DashboardPage() {
       </div>
     );
   }
-  if (dashboards.isError) {
+  // The full panel is only for "nothing to show". A failed refetch keeps the grid and any unsaved edits (decision 0375).
+  if (dashboards.isError && dashboards.data === undefined) {
     return (
       <div role="alert" className="flex flex-col items-start gap-3">
         <p className="text-danger">{dashboards.error.message}</p>
@@ -151,6 +155,21 @@ export function DashboardPage() {
           </button>
         ))}
       </div>
+      {dashboards.isError && (
+        <div role="alert" className="flex flex-wrap items-center gap-3 text-muted">
+          <span>{REFRESH_FAILED}</span>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={dashboards.isFetching}
+            onClick={() => {
+              void dashboards.refetch();
+            }}
+          >
+            Retry
+          </Button>
+        </div>
+      )}
       {blocked && (
         <p role="alert" className="text-danger">
           Your last change has not been saved yet, so this dashboard stays open. Retry the save, then switch.

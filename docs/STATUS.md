@@ -19,7 +19,10 @@ CC_TEST_POSTGRES_URL (the human).
 R3 (the /dashboard grid in `ui/src/features/dashboard/`, decisions 0360-0363) is written and uncommitted:
 tabs, grid, widget shell with its states, edit mode (pointer and keyboard, 12 columns only), debounced
 If-Match saving. Not run by the agent: `ui/e2e/dashboard.spec.ts` and anything in a real browser (CSSOM
-styles under the CSP, touch drag, a screen reader). Bodies are placeholders until the widgets arrive.
+styles under the CSP, touch drag, a screen reader). Tasks (0373), Week (0377) and Weather (0376) widgets are
+built; other kinds are still placeholders. A failed dashboards refetch keeps the grid and edits (0375).
+Weather shows high, low and outlook only: current conditions and hours need a backend card (0376).
+Not run by the agent: `ui/e2e/dashboard-widgets.spec.ts` (new, needs a browser).
 
 ## Gate state
 `mise run test:count` prints 5004; `.test-floor` is 4894 (the human raises it). The Python gates pass. `ui:test:count` prints

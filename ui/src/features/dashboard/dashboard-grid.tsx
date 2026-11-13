@@ -16,6 +16,8 @@ import {
 } from "./editing";
 import { cellsMoved, gridHeight, metricsFor, rectOf, type Metrics } from "./metrics";
 import { TasksWidget } from "./tasks-widget";
+import { WeatherWidget } from "./weather-widget";
+import { WeekWidget } from "./week-widget";
 import { WidgetShell, type WidgetShellProps, type WidgetState } from "./widget-shell";
 import { useGridSize } from "./use-container-width";
 
@@ -347,6 +349,15 @@ export function DashboardGrid({ layout, zoom, edit, onChange, onAnnounce, stateF
           >
             {item.widgetId === "tasks" && def ? (
               <TasksWidget {...shellProps} widthTier={tier(item.w, item.h, def).w} heightTier={tier(item.w, item.h, def).h} />
+            ) : item.widgetId === "week" && def ? (
+              <WeekWidget
+                {...shellProps}
+                sources={item.sources}
+                widthTier={tier(item.w, item.h, def).w}
+                heightTier={tier(item.w, item.h, def).h}
+              />
+            ) : item.widgetId === "weather" && def ? (
+              <WeatherWidget {...shellProps} widthTier={tier(item.w, item.h, def).w} heightTier={tier(item.w, item.h, def).h} />
             ) : (
               <WidgetShell {...shellProps} state={stateFor?.(item) ?? { kind: "ready" }}>
                 <p className="tnum text-muted">{tierLabel(item)}</p>
