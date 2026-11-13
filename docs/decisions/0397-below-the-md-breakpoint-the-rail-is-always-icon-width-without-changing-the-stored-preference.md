@@ -1,0 +1,10 @@
+# 0397. Below the md breakpoint the rail is always icon width, without changing the stored preference
+
+Status: accepted
+
+Context: `ui/e2e/dashboard-display.spec.ts` "text size 150 and zoom 130 cause no horizontal overflow" failed at 390px after the shell (0394). The expanded rail is `w-44` (11rem), and `html` font size is `16px * text scale`, so at text size 150 the rail is 264px. That left `main` about 126px, minus the page's 48px padding, so the grid container was about 78px and the widgets' `flex-none` time and status spans (widget header status, task due, week clock) no longer fit. Their text siblings already shrink (`min-w-0 flex-1 truncate`); the container was too narrow, not the rows. Before the shell the grid had about 342px.
+Decision: Below Tailwind's `md` breakpoint (768px, a rem media query, so it does not scale with the text size) the rail renders at icon width (`max-md:w-14`), its labels take `max-md:sr-only` (the same visually hidden text, so names are unchanged and there is no `aria-label`), and the Menu toggle is `max-md:hidden`, since it would do nothing visible. The stored collapse preference is neither read differently nor written: it applies again at `md` and up. The rule is CSS only, so there is no resize listener and no state. `min-w-0` was added to the shell's body row and page wrapper.
+Alternative: Hide the rail below `md` behind a menu button (rejected: more UI and a modal or overlay question, out of scope). Fix it by letting the widgets overflow, `overflow-x: hidden` or `clip` on html, body or main, or by changing the spec (all rejected: they hide the width instead of giving the grid room).
+Reason: The grid is sized from the width left after the rail; the narrow case needs the rail's smallest form, and the user's choice for wide screens should survive a narrow window.
+Where: `ui/src/shell/rail.tsx`, `ui/src/shell/app-shell.tsx`, `ui/src/shell/rail-narrow.test.tsx`.
+Revisit when: a browser run shows the spec still overflows at 390px (then the widgets' own minimums are the next cause), or a small-screen navigation is designed.

@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DashboardPage } from "./dashboard-page";
+import { DisplayMenu } from "../display/display-menu";
 import { DisplaySettingsProvider } from "../display/display-settings";
 import { DisplayProvider } from "../../lib/display";
 import { ThemeProvider } from "../../lib/theme";
@@ -66,6 +67,8 @@ function renderPage(options: { display?: boolean } = {}) {
         <ThemeProvider>
           <DisplayProvider>
             <DisplaySettingsProvider>
+              {/* The Display button now lives in the app shell's titlebar, not in the page. */}
+              <DisplayMenu />
               <DashboardPage />
             </DisplaySettingsProvider>
           </DisplayProvider>

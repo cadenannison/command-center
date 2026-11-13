@@ -43,6 +43,7 @@ function NeedsMeRow({ item, now, widthTier }: { item: NeedsMeItem; now: number; 
       <div className="flex min-h-8 items-center gap-2">
         <button
           type="button"
+          data-sensitive
           aria-expanded={open}
           aria-controls={panelId}
           className="min-h-8 min-w-0 flex-1 truncate rounded-control text-left font-medium"
@@ -74,14 +75,14 @@ function NeedsMeRow({ item, now, widthTier }: { item: NeedsMeItem; now: number; 
           </span>
         )}
       </p>
-      {widthTier >= 3 && reason && !open && <p className="pb-1 text-caption text-muted">{reason.text}</p>}
+      {widthTier >= 3 && reason && !open && <p data-sensitive className="pb-1 text-caption text-muted">{reason.text}</p>}
       <div id={panelId} hidden={!open}>
         {open && (
           <ul className="flex flex-col gap-1 pb-2 pl-2 text-caption text-muted">
             {item.reasons.length === 0 && <li>No reasons recorded.</li>}
             {item.reasons.map((r, i) => (
               <li key={`${r.code}-${String(i)}`} className="flex gap-2">
-                <span className="flex-1">{r.text}</span>
+                <span data-sensitive className="flex-1">{r.text}</span>
                 <span className="tnum flex-none">
                   {formatPoints(r.points)}
                   <span className="sr-only"> points</span>

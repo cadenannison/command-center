@@ -29,7 +29,7 @@ function Entries({ title, items }: { title: string; items: readonly string[] }) 
       <ul className="flex flex-col gap-1">
         {items.map((text, index) => (
           // Plain text nodes only: React escapes them, and nothing here parses HTML or links.
-          <li key={`${String(index)}-${text}`} className="break-words">
+          <li key={`${String(index)}-${text}`} data-sensitive className="break-words">
             {text}
           </li>
         ))}
@@ -53,7 +53,7 @@ export function SummaryContent({ model, cols, expanded }: SummaryContentProps) {
   const headsUp = tier.headsUp !== "none" && model.headsUp.length > 0 ? model.headsUp : [];
   return (
     <div className="flex flex-col gap-2">
-      <p data-testid="summary-headline" className="break-words font-display text-base font-medium">
+      <p data-sensitive data-testid="summary-headline" className="break-words font-display text-base font-medium">
         {model.headline}
       </p>
       {notice && (

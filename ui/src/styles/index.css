@@ -221,3 +221,13 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* Privacy mask (decision 0396): a visual blur only. The DOM text and accessible names are unchanged, so it
+   protects nothing beyond looks. It lifts on hover and while focus is inside or on a control holding the text. */
+:root[data-privacy="on"] [data-sensitive] {
+  filter: blur(6px);
+}
+:root[data-privacy="on"] [data-sensitive]:is(:hover, :focus-within),
+:root[data-privacy="on"] :is(a, button, [tabindex]):focus-visible [data-sensitive] {
+  filter: none;
+}

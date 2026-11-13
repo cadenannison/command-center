@@ -23,7 +23,7 @@ function Rows({ items }: { items: readonly AgendaItem[] }) {
     <ul>
       {items.map((item) => (
         <li key={item.id}>
-          {formatTime(item.start)} {item.title} ({item.kind}, {item.source})
+          {formatTime(item.start)} <span data-sensitive>{item.title}</span> ({item.kind}, {item.source})
         </li>
       ))}
     </ul>

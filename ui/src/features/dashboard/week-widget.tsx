@@ -68,11 +68,22 @@ export function WeekStrip({ week, now, widthTier, heightTier }: WeekStripProps) 
       </ol>
       {showsNext(heightTier) && (
         <p className="text-muted" data-testid="week-next">
-          {week.next
-            ? week.next.ongoing
-              ? `Now: ${week.next.item.title}`
-              : `Next: ${week.next.item.title}, ${formatDue(new Date(week.next.item.startMs).toISOString(), now)}`
-            : "Nothing more this week."}
+          {week.next ? (
+            week.next.ongoing ? (
+              <>
+                {"Now: "}
+                <span data-sensitive>{week.next.item.title}</span>
+              </>
+            ) : (
+              <>
+                {"Next: "}
+                <span data-sensitive>{week.next.item.title}</span>
+                {`, ${formatDue(new Date(week.next.item.startMs).toISOString(), now)}`}
+              </>
+            )
+          ) : (
+            "Nothing more this week."
+          )}
         </p>
       )}
       {perDay > 0 && (
@@ -88,7 +99,7 @@ export function WeekStrip({ week, now, widthTier, heightTier }: WeekStripProps) 
                   {day.items.slice(0, perDay).map((item) => (
                     <li key={item.id} data-testid="week-item" className="flex min-h-6 items-center gap-2">
                       <span className="tnum flex-none text-caption text-muted">{formatClock(new Date(item.startMs))}</span>
-                      <span className="min-w-0 flex-1 truncate">{item.title}</span>
+                      <span data-sensitive className="min-w-0 flex-1 truncate">{item.title}</span>
                       <SourceDot source={item.source} />
                     </li>
                   ))}

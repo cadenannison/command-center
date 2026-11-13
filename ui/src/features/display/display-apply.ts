@@ -37,4 +37,6 @@ export function applySettings(document: DisplayDocument, root: HTMLElement = glo
     root,
   );
   applySourceColors(settings.source_colors, root);
+  if (settings.privacy_mode) root.setAttribute("data-privacy", "on");
+  else root.removeAttribute("data-privacy");
 }

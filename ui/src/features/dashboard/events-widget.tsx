@@ -43,8 +43,16 @@ function EventRowView({ row, widthTier }: { row: AgendaRow; widthTier: Tier }) {
     >
       <span className="tnum w-[4.5rem] flex-none font-display text-caption text-muted">{timeText(row)}</span>
       <span className="flex min-w-0 flex-1 flex-col">
-        <span className={cn("truncate", marker === "next" ? "font-semibold" : "font-medium")}>{event.title}</span>
-        {meta.length > 0 && <span className="tnum truncate text-caption text-muted">{meta.join(" · ")}</span>}
+        <span data-sensitive className={cn("truncate", marker === "next" ? "font-semibold" : "font-medium")}>
+          {event.title}
+        </span>
+        {meta.length > 0 && (
+          <span className="tnum truncate text-caption text-muted">
+            {detail && untilText(row) !== "" && <span>{untilText(row)}</span>}
+            {detail && untilText(row) !== "" && event.location && " · "}
+            {detail && event.location && <span data-sensitive>{event.location}</span>}
+          </span>
+        )}
       </span>
       {marker === "now" && <span className="flex-none rounded-control bg-chip px-1.5 text-caption font-semibold">Now</span>}
       {marker === "next" && <span className="flex-none rounded-control bg-chip px-1.5 text-caption font-semibold">Next</span>}

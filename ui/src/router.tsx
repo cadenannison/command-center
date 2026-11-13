@@ -1,42 +1,41 @@
-import { createRootRoute, createRoute, createRouter, Link, Outlet, redirect, useRouterState } from "@tanstack/react-router";
+import { createRootRoute, createRoute, createRouter, redirect } from "@tanstack/react-router";
 import { lazy, Suspense } from "react";
-import { AppBackdrop } from "./components/app-backdrop";
-import { ThemeSwitcher } from "./components/theme-switcher";
 import { DashboardPage } from "./features/dashboard/dashboard-page";
 import { TodayPage } from "./features/today/today-page";
+import { AppShell } from "./shell/app-shell";
+import { NotFoundPage, PlaceholderPage } from "./shell/pages";
 
-function Shell() {
-  // The grid needs a wide page (12 columns); every other page keeps the narrow column.
-  const wide = useRouterState({ select: (s) => s.location.pathname.startsWith("/dashboard") });
-  return (
-    <div className={wide ? "mx-auto max-w-[1800px] p-4" : "mx-auto max-w-3xl p-4"}>
-      <AppBackdrop />
-      <header className="mb-6 flex items-center justify-between gap-4">
-        <nav aria-label="Main">
-          <Link to="/today">Today</Link>
-          <Link to="/dashboard" className="ml-4">
-            Dashboard
-          </Link>
-        </nav>
-        {/* The dashboard has the Display settings popover (decision 0391); /today keeps this switcher until cutover. */}
-        {!wide && <ThemeSwitcher />}
-      </header>
-      <main>
-        <Outlet />
-      </main>
-    </div>
-  );
-}
-
-const rootRoute = createRootRoute({ component: Shell });
+// The shell is the root layout; every route renders inside it (decision 0394). Unknown paths get the not-found view.
+const rootRoute = createRootRoute({ component: AppShell, notFoundComponent: NotFoundPage });
 
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
   beforeLoad: () => {
     // eslint-disable-next-line @typescript-eslint/only-throw-error -- redirect() is TanStack Router's own signal
-    throw redirect({ to: "/today" });
+    throw redirect({ to: "/dashboard" });
   },
+});
+
+const chatRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/chat",
+  component: () => <PlaceholderPage title="Chat" />,
+});
+const historyRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/history",
+  component: () => <PlaceholderPage title="History" />,
+});
+const focusRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/focus",
+  component: () => <PlaceholderPage title="Focus" />,
+});
+const settingsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/settings",
+  component: () => <PlaceholderPage title="Settings" />,
 });
 
 const todayRoute = createRoute({ getParentRoute: () => rootRoute, path: "/today", component: TodayPage });
@@ -63,12 +62,21 @@ const galleryRoute = createRoute({
   path: "/gallery",
   beforeLoad: () => {
     // eslint-disable-next-line @typescript-eslint/only-throw-error -- redirect() is TanStack Router's own signal
-    if (!import.meta.env.DEV) throw redirect({ to: "/today" });
+    if (!import.meta.env.DEV) throw redirect({ to: "/dashboard" });
   },
   component: GalleryRoute,
 });
 
-export const routeTree = rootRoute.addChildren([indexRoute, todayRoute, dashboardRoute, galleryRoute]);
+export const routeTree = rootRoute.addChildren([
+  indexRoute,
+  todayRoute,
+  dashboardRoute,
+  chatRoute,
+  historyRoute,
+  focusRoute,
+  settingsRoute,
+  galleryRoute,
+]);
 
 export function createAppRouter(history?: Parameters<typeof createRouter>[0]["history"]) {
   return createRouter({ routeTree, ...(history ? { history } : {}) });

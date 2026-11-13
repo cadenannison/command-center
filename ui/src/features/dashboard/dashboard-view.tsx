@@ -21,7 +21,6 @@ import {
   type SizePreset,
   type TemplateName,
 } from "../../layout";
-import { DisplayMenu } from "../display/display-menu";
 import { useDisplaySettings } from "../display/display-settings";
 import { shortcutHint, useUndoRedoShortcuts } from "../display/shortcuts";
 import { DashboardGrid } from "./dashboard-grid";
@@ -313,7 +312,6 @@ export function DashboardView({ dashboard, flushRef, onConflict, onSaved }: Dash
         >
           Edit
         </Button>
-        <DisplayMenu container={portalRoot} />
         <span role="status" className="text-caption text-muted" data-testid="save-status">
           {savedText}
         </span>
