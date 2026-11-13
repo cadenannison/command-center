@@ -30,32 +30,35 @@ test.beforeEach(async ({ page }) => {
   );
 });
 
-const noHorizontalOverflow = (page: Page) =>
-  page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth);
-
-/** The same check, but a failure names the element reaching furthest right: its tag, id, data attributes and class,
- *  and its right edge against the viewport width, so the message says what to fix. */
+/** No horizontal overflow: documentElement.scrollWidth <= clientWidth. The grid changes its column tier after a
+ *  resize, which needs a render, so the check is polled for up to 3000 ms until it holds (a settle delay is not an
+ *  overflow). Each poll decides and describes in ONE evaluate: it returns "" when the page fits, otherwise the widest
+ *  element (tag, id, data attributes, class) with its right edge, clientWidth and scrollWidth, so a timeout reports
+ *  the state that failed, not a later one. */
 async function expectNoHorizontalOverflow(page: Page, label: string): Promise<void> {
-  const ok = await noHorizontalOverflow(page);
-  let detail = "";
-  if (!ok) {
-    detail = await page.evaluate(() => {
-      const viewport = document.documentElement.clientWidth;
-      let widest: { el: Element; right: number } | null = null;
-      for (const el of Array.from(document.body.querySelectorAll("*"))) {
-        const right = el.getBoundingClientRect().right;
-        if (widest === null || right > widest.right) widest = { el, right };
-      }
-      if (widest === null) return `scrollWidth ${String(document.documentElement.scrollWidth)} > viewport ${String(viewport)}`;
-      const data = Array.from(widest.el.attributes)
-        .filter((a) => a.name.startsWith("data-") || a.name === "id")
-        .map((a) => `${a.name}="${a.value}"`)
-        .join(" ");
-      const cls = widest.el.getAttribute("class") ?? "";
-      return `<${widest.el.tagName.toLowerCase()} ${data}> class="${cls}" right edge ${widest.right.toFixed(1)}px vs viewport ${String(viewport)}px (scrollWidth ${String(document.documentElement.scrollWidth)})`;
-    });
-  }
-  expect(ok, `${label}: horizontal overflow, widest element ${detail}`).toBe(true);
+  await expect
+    .poll(
+      () =>
+        page.evaluate(() => {
+          const root = document.documentElement;
+          if (root.scrollWidth <= root.clientWidth) return "";
+          let widest: { el: Element; right: number } | null = null;
+          for (const el of Array.from(document.body.querySelectorAll("*"))) {
+            const right = el.getBoundingClientRect().right;
+            if (widest === null || right > widest.right) widest = { el, right };
+          }
+          const sizes = `clientWidth ${String(root.clientWidth)}px, scrollWidth ${String(root.scrollWidth)}px`;
+          if (widest === null) return `no element found (${sizes})`;
+          const data = Array.from(widest.el.attributes)
+            .filter((a) => a.name.startsWith("data-") || a.name === "id")
+            .map((a) => `${a.name}="${a.value}"`)
+            .join(" ");
+          const cls = widest.el.getAttribute("class") ?? "";
+          return `widest element <${widest.el.tagName.toLowerCase()} ${data}> class="${cls}" right edge ${widest.right.toFixed(2)}px (${sizes})`;
+        }),
+      { message: `${label}: horizontal overflow`, timeout: 3000 },
+    )
+    .toBe("");
 }
 
 async function noAxeViolations(page: Page): Promise<void> {
