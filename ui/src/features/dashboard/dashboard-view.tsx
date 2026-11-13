@@ -15,6 +15,7 @@ import {
   type Layout,
 } from "../../layout";
 import { DashboardGrid } from "./dashboard-grid";
+import { SummaryCard } from "./summary-card";
 import { replaceDashboard } from "./dashboards-api";
 import { LayoutSaver, type SaveStatus } from "./layout-saver";
 import { dashboardsKey } from "./use-dashboards";
@@ -245,6 +246,9 @@ export function DashboardView({ dashboard, flushRef, onConflict, onSaved }: Dash
           )}
         </div>
       )}
+
+      {/* Pinned above the grid, not a grid widget (decision 0381). Kept in edit mode; it takes no focus. */}
+      <SummaryCard cols={cols >= 12 ? 12 : cols >= 8 ? 8 : 4} />
 
       <DashboardGrid
         layout={shown}

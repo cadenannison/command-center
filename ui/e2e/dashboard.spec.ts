@@ -66,6 +66,17 @@ async function stubTasks(page: Page): Promise<void> {
 async function stubDashboards(page: Page): Promise<unknown[]> {
   const saved: unknown[] = [];
   await stubTasks(page);
+  // The Events widget and the Summary card read these; stubbed so edit-mode axe sees them with data, not an unmocked route.
+  await page.route("**/v1/events**", (route) => route.fulfill({ json: [] }));
+  await page.route("**/v1/summary**", (route) =>
+    route.fulfill({
+      json: {
+        summary: { headline: "Two deadlines today", priorities: ["Finish the lab report"], heads_up: ["Quiz on Friday"] },
+        provider: "gemini",
+        cached: true,
+      },
+    }),
+  );
   await page.route("**/v1/dashboards**", async (route) => {
     const request = route.request();
     if (request.method() === "PUT") {
@@ -112,6 +123,8 @@ test("dragging the corner resizes a widget", async ({ page }) => {
 
   const needs = page.getByTestId("widget-needs_me-1");
   const corner = needs.getByTestId("handle-se");
+  // The Summary card above the grid pushes this corner below the 900px window; mouse events outside the viewport do nothing.
+  await corner.scrollIntoViewIfNeeded();
   const box = await corner.boundingBox();
   if (!box) throw new Error("no corner box");
   const x = box.x + box.width / 2;

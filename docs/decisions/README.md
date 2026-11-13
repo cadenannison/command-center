@@ -58,6 +58,7 @@ Ranges on disk today (each block is contiguous; the numbers between blocks are r
 | 0373-0374 | 0373-0374 (task W1b: Tasks widget on the dashboard grid; edit-mode heading, drag handle and focus fixes) |
 | 0375-0377 | 0375-0377 (task U1+U3+U4: refetch keeps the view, Weather widget, Week widget) |
 | 0378-0380 | 0378-0380 (task U2+polish: Events widget, previous window kept on a date change, weather copy, merge guard, test zone, save-status role) |
+| 0381-0382 | 0381-0382 (task U5: Summary card pinned above the grid, column tiers, fetch once per day; privacy copy and its code-reading test) |
 
 Reserved gaps between those blocks: 0059, 0061-0069, 0096-0099, 0107-0109, 0117-0119, 0132-0139,
 0142-0149, 0154-0159, 0173-0179, 0185-0189, 0193-0199, 0204-0209, 0214-0219, 0226-0229, 0234-0239, 0259, 0263-0269, 0271-0279, 0293-0299, 0305-0309, 0311-0314, 0326-0329, 0337-0339, 0359, 0364.

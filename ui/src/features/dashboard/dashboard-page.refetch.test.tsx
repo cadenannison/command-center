@@ -10,17 +10,22 @@ import { dashboardOf, installGridEnv, json } from "./test-support";
 
 interface Call {
   readonly method: string;
+  readonly path: string;
   readonly ifMatch: string | null;
 }
 type Handler = (call: Call) => Response | Promise<Response>;
+
+// The Summary card above the grid reads GET /v1/summary: it gets its own valid answer, so it never adds an error state.
+const SUMMARY = { summary: { headline: "A quiet day.", priorities: [], heads_up: [] }, provider: "gemini", cached: true };
 
 function stubApi(handler: Handler) {
   const calls: Call[] = [];
   vi.stubGlobal(
     "fetch",
     vi.fn((input: Request) => {
-      const call: Call = { method: input.method, ifMatch: input.headers.get("if-match") };
+      const call: Call = { method: input.method, path: new URL(input.url).pathname, ifMatch: input.headers.get("if-match") };
       calls.push(call);
+      if (call.path === "/v1/summary") return Promise.resolve(json(SUMMARY));
       return Promise.resolve(handler(call));
     }),
   );
