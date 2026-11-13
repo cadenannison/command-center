@@ -4,6 +4,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { createAppQueryClient } from "./api/query-client";
 import { createAppRouter } from "./router";
+import { DisplaySettingsProvider } from "./features/display/display-settings";
 import { DisplayProvider } from "./lib/display";
 import { ThemeProvider } from "./lib/theme";
 import "./styles/index.css";
@@ -19,7 +20,9 @@ createRoot(container).render(
     <ThemeProvider>
       <DisplayProvider>
         <QueryClientProvider client={queryClient}>
-          <RouterProvider router={router} />
+          <DisplaySettingsProvider>
+            <RouterProvider router={router} />
+          </DisplaySettingsProvider>
         </QueryClientProvider>
       </DisplayProvider>
     </ThemeProvider>

@@ -18,7 +18,8 @@ function Shell() {
             Dashboard
           </Link>
         </nav>
-        <ThemeSwitcher />
+        {/* The dashboard has the Display settings popover (decision 0391); /today keeps this switcher until cutover. */}
+        {!wide && <ThemeSwitcher />}
       </header>
       <main>
         <Outlet />

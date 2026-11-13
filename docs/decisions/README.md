@@ -63,6 +63,8 @@ Ranges on disk today (each block is contiguous; the numbers between blocks are r
 | 0385-0386 | 0385-0386 (task U6a: Needs me inclusion rule and constants; GET /v1/needs-me and the old attention scorer left in place) |
 | 0387-0388 | 0387-0388 (task U6b: Needs me widget keeps the server's order and reads time from `at`; a delayed live-region announcement is dropped when a newer one is made) |
 | 0389 | 0389 (task E2a: zoom and shortcuts in the display settings) |
+| 0390-0392 | 0390-0392 (task E2: source color choices and root attributes; display settings saved as one document through one provider, 409 merge; the non-modal Display popover, undo and redo shortcuts, read-only reduced motion) |
+| 0393 | 0393 (task E2f: widget left and width are percentages of the grid container, so a window resize cannot leave one wider than the page) |
 
 Reserved gaps between those blocks: 0059, 0061-0069, 0096-0099, 0107-0109, 0117-0119, 0132-0139,
 0142-0149, 0154-0159, 0173-0179, 0185-0189, 0193-0199, 0204-0209, 0214-0219, 0226-0229, 0234-0239, 0259, 0263-0269, 0271-0279, 0293-0299, 0305-0309, 0311-0314, 0326-0329, 0337-0339, 0359, 0364.

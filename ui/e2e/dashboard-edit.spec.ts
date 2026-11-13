@@ -1,6 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { readFile } from "node:fs/promises";
+import { chooseDark, stubDisplay } from "./display-helpers";
 
 // Edit-mode tools (card E1). Needs `pnpm run build` first (the web server is `vite preview`). /v1 is stubbed. Run by the human.
 // The window is 1440 wide so the grid has 12 columns and editing is on.
@@ -37,6 +38,7 @@ const dashboard = (revision: number) => ({
 
 async function stubApi(page: Page): Promise<unknown[]> {
   const saved: unknown[] = [];
+  await stubDisplay(page);
   await page.route("**/v1/tasks**", (route) => route.fulfill({ json: [] }));
   await page.route("**/v1/events**", (route) => route.fulfill({ json: [] }));
   await page.route("**/v1/summary**", (route) =>
@@ -160,7 +162,7 @@ test("edit mode, the gallery, the reset confirm and the widget menu have no axe 
   await axeClean(page);
   await checkSurfaces(page);
 
-  await page.getByRole("button", { name: "Dark" }).click();
+  await chooseDark(page);
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await axeClean(page);
   await checkSurfaces(page);

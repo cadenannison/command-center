@@ -23,7 +23,7 @@ styles under the CSP, touch drag, a screen reader). Tasks (0373), Week (0377) an
 built; other kinds are still placeholders. Events (0378) is on the grid too; the Summary card (0381, 0382) is pinned above it, not a grid widget. A failed dashboards refetch keeps the grid and edits (0375).
 Weather shows high, low and outlook only: current conditions and hours need a backend card (0376).
 Not run by the agent: `ui/e2e/dashboard-widgets.spec.ts`, `dashboard-events.spec.ts` and `dashboard-summary.spec.ts` (need a browser).
-E1 (edit tools, 0383-0384) is uncommitted; undo and redo shortcuts wait for a setting. Not run: `ui/e2e/dashboard-edit.spec.ts`; Radix under the CSP (0383).
+E1 (edit tools, 0383-0384) and E2 (the Display popover, persisted settings, undo/redo shortcuts, source colors: 0390-0392; `useDisplaySettings` is the hook the shell card reuses) are uncommitted. Not run: `ui/e2e/dashboard-edit.spec.ts`, `dashboard-display.spec.ts`; Radix under the CSP (0383). Green and pink need tokens designed first (0390).
 U6a (`GET /v1/needs-me`, 0385-0386) is committed; U6b (the Needs me widget, 0387; a stale delayed live-region announcement fixed, 0388) is uncommitted. Not run: `ui/e2e/dashboard-needs-me.spec.ts`. The other e2e specs that show the default layout do not stub `/v1/needs-me` yet (the human or a card adds it).
 
 ## Gate state

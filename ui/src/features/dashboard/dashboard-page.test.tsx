@@ -3,6 +3,9 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DashboardPage } from "./dashboard-page";
+import { DisplaySettingsProvider } from "../display/display-settings";
+import { DisplayProvider } from "../../lib/display";
+import { ThemeProvider } from "../../lib/theme";
 import { dashboardOf, installGridEnv, json } from "./test-support";
 import type { Dashboard } from "./wire";
 
@@ -14,6 +17,18 @@ interface Call {
 }
 
 type Handler = (call: Call) => Response | Promise<Response>;
+
+const DISPLAY_DOC = {
+  theme: "system",
+  high_contrast: false,
+  density: "comfortable",
+  glow: 1,
+  text_scale: 100,
+  privacy_mode: false,
+  owed_replies_as_tasks: false,
+  zoom: 100,
+  shortcuts: true,
+};
 
 const SUMMARY = { summary: { headline: "A quiet day.", priorities: [], heads_up: [] }, provider: "gemini", cached: true };
 
@@ -40,13 +55,24 @@ function stubApi(handler: Handler) {
   return calls;
 }
 
-function renderPage() {
+function renderPage(options: { display?: boolean } = {}) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
+  // The zoom now lives in the Display settings popover, which saves through the settings provider (card E2).
   render(
     <QueryClientProvider client={client}>
-      <DashboardPage />
+      {options.display ? (
+        <ThemeProvider>
+          <DisplayProvider>
+            <DisplaySettingsProvider>
+              <DashboardPage />
+            </DisplaySettingsProvider>
+          </DisplayProvider>
+        </ThemeProvider>
+      ) : (
+        <DashboardPage />
+      )}
     </QueryClientProvider>,
   );
   return client;
@@ -286,11 +312,16 @@ describe("DashboardPage edit mode and columns", () => {
     expect(screen.getByTestId("live-region")).toHaveTextContent(/^Dropped Events at column 7, row 1/);
   });
 
-  it("changes the zoom from the slider", async () => {
-    stubApi(() => json([dashboardOf("main", "Main")]));
-    renderPage();
+  it("changes the zoom from the slider in the Display settings popover", async () => {
+    stubApi((call) =>
+      call.path === "/v1/display-settings"
+        ? json({ ...DISPLAY_DOC, revision: 0 })
+        : json([dashboardOf("main", "Main")]),
+    );
+    renderPage({ display: true });
     await screen.findByTestId("widget-events-2");
-    fireEvent.change(screen.getByRole("slider", { name: /Zoom/ }), {
+    await userEvent.setup().click(screen.getByRole("button", { name: "Display" }));
+    fireEvent.change(await screen.findByRole("slider", { name: /Zoom/ }), {
       target: { value: "70" },
     });
     expect(screen.getByText("70%")).toBeInTheDocument();

@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
+import { chooseDark, stubDisplay } from "./display-helpers";
 
 // Needs `pnpm run build` first (the web server is `vite preview`). /v1/dashboards and /v1/events are stubbed.
 // Not run by the agent (no browser in its sandbox); the human runs it. The browser date is pinned to
@@ -63,6 +64,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test("the events widget shows its groups, rows, markers and link, with no axe violations in either theme", async ({ page }) => {
+  await stubDisplay(page);
   await page.goto("/dashboard");
 
   const widget = page.getByTestId("widget-events-1");
@@ -89,7 +91,7 @@ test("the events widget shows its groups, rows, markers and link, with no axe vi
   const light = await new AxeBuilder({ page }).analyze();
   expect(light.violations).toEqual([]);
 
-  await page.getByRole("button", { name: "Dark" }).click();
+  await chooseDark(page);
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await expect(widget.getByTestId("event-row").first()).toBeVisible();
   const dark = await new AxeBuilder({ page }).analyze();

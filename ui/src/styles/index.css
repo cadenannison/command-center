@@ -86,6 +86,54 @@
     --cc-ink: var(--cc-ink-manual);
   }
 
+  /* Source color choices (decision 0390). The display settings put data-src-<source>="<color>" on <html>; each rule
+     below points one source's elements at another color's token pair. They read the unchanged tokens, so two sources
+     can swap colors without a variable cycle, and nothing is written as an inline style (decision 0301). */
+  :root[data-src-cal="violet"] [data-source="cal"] { --cc-src: var(--cc-src-cal); --cc-ink: var(--cc-ink-cal); }
+  :root[data-src-cal="rose"] [data-source="cal"] { --cc-src: var(--cc-src-canvas); --cc-ink: var(--cc-ink-canvas); }
+  :root[data-src-cal="teal"] [data-source="cal"] { --cc-src: var(--cc-src-ls); --cc-ink: var(--cc-ink-ls); }
+  :root[data-src-cal="amber"] [data-source="cal"] { --cc-src: var(--cc-src-gmail); --cc-ink: var(--cc-ink-gmail); }
+  :root[data-src-cal="sky"] [data-source="cal"] { --cc-src: var(--cc-src-wx); --cc-ink: var(--cc-ink-wx); }
+  :root[data-src-cal="silver"] [data-source="cal"] { --cc-src: var(--cc-src-manual); --cc-ink: var(--cc-ink-manual); }
+  :root[data-src-canvas="violet"] [data-source="canvas"] { --cc-src: var(--cc-src-cal); --cc-ink: var(--cc-ink-cal); }
+  :root[data-src-canvas="rose"] [data-source="canvas"] { --cc-src: var(--cc-src-canvas); --cc-ink: var(--cc-ink-canvas); }
+  :root[data-src-canvas="teal"] [data-source="canvas"] { --cc-src: var(--cc-src-ls); --cc-ink: var(--cc-ink-ls); }
+  :root[data-src-canvas="amber"] [data-source="canvas"] { --cc-src: var(--cc-src-gmail); --cc-ink: var(--cc-ink-gmail); }
+  :root[data-src-canvas="sky"] [data-source="canvas"] { --cc-src: var(--cc-src-wx); --cc-ink: var(--cc-ink-wx); }
+  :root[data-src-canvas="silver"] [data-source="canvas"] { --cc-src: var(--cc-src-manual); --cc-ink: var(--cc-ink-manual); }
+  :root[data-src-ls="violet"] [data-source="ls"] { --cc-src: var(--cc-src-cal); --cc-ink: var(--cc-ink-cal); }
+  :root[data-src-ls="rose"] [data-source="ls"] { --cc-src: var(--cc-src-canvas); --cc-ink: var(--cc-ink-canvas); }
+  :root[data-src-ls="teal"] [data-source="ls"] { --cc-src: var(--cc-src-ls); --cc-ink: var(--cc-ink-ls); }
+  :root[data-src-ls="amber"] [data-source="ls"] { --cc-src: var(--cc-src-gmail); --cc-ink: var(--cc-ink-gmail); }
+  :root[data-src-ls="sky"] [data-source="ls"] { --cc-src: var(--cc-src-wx); --cc-ink: var(--cc-ink-wx); }
+  :root[data-src-ls="silver"] [data-source="ls"] { --cc-src: var(--cc-src-manual); --cc-ink: var(--cc-ink-manual); }
+  :root[data-src-gmail="violet"] [data-source="gmail"] { --cc-src: var(--cc-src-cal); --cc-ink: var(--cc-ink-cal); }
+  :root[data-src-gmail="rose"] [data-source="gmail"] { --cc-src: var(--cc-src-canvas); --cc-ink: var(--cc-ink-canvas); }
+  :root[data-src-gmail="teal"] [data-source="gmail"] { --cc-src: var(--cc-src-ls); --cc-ink: var(--cc-ink-ls); }
+  :root[data-src-gmail="amber"] [data-source="gmail"] { --cc-src: var(--cc-src-gmail); --cc-ink: var(--cc-ink-gmail); }
+  :root[data-src-gmail="sky"] [data-source="gmail"] { --cc-src: var(--cc-src-wx); --cc-ink: var(--cc-ink-wx); }
+  :root[data-src-gmail="silver"] [data-source="gmail"] { --cc-src: var(--cc-src-manual); --cc-ink: var(--cc-ink-manual); }
+  :root[data-src-wx="violet"] [data-source="wx"] { --cc-src: var(--cc-src-cal); --cc-ink: var(--cc-ink-cal); }
+  :root[data-src-wx="rose"] [data-source="wx"] { --cc-src: var(--cc-src-canvas); --cc-ink: var(--cc-ink-canvas); }
+  :root[data-src-wx="teal"] [data-source="wx"] { --cc-src: var(--cc-src-ls); --cc-ink: var(--cc-ink-ls); }
+  :root[data-src-wx="amber"] [data-source="wx"] { --cc-src: var(--cc-src-gmail); --cc-ink: var(--cc-ink-gmail); }
+  :root[data-src-wx="sky"] [data-source="wx"] { --cc-src: var(--cc-src-wx); --cc-ink: var(--cc-ink-wx); }
+  :root[data-src-wx="silver"] [data-source="wx"] { --cc-src: var(--cc-src-manual); --cc-ink: var(--cc-ink-manual); }
+  :root[data-src-manual="violet"] [data-source="manual"] { --cc-src: var(--cc-src-cal); --cc-ink: var(--cc-ink-cal); }
+  :root[data-src-manual="rose"] [data-source="manual"] { --cc-src: var(--cc-src-canvas); --cc-ink: var(--cc-ink-canvas); }
+  :root[data-src-manual="teal"] [data-source="manual"] { --cc-src: var(--cc-src-ls); --cc-ink: var(--cc-ink-ls); }
+  :root[data-src-manual="amber"] [data-source="manual"] { --cc-src: var(--cc-src-gmail); --cc-ink: var(--cc-ink-gmail); }
+  :root[data-src-manual="sky"] [data-source="manual"] { --cc-src: var(--cc-src-wx); --cc-ink: var(--cc-ink-wx); }
+  :root[data-src-manual="silver"] [data-source="manual"] { --cc-src: var(--cc-src-manual); --cc-ink: var(--cc-ink-manual); }
+
+  /* The preview swatch beside each color choice in the Display settings picks a color by name. */
+  [data-swatch="violet"] { --cc-src: var(--cc-src-cal); --cc-ink: var(--cc-ink-cal); }
+  [data-swatch="rose"] { --cc-src: var(--cc-src-canvas); --cc-ink: var(--cc-ink-canvas); }
+  [data-swatch="teal"] { --cc-src: var(--cc-src-ls); --cc-ink: var(--cc-ink-ls); }
+  [data-swatch="amber"] { --cc-src: var(--cc-src-gmail); --cc-ink: var(--cc-ink-gmail); }
+  [data-swatch="sky"] { --cc-src: var(--cc-src-wx); --cc-ink: var(--cc-ink-wx); }
+  [data-swatch="silver"] { --cc-src: var(--cc-src-manual); --cc-ink: var(--cc-ink-manual); }
+
   /* Priority 1 to 10 fills. The number is printed by the component; the text color never changes. */
   [data-priority="1"] { --cc-p: var(--cc-p1); }
   [data-priority="2"] { --cc-p: var(--cc-p2); }

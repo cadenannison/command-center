@@ -1,0 +1,13 @@
+# 0390. Source color choices are the six tokens in tokens.json and reach the page as root attributes
+
+Status: accepted
+
+Context: Card E2. The spec lists eight source colors (violet, rose, teal, amber, sky, silver, green, pink) and the server accepts all eight names in `source_colors` (0389 left the enum as it was). `docs/design/tokens.json` and `tokens.css` define only six color pairs (a glow value and a darker label ink, each per theme). Any choice has to be AA against its surface in both themes and in high contrast.
+Decision:
+- The Display settings offer each source exactly the six defined tokens: violet, rose, teal, amber, sky, silver. Green and pink are not offered until two more token pairs are designed, checked for AA in all four modes and added to `tokens.json` and `tokens.css` (a design task). A stored `green` or `pink` is never lost: the document keeps it on every write, the page ignores it (the source keeps its default color) and the picker shows the default.
+- A choice reaches the page as an attribute on the root element, `data-src-<source>="<color>"`, and `ui/src/styles/index.css` has one rule per source and color that points that source's `[data-source]` elements at the chosen token pair. The rules read the unchanged token variables, so two sources can swap colors with no variable cycle, and nothing is written as an inline style (0301).
+- Each choice shows a preview swatch and its contrast result. The number is the lowest ratio of the label ink on its own tint over the glass surface and every backdrop spot, in the current mode (dark, light, high contrast dark, high contrast light). `INK_CONTRAST` in `source-colors.ts` holds the 24 numbers, and `source-colors.test.ts` recomputes them from `tokens.css` and fails if one differs or is below 4.5.
+Alternative: Offer all eight with invented colors for green and pink (rejected: the card forbids inventing colors, and AA is unproven). Set `--cc-src-<source>` on the root through CSSOM (rejected: a swap of two sources needs resolved values per theme and re-applying on every theme change, or a variable cycle). Compute the contrast at runtime from computed styles (rejected: it needs a layout engine and the backdrop orbs; a table checked by a test is exact and cheap).
+Reason: One token set keeps tokens.json the single source of color truth, makes the AA claim checkable, and needs no per-theme work in code.
+Where: `ui/src/features/display/source-colors.ts`, `display-apply.ts`, `display-menu.tsx`; `ui/src/styles/index.css`; tests `source-colors.test.ts` and `display-apply.test.ts`.
+Revisit when: green and pink tokens are designed (add them to `COLORS`, the CSS rules and the table), or the surfaces behind a label change.

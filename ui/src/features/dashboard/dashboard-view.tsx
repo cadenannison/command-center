@@ -3,8 +3,6 @@ import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type Ref
 import { Button } from "../../components/ui/button";
 import {
   DEFAULT_LAYOUTS,
-  ZOOM_MAX,
-  ZOOM_MIN,
   addWidget,
   canRedo,
   canUndo,
@@ -23,6 +21,9 @@ import {
   type SizePreset,
   type TemplateName,
 } from "../../layout";
+import { DisplayMenu } from "../display/display-menu";
+import { useDisplaySettings } from "../display/display-settings";
+import { shortcutHint, useUndoRedoShortcuts } from "../display/shortcuts";
 import { DashboardGrid } from "./dashboard-grid";
 import { downloadText } from "./download";
 import { EditToolbar } from "./edit-toolbar";
@@ -67,7 +68,8 @@ export function DashboardView({ dashboard, flushRef, onConflict, onSaved }: Dash
   const start = useMemo(() => initialLayout(dashboard), [dashboard]);
   const [history, dispatch] = useReducer(historyReducer, start.layout, (layout) => initHistory(layout));
   const [edit, setEdit] = useState(false);
-  const [zoom, setZoom] = useState(100);
+  const { settings: display, loaded: displayLoaded } = useDisplaySettings();
+  const zoom = display.zoom;
   const [cols, setCols] = useState<number>(() => columnsForWidth(window.innerWidth));
   const [status, setStatus] = useState<SaveStatus>({ kind: "idle" });
   const [reloadFailed, setReloadFailed] = useState(false);
@@ -268,6 +270,23 @@ export function DashboardView({ dashboard, flushRef, onConflict, onSaved }: Dash
   const shown = useMemo(() => fitToColumns(history.present, cols), [history.present, cols]);
   const readOnly = cols !== 12;
 
+  // Undo and redo on Ctrl or Cmd Z, in edit mode only and only while the shortcuts setting is on (decision 0392).
+  // Not before the stored setting has loaded: the defaults say "on" and a user who turned them off must not
+  // get a handler or a hint in the meantime.
+  // Also not while a widget is picked up (keyboard or pointer, move or resize): undo would rewrite the layout the
+  // pick-up started from, and Escape or Enter would then land on a different one.
+  const [holding, setHolding] = useState(false);
+  const shortcutsOn = displayLoaded && display.shortcuts && edit && !readOnly;
+  useUndoRedoShortcuts({
+    enabled: shortcutsOn && !holding,
+    onUndo: () => {
+      if (canUndo(history)) onUndo();
+    },
+    onRedo: () => {
+      if (canRedo(history)) onRedo();
+    },
+  });
+
   // Narrowing mid pick-up unmounts the handle that had focus, which would drop it to <body>. After the grid has
   // announced it, focus goes to the read-only notice once that notice exists (decision 0374).
   const refocusReadonly = useRef(false);
@@ -294,25 +313,17 @@ export function DashboardView({ dashboard, flushRef, onConflict, onSaved }: Dash
         >
           Edit
         </Button>
-        <label className="flex items-center gap-2 text-caption text-muted">
-          Zoom
-          <input
-            type="range"
-            min={ZOOM_MIN}
-            max={ZOOM_MAX}
-            step={10}
-            value={zoom}
-            aria-valuetext={`${String(zoom)} percent`}
-            onChange={(event) => {
-              setZoom(Number(event.target.value));
-            }}
-          />
-          <span className="tnum w-10">{`${String(zoom)}%`}</span>
-        </label>
+        <DisplayMenu container={portalRoot} />
         <span role="status" className="text-caption text-muted" data-testid="save-status">
           {savedText}
         </span>
       </div>
+
+      {shortcutsOn && (
+        <p className="m-0 text-caption text-muted" data-testid="shortcut-hint">
+          {shortcutHint()}
+        </p>
+      )}
 
       {edit && !readOnly && (
         <EditToolbar
@@ -390,6 +401,7 @@ export function DashboardView({ dashboard, flushRef, onConflict, onSaved }: Dash
         onAnnounce={announce}
         onColumns={setCols}
         onPickupAbandoned={onPickupAbandoned}
+        onHoldingChange={setHolding}
         itemMenu={itemMenu}
       />
 

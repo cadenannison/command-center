@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
+import { chooseDark, stubDisplay } from "./display-helpers";
 
 // Needs `pnpm run build` first (the web server is `vite preview`). /v1/dashboards is stubbed. Run by the human.
 // The window is 1440 wide so the grid has 12 columns; one column is about 118px with the 14px gap.
@@ -65,6 +66,7 @@ async function stubTasks(page: Page): Promise<void> {
 
 async function stubDashboards(page: Page): Promise<unknown[]> {
   const saved: unknown[] = [];
+  await stubDisplay(page);
   await stubTasks(page);
   // The Events widget and the Summary card read these; stubbed so edit-mode axe sees them with data, not an unmocked route.
   await page.route("**/v1/events**", (route) => route.fulfill({ json: [] }));
@@ -171,7 +173,7 @@ test("the dashboard has no axe violations in either theme, with edit mode on", a
   const light = await new AxeBuilder({ page }).analyze();
   expect(light.violations).toEqual([]);
 
-  await page.getByRole("button", { name: "Dark" }).click();
+  await chooseDark(page);
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   const dark = await new AxeBuilder({ page }).analyze();
   expect(dark.violations).toEqual([]);

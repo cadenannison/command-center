@@ -14,7 +14,7 @@ import {
   pointerResize,
   tierLabel,
 } from "./editing";
-import { cellsMoved, gridHeight, metricsFor, rectOf, type Metrics } from "./metrics";
+import { cellsMoved, cssRectOf, gridHeight, metricsFor, type Metrics } from "./metrics";
 import { EventsWidget } from "./events-widget";
 import { NeedsMeWidget } from "./needs-me-widget";
 import { TasksWidget } from "./tasks-widget";
@@ -60,6 +60,8 @@ export interface DashboardGridProps {
   readonly onColumns?: (cols: number) => void;
   /** Called after the announcement when narrowing abandoned a pick-up, so the page can move focus (decision 0374). */
   readonly onPickupAbandoned?: () => void;
+  /** Reports whether a pick-up (keyboard or pointer, move or resize) is in progress, so the page can hold its shortcuts. */
+  readonly onHoldingChange?: (holding: boolean) => void;
   /** The per-widget menu shown in edit mode, beside the drag handle (edit tools card E1). */
   readonly itemMenu?: (item: LayoutItem) => ReactNode;
 }
@@ -88,7 +90,7 @@ const HANDLES: readonly {
   },
 ];
 
-export function DashboardGrid({ layout, zoom, edit, onChange, onAnnounce, stateFor, onColumns, onPickupAbandoned, itemMenu }: DashboardGridProps) {
+export function DashboardGrid({ layout, zoom, edit, onChange, onAnnounce, stateFor, onColumns, onPickupAbandoned, onHoldingChange, itemMenu }: DashboardGridProps) {
   const ref = useRef<HTMLDivElement>(null);
   const { width, cols } = useGridSize(ref);
   const editing = edit && cols === 12;
@@ -111,6 +113,9 @@ export function DashboardGrid({ layout, zoom, edit, onChange, onAnnounce, stateF
   }
 
   const holding = drag !== null || keyed !== null;
+  useEffect(() => {
+    onHoldingChange?.(holding);
+  }, [holding, onHoldingChange]);
   const heldRef = useRef(false);
   useEffect(() => {
     if (editing) {
@@ -272,7 +277,7 @@ export function DashboardGrid({ layout, zoom, edit, onChange, onAnnounce, stateF
           aria-hidden="true"
           data-testid="drop-outline"
           className="pointer-events-none absolute rounded-widget border-2 border-dashed border-accent bg-chip transition-[left,top,width,height] duration-[240ms] ease-cc"
-          style={rectOf(outline, metrics)}
+          style={cssRectOf(outline, metrics)}
         />
       )}
       {shown.items.map((item) => {
@@ -280,23 +285,18 @@ export function DashboardGrid({ layout, zoom, edit, onChange, onAnnounce, stateF
         const source = item.sources[0] ?? def?.defaultSources[0] ?? "manual";
         const dragging = drag?.id === item.id;
         const lifted = dragging || keyed?.id === item.id;
-        const rect = rectOf(item, metrics);
         const base = dragging ? itemOf(drag.base, item.id) : undefined;
-        const origin = base ? rectOf(base, metrics) : rect;
+        // Left and width follow the container (percentages), so a resize of the window cannot leave a widget wider
+        // than the page for a render. A lifted widget is the base rect plus the pointer's travel.
         const live =
-          dragging && drag.handle === "move"
-            ? {
-                ...origin,
-                left: origin.left + drag.dx,
-                top: origin.top + drag.dy,
-              }
-            : dragging
-              ? {
-                  ...origin,
-                  width: Math.max(origin.width + (drag.handle === "s" ? 0 : drag.dx), metrics.colPx),
-                  height: Math.max(origin.height + (drag.handle === "e" ? 0 : drag.dy), metrics.rowPx),
-                }
-              : rect;
+          dragging && base && drag.handle === "move"
+            ? cssRectOf(base, metrics, { moveX: drag.dx, moveY: drag.dy })
+            : dragging && base
+              ? cssRectOf(base, metrics, {
+                  growX: drag.handle === "s" ? 0 : drag.dx,
+                  growY: drag.handle === "e" ? 0 : drag.dy,
+                })
+              : cssRectOf(item, metrics);
         const title = titleOf(item);
         const sources = item.sources.map(sourceName).join(", ");
         const shellProps: Omit<WidgetShellProps, "state" | "children"> = {

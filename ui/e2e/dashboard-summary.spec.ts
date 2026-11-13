@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page, type Route } from "@playwright/test";
+import { chooseDark, stubDisplay } from "./display-helpers";
 
 // Needs `pnpm run build` first (the web server is `vite preview`). /v1/dashboards, /v1/events and /v1/summary are
 // stubbed. Not run by the agent (no browser in its sandbox); the human runs it. The browser date is pinned.
@@ -31,6 +32,7 @@ test.use({ viewport: { width: 1440, height: 900 } });
 
 async function stub(page: Page, summaryRoute: (route: Route) => Promise<void>): Promise<string[]> {
   const requests: string[] = [];
+  await stubDisplay(page);
   await page.clock.setFixedTime(NOW);
   await page.route("**/v1/dashboards**", (route) => route.fulfill({ json: [dashboard] }));
   await page.route("**/v1/events**", (route) => route.fulfill({ json: [] }));
@@ -44,7 +46,7 @@ async function stub(page: Page, summaryRoute: (route: Route) => Promise<void>): 
 async function noAxeViolationsInBothThemes(page: Page, visible: () => Promise<void>) {
   const light = await new AxeBuilder({ page }).analyze();
   expect(light.violations).toEqual([]);
-  await page.getByRole("button", { name: "Dark" }).click();
+  await chooseDark(page);
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await visible();
   const dark = await new AxeBuilder({ page }).analyze();

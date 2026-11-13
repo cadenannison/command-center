@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
+import { chooseDark, stubDisplay } from "./display-helpers";
 
 // Needs `pnpm run build` first (the web server is `vite preview`). /v1/dashboards and /v1/events are stubbed.
 // Not run by the agent (no browser in its sandbox); the human runs it. The browser date is pinned to
@@ -68,6 +69,7 @@ const weatherDay = (day: number, high: number, low: number, rain: number) => ({
 
 /** One route serves both widgets: the week widget ignores weather items and the weather widget ignores events. */
 async function stubApi(page: Page): Promise<void> {
+  await stubDisplay(page);
   await page.clock.setFixedTime(NOW);
   await page.route("**/v1/dashboards**", (route) => route.fulfill({ json: [dashboard] }));
   await page.route("**/v1/events**", (route) =>
@@ -107,7 +109,7 @@ test("the week and weather widgets show their rows and have no axe violations in
   const light = await new AxeBuilder({ page }).analyze();
   expect(light.violations).toEqual([]);
 
-  await page.getByRole("button", { name: "Dark" }).click();
+  await chooseDark(page);
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   const dark = await new AxeBuilder({ page }).analyze();
   expect(dark.violations).toEqual([]);
