@@ -4,6 +4,7 @@ import asyncio
 from datetime import UTC, date, datetime, tzinfo
 
 from command_center.core.ledger import overlay_marks
+from command_center.core.needs_me import NeedsMeItem, needs_me
 from command_center.core.ports import Clock, EventStore, ItemLedger
 from command_center.core.schema import Event, EventKind
 from command_center.core.scoring import urgency
@@ -84,13 +85,21 @@ class AgendaService:
     async def tasks(self) -> list[TaskItem]:
         """Tasks, assignments and email within the sync horizon, ranked with their reasons."""
         now = self._now()
+        return task_items(await self._task_rows(now), now)
+
+    async def needs_me(self) -> list[NeedsMeItem]:
+        """What needs the user now across kinds, from the rows `tasks()` reads (0385, 0386)."""
+        now = self._now()
+        return needs_me(await self._task_rows(now), now)
+
+    async def _task_rows(self, now: datetime) -> list[Event]:
         stored = await asyncio.to_thread(self._events.query, horizon_window(now))
         undated = await asyncio.to_thread(
             self._events.undated_open, _UNDATED_KINDS, UNDATED_TASK_CAP
         )
         # Marks apply after the cap, so a task the user checked off is dropped here (0372).
         open_undated = [e for e in await self._marked(undated) if e.status != "done"]
-        return task_items([*await self._marked(stored), *open_undated], now)
+        return [*await self._marked(stored), *open_undated]
 
     def _now(self) -> datetime:
         return self._clock.now().astimezone(self._tz)

@@ -1,0 +1,10 @@
+# 0385. Needs me: which items qualify, in what order, and the two constants
+
+Status: accepted
+
+Context: The Needs me widget is the one widget that pulls across kinds (tasks, assignments, owed replies, events). It needs a deterministic selection on top of the 1-10 urgency of 0332 and 0370, in core, with no AI.
+Decision: `core/needs_me.py` has `needs_me(items, now, limit=NEEDS_ME_LIMIT)`, pure, using `urgency.assess` for every score and reason. `NEEDS_ME_MIN_PRIORITY = 5`, `NEEDS_ME_LIMIT = 20`. Kinds considered: task, assignment, email, event; weather never. An item with `status == "done"` never qualifies. A task, assignment or email qualifies when its priority is at least 5 or it is overdue (reason code `overdue` or `reply_overdue`). An event qualifies only when `assess` gave it `event_now` (in progress, or starting within 2 hours) or `event_today` (starting within 24 hours); its own priority (2 or 4) is not compared with the threshold, because it could never reach 5. An event with no end that has already started is not in progress (0370). Undated items never qualify: the time of an item is `due`, else `start`, and none means excluded. Order: priority descending, then that time ascending (none last, unreachable today), then id. An id appears once (the first after sorting wins), then the list is cut to `limit`; a negative limit is a ValueError. A naive `now` is a ValueError (from `assess`).
+Alternative: Require priority 5 for events too (rejected: no event could qualify). Compare an event's start with the threshold through a bonus (rejected: changes 0370 weights). Let undated items in on priority alone (rejected: an undated item scores at most 1).
+Reason: Reusing `assess` keeps one definition of urgency and one set of reasons; the rule reads codes, not copied time arithmetic.
+Where: `src/command_center/core/needs_me.py`, `tests/test_needs_me.py`.
+Revisit when: the dismiss card lands (dismissed items must be excluded), or a user setting for the threshold or cap is wanted.

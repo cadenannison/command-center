@@ -71,6 +71,7 @@ POLICY: dict[tuple[str, str], str] = {
     ("DELETE", "/v1/dashboards/{dashboard_id}"): DENIED,
     ("PUT", "/v1/display-settings"): DENIED,
     ("GET", "/v1/tasks"): READ,  # the ranked list with reasons: a read (0371)
+    ("GET", "/v1/needs-me"): READ,  # what needs attention across kinds: a read (0386)
     ("GET", "/v1/devices"): READ,
     ("DELETE", "/v1/devices/{device_id}"): DENIED,
     ("PUT", "/v1/settings/{source}"): DENIED,

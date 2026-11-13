@@ -55,6 +55,7 @@ One line per module: its first docstring sentence. Use it to find the file you n
 - `geocode_routes.py`: City search for the weather form: candidates for a name, never a pick (decision 0180).
 - `health.py`: Liveness endpoint.
 - `items.py`: Check-off, notes, local tasks and the day's history (decisions 0120, 0123, 0125, 0126).
+- `needs_me.py`: What needs the user's attention across kinds, for the Needs me widget (decisions 0385, 0386).
 - `pairing_routes.py`: Phone pairing and device management under /v1.
 - `policy.py`: Pure request rules for `DeviceAuthMiddleware`: what a paired phone may call, and the JSON check.
 - `settings.py`: Settings routes.
@@ -70,6 +71,7 @@ One line per module: its first docstring sentence. Use it to find the file you n
 - `hosts.py`: Host-header classification: loopback, an allowed remote name, or rejected.
 - `jobs.py`: Background job model: a unit of work for a JobQueue and the record of one that gave up.
 - `ledger.py`: The item ledger's pure parts: local tasks, notes, history and marks laid over events.
+- `needs_me.py`: What needs the user's attention across kinds, for the Needs me widget (decisions 0385, 0386).
 - `pairing.py`: Phone pairing: token hashing, credential models, device names and the failure limiter.
 - `ports.py`: Ports the pure core depends on.
 - `priority.py`: Priority 1-10 derived from the 0-100 urgency score.

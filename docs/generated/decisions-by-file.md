@@ -90,6 +90,7 @@ Each line is a path and the decisions that name it. Look a number up with `grep 
 - src/command_center/api/errors.py: 0023
 - src/command_center/api/factory.py: 0021
 - src/command_center/api/items.py: 0123
+- src/command_center/api/needs_me.py: 0386
 - src/command_center/api/policy.py: 0126 0165 0182
 - src/command_center/api/settings.py: 0020 0023 0025
 - src/command_center/api/summary_routes.py: 0037
@@ -102,6 +103,7 @@ Each line is a path and the decisions that name it. Look a number up with `grep 
 - src/command_center/core/errors.py: 0024
 - src/command_center/core/geocode.py: 0180
 - src/command_center/core/ledger.py: 0125 0130
+- src/command_center/core/needs_me.py: 0385
 - src/command_center/core/ports.py: 0016 0028 0034 0040 0047 0111 0231
 - src/command_center/core/priority.py: 0110
 - src/command_center/core/redact.py: 0089 0240 0241 0242 0243 0244 0255 0260 0261 0262 0280 0281 0283 0284
@@ -256,6 +258,8 @@ Each line is a path and the decisions that name it. Look a number up with `grep 
 - tests/test_ledger_races.py: 0230
 - tests/test_ledger_sink.py: 0121 0127
 - tests/test_ledger_sync.py: 0121 0122 0127 0130 0131
+- tests/test_needs_me.py: 0385
+- tests/test_needs_me_api.py: 0386
 - tests/test_normalizer.py: 0070 0071
 - tests/test_normalizer_atomic.py: 0080
 - tests/test_normalizer_generation.py: 0074
@@ -268,7 +272,7 @@ Each line is a path and the decisions that name it. Look a number up with `grep 
 - tests/test_redact_agenda.py: 0280 0281 0283 0284
 - tests/test_redact_gaps.py: 0240 0241 0242 0243 0244 0255 0260 0261 0310
 - tests/test_redact_urls_and_tokens.py: 0089
-- tests/test_remote_policy.py: 0060 0126 0182 0203 0211 0213 0357
+- tests/test_remote_policy.py: 0060 0126 0182 0203 0211 0213 0357 0386
 - tests/test_report_stream_contract.py: 0071
 - tests/test_scheduler.py: 0053
 - tests/test_schema_guard.py: 0232 0247

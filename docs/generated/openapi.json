@@ -902,6 +902,80 @@
         "title": "LedgerEntry",
         "type": "object"
       },
+      "NeedsMeItem": {
+        "description": "One row of the Needs me list. `at` is the due time, else the start, else None.",
+        "properties": {
+          "at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "event",
+              "assignment",
+              "email",
+              "weather",
+              "task"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "link": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Link"
+          },
+          "priority": {
+            "title": "Priority",
+            "type": "integer"
+          },
+          "reasons": {
+            "items": {
+              "$ref": "#/components/schemas/UrgencyReason"
+            },
+            "title": "Reasons",
+            "type": "array"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "title",
+          "source",
+          "at",
+          "link",
+          "priority",
+          "reasons"
+        ],
+        "title": "NeedsMeItem",
+        "type": "object"
+      },
       "NoteInput": {
         "additionalProperties": false,
         "description": "A note as written; trailing whitespace is dropped, nothing else is changed.",
@@ -3020,6 +3094,37 @@
         "summary": "Set an item's note",
         "tags": [
           "items"
+        ]
+      }
+    },
+    "/v1/needs-me": {
+      "get": {
+        "description": "At most 20 items, priority descending, then `at` ascending, then id. Read-only.\n\n`at` is the due time, else the start. Done items are left out. `link` is the source's own\nlink or null.",
+        "operationId": "list_needs_me_v1_needs_me_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/NeedsMeItem"
+                  },
+                  "title": "Response List Needs Me V1 Needs Me Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "DeviceToken": []
+          }
+        ],
+        "summary": "What needs your attention now, across tasks, mail and events",
+        "tags": [
+          "needs-me"
         ]
       }
     },

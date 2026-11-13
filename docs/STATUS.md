@@ -24,12 +24,12 @@ built; other kinds are still placeholders. Events (0378) is on the grid too; the
 Weather shows high, low and outlook only: current conditions and hours need a backend card (0376).
 Not run by the agent: `ui/e2e/dashboard-widgets.spec.ts`, `dashboard-events.spec.ts` and `dashboard-summary.spec.ts` (need a browser).
 E1 (edit tools, 0383-0384) is uncommitted; undo and redo shortcuts wait for a setting. Not run: `ui/e2e/dashboard-edit.spec.ts`; Radix under the CSP (0383).
+U6a (`GET /v1/needs-me`, 0385-0386, Python only) is uncommitted; the Needs me widget is next.
 
 ## Gate state
-`mise run test:count` prints 5004; `.test-floor` is 4894 (the human raises it). The Python gates pass. `ui:test:count` prints
+`mise run test:count` prints 5107; `.test-floor` is 4894 (the human raises it). The Python gates pass. `ui:test:count` prints
 678 (`ui:check` passes with the build; `ui/.test-floor` is 632, the human raises it). Not yet shown by test: that `minimumReleaseAge`
-rejects a too-new version, that `strictDepBuilds` fails an unreviewed build script (0315 Hedge), and the
-Playwright test.
+rejects a too-new version, that `strictDepBuilds` fails an unreviewed build script (0315 Hedge), and the Playwright test.
 
 ## Next
 - The human unblocks P1b (above); then the CSP header and static serving (api task), then port the widgets

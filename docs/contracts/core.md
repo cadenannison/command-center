@@ -12,6 +12,7 @@ No I/O, clock, randomness, environment or globals; time, randomness and ids come
 - `scoring`: `urgency`.
 - `priority`: `priority`, `MAX_PRIORITY`.
 - `urgency`: `assess`, `task_items`, `Urgency`, `UrgencyReason`, `TaskItem`, and the weight tables (`DUE_BANDS`, `OVERDUE_POINTS`, `EMAIL_POINTS`, ...). Explainable 1-10 priority (decisions 0332, 0370).
+- `needs_me`: `needs_me`, `NeedsMeItem`, `NEEDS_ME_MIN_PRIORITY` (5), `NEEDS_ME_LIMIT` (20). Which items need attention across kinds (decision 0385).
 - `ledger`: `LedgerEntry` (computed `completed_by`: "user" for done_by_you, "source" for done_by_source, None for gone; stored `reopened`, true only for done_by_source when the source completed the item and later reported it open again, the entry stays on its completion day, decision 0130), `HistoryDay`, `group_history(day, entries)`, `group_history_range(entries, tz) -> list[HistoryDay]` (one day per local date with an entry, ascending; each day built by `group_history`), plus the task/note inputs and mark helpers; `overlay_marks(event, mark)` forces status done only for a user check-off, never for a source completion.
 - `redact`: `redact`, `trim`.
 - `windows`: `TimeWindow`, `day_window`, `week_window`, `month_window`.
@@ -147,6 +148,10 @@ Phone pairing primitives. Token generation is NOT in core: `TokenSource.new_toke
 - `assess(event, now) -> Urgency{priority, score, reasons[{code, points, text}]}`; `priority = clamp(score, 1, 10)` and `score` is the sum of the points. Naive `now` is ValueError. Pure and deterministic; reads only kind, source, status, due, start, end.
 - Points: overdue +8 (+1 if two days or more late); due in <=6 h +7, <=24 h +6, <=48 h +5, <=7 d +3, <=14 d +1; local task +1; reply owed +3 or overdue +5, plus +1 (waiting 24 h+) or +2 (72 h+); event in progress or starting within 2 h +4, within 24 h +2. A done item has one 0-point reason and priority 1; an item with no reason has one 0-point "Nothing makes this urgent right now". Estimated duration and AI never count.
 - `task_items(events, now) -> list[TaskItem]` keeps kinds task, assignment and email, sorted by priority descending, due ascending (none last), id.
+
+### Needs me (`needs_me.py`; decision 0385)
+
+`needs_me(items, now, limit=20) -> list[NeedsMeItem]` is pure and uses `assess` for every score. Kinds task, assignment, email and event only; `done` never qualifies. A task, assignment or email qualifies at priority >= 5 or when overdue (reason `overdue` or `reply_overdue`). An event qualifies only with reason `event_now` or `event_today` (in progress, or starting within 24 hours), whatever its priority. An item with neither `due` nor `start` never qualifies. Sorted by priority descending, then `at` (due, else start) ascending, then id; an id appears once; the list is cut to `limit` (negative is a ValueError; a naive `now` is a ValueError). `NeedsMeItem`: `id`, `kind`, `title`, `source`, `at`, `link`, `priority`, `reasons`.
 
 ## Planned (not built yet)
 - Schema for tasks, messages and source status beyond `Event`.

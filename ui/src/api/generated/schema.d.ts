@@ -432,6 +432,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/needs-me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * What needs your attention now, across tasks, mail and events
+         * @description At most 20 items, priority descending, then `at` ascending, then id. Read-only.
+         *
+         *     `at` is the due time, else the start. Done items are left out. `link` is the source's own
+         *     link or null.
+         */
+        get: operations["list_needs_me_v1_needs_me_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/pair": {
         parameters: {
             query?: never;
@@ -1010,6 +1033,31 @@ export interface components {
              * @default false
              */
             reopened: boolean;
+            /** Source */
+            source: string;
+            /** Title */
+            title: string;
+        };
+        /**
+         * NeedsMeItem
+         * @description One row of the Needs me list. `at` is the due time, else the start, else None.
+         */
+        NeedsMeItem: {
+            /** At */
+            at: string | null;
+            /** Id */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "event" | "assignment" | "email" | "weather" | "task";
+            /** Link */
+            link: string | null;
+            /** Priority */
+            priority: number;
+            /** Reasons */
+            reasons: components["schemas"]["UrgencyReason"][];
             /** Source */
             source: string;
             /** Title */
@@ -2361,6 +2409,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ValidationErrorBody"];
+                };
+            };
+        };
+    };
+    list_needs_me_v1_needs_me_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NeedsMeItem"][];
                 };
             };
         };
