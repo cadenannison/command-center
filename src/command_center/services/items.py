@@ -21,6 +21,7 @@ from command_center.core.ledger import (
 )
 from command_center.core.ports import Clock, IdSource, ItemLedger
 from command_center.core.schema import Event
+from command_center.core.snooze import SnoozePreset, snooze_until
 from command_center.core.windows import TimeWindow, day_window
 from command_center.services.agenda import AgendaService
 
@@ -69,6 +70,25 @@ class ItemService:
         """Undo the user's check-off; an item the source finished stays done."""
         await self.get(item_id)
         await asyncio.to_thread(self._ledger.undo, item_id)
+        return await self.get(item_id)
+
+    async def dismiss(self, item_id: str) -> Event:
+        """Dismiss the item: it leaves the lists and shows in History; repeating keeps the time."""
+        await self.get(item_id)
+        await asyncio.to_thread(self._ledger.dismiss, item_id, self._clock.now())
+        return await self.get(item_id)
+
+    async def snooze(self, item_id: str, preset: SnoozePreset) -> Event:
+        """Hide the item until the preset's instant in the local day; it then returns by itself."""
+        await self.get(item_id)
+        until = snooze_until(preset, self._clock.now(), self._agenda.tz)
+        await asyncio.to_thread(self._ledger.snooze, item_id, until)
+        return await self.get(item_id)
+
+    async def restore(self, item_id: str) -> Event:
+        """Undo a dismissal, a snooze and the user's check-off; a source-done item stays done."""
+        await self.get(item_id)
+        await asyncio.to_thread(self._ledger.restore, item_id)
         return await self.get(item_id)
 
     async def set_note(self, item_id: str, text: str) -> Event:

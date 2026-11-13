@@ -494,6 +494,18 @@
       "Event": {
         "description": "One normalised item (calendar event, assignment, email, weather). Immutable.",
         "properties": {
+          "dismissed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dismissed At"
+          },
           "due": {
             "anyOf": [
               {
@@ -571,6 +583,18 @@
             "additionalProperties": true,
             "title": "Raw",
             "type": "object"
+          },
+          "snoozed_until": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Snoozed Until"
           },
           "source": {
             "title": "Source",
@@ -696,6 +720,13 @@
             "format": "date",
             "title": "Day",
             "type": "string"
+          },
+          "dismissed": {
+            "items": {
+              "$ref": "#/components/schemas/LedgerEntry"
+            },
+            "title": "Dismissed",
+            "type": "array"
           },
           "done_by_source": {
             "items": {
@@ -865,7 +896,8 @@
             "enum": [
               "done_by_you",
               "done_by_source",
-              "gone"
+              "gone",
+              "dismissed"
             ],
             "title": "Group",
             "type": "string"
@@ -900,6 +932,17 @@
             ],
             "title": "Note"
           },
+          "outcome": {
+            "description": "How the item left the lists: \"done\", \"dismissed\" or \"gone\". Not stored.",
+            "enum": [
+              "done",
+              "dismissed",
+              "gone"
+            ],
+            "readOnly": true,
+            "title": "Outcome",
+            "type": "string"
+          },
           "reopened": {
             "default": false,
             "title": "Reopened",
@@ -921,7 +964,8 @@
           "title",
           "at",
           "group",
-          "completed_by"
+          "completed_by",
+          "outcome"
         ],
         "title": "LedgerEntry",
         "type": "object"
@@ -1104,6 +1148,26 @@
           "set"
         ],
         "title": "SecretStatus",
+        "type": "object"
+      },
+      "SnoozeRequest": {
+        "additionalProperties": false,
+        "description": "How long to hide an item: a preset, worked out on the server in the local day.",
+        "properties": {
+          "preset": {
+            "enum": [
+              "later_today",
+              "tomorrow_morning",
+              "next_week"
+            ],
+            "title": "Preset",
+            "type": "string"
+          }
+        },
+        "required": [
+          "preset"
+        ],
+        "title": "SnoozeRequest",
         "type": "object"
       },
       "SourceSettings": {
@@ -2883,6 +2947,64 @@
         ]
       }
     },
+    "/v1/items/{item_id}/dismiss": {
+      "post": {
+        "description": "Dismiss: the item leaves every list and shows in History. Repeating it changes nothing.",
+        "operationId": "dismiss_v1_items__item_id__dismiss_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "title": "Item Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Event"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "DeviceToken": []
+          }
+        ],
+        "summary": "Dismiss an item",
+        "tags": [
+          "items"
+        ]
+      }
+    },
     "/v1/items/{item_id}/done": {
       "delete": {
         "description": "Undo your own check-off; an item the source marks done stays done.",
@@ -3116,6 +3238,132 @@
           }
         ],
         "summary": "Set an item's note",
+        "tags": [
+          "items"
+        ]
+      }
+    },
+    "/v1/items/{item_id}/restore": {
+      "post": {
+        "description": "Undo done, dismissed or snoozed; an item the source marks done stays done. Idempotent.",
+        "operationId": "restore_v1_items__item_id__restore_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "title": "Item Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Event"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "DeviceToken": []
+          }
+        ],
+        "summary": "Restore an item",
+        "tags": [
+          "items"
+        ]
+      }
+    },
+    "/v1/items/{item_id}/snooze": {
+      "post": {
+        "description": "Hide the item until `later_today`, `tomorrow_morning` or `next_week` (local day).\n\nThe reply carries `snoozed_until`. Snoozing again replaces the time; the item comes back by\nitself and is not in History.",
+        "operationId": "snooze_v1_items__item_id__snooze_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "title": "Item Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SnoozeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Event"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "DeviceToken": []
+          }
+        ],
+        "summary": "Snooze an item",
         "tags": [
           "items"
         ]

@@ -178,6 +178,21 @@ class ItemLedger(Protocol):
         """Undo the user's check-off only (a source-done stays done); False when unknown."""
         ...
 
+    def dismiss(self, item_id: str, at: datetime, *, user_id: str = "local") -> bool:
+        """Dismiss the item, keeping the first time; ends a snooze and the user's check-off.
+
+        False for an unknown item (decision 0398).
+        """
+        ...
+
+    def snooze(self, item_id: str, until: datetime, *, user_id: str = "local") -> bool:
+        """Hide the item until `until` (replacing a snooze); ends a dismissal. False if unknown."""
+        ...
+
+    def restore(self, item_id: str, *, user_id: str = "local") -> bool:
+        """Undo a dismissal, a snooze and the user's check-off; False when the item is unknown."""
+        ...
+
     def set_note(self, item_id: str, text: str, at: datetime, *, user_id: str = "local") -> bool:
         """Store text as the item's note; False for an unknown item."""
         ...
@@ -187,7 +202,7 @@ class ItemLedger(Protocol):
         ...
 
     def history(self, window: TimeWindow, *, user_id: str = "local") -> list[LedgerEntry]:
-        """Return entries whose done_at or gone_at is in [start, end), ordered by (at, item_id)."""
+        """Return entries done, gone or dismissed in [start, end), ordered by (at, item_id)."""
         ...
 
     def save_local(self, event: Event) -> None:

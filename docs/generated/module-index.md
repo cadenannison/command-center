@@ -79,6 +79,7 @@ One line per module: its first docstring sentence. Use it to find the file you n
 - `resilience.py`: Retry backoff and a circuit breaker, both pure: time and randomness are passed in.
 - `schema.py`: Shared building blocks: the Event every source normalises into, plus small result types.
 - `scoring.py`: Deterministic urgency scoring (0-100) and its reason.
+- `snooze.py`: Snooze presets, worked out in the user's local day (decision 0399).
 - `summary.py`: Opt-in daily summary: the result model, the redacted prompt and a provider-free fallback.
 - `sync_state.py`: The last sync result of one source: what the settings view shows and workers record.
 - `urgency.py`: Explainable urgency: a 1-10 priority and reasons whose points add up to it (0332, 0370).

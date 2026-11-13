@@ -224,6 +224,9 @@ Each line is a path and the decisions that name it. Look a number up with `grep 
 - tests/test_dashboards_core.py: 0355
 - tests/test_dashboards_remote.py: 0357
 - tests/test_desktop_launch_agent_environment.py: 0060
+- tests/test_dismiss_snooze.py: 0398 0400
+- tests/test_dismiss_snooze_api.py: 0398
+- tests/test_dismiss_snooze_followups.py: 0401
 - tests/test_display_zoom_shortcuts.py: 0389
 - tests/test_distributed_connect.py: 0074 0086
 - tests/test_end_to_end.py: 0053 0054 0113
@@ -284,6 +287,7 @@ Each line is a path and the decisions that name it. Look a number up with `grep 
 - tests/test_settings_usability_service.py: 0100
 - tests/test_settings_values_remote.py: 0106
 - tests/test_smoke_distributed_script.py: 0093
+- tests/test_snooze_presets.py: 0399
 - tests/test_sqlite_device_store.py: 0057
 - tests/test_sqlite_error_details.py: 0027
 - tests/test_stop_gate_hook.py: 0253

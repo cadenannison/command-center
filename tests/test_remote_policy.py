@@ -60,6 +60,9 @@ POLICY: dict[tuple[str, str], str] = {
     ("DELETE", "/v1/items/{item_id}"): DENIED,
     ("POST", "/v1/items/{item_id}/done"): DENIED,
     ("DELETE", "/v1/items/{item_id}/done"): DENIED,
+    ("POST", "/v1/items/{item_id}/dismiss"): DENIED,
+    ("POST", "/v1/items/{item_id}/snooze"): DENIED,
+    ("POST", "/v1/items/{item_id}/restore"): DENIED,
     ("PUT", "/v1/items/{item_id}/notes"): DENIED,
     ("DELETE", "/v1/items/{item_id}/notes"): DENIED,
     ("GET", "/v1/dashboards"): READ,  # layouts and display settings: read-only to a phone (0357)

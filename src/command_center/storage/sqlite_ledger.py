@@ -32,6 +32,7 @@ from command_center.storage.sqlite_ledger_tables import CompletionRow, LedgerBas
 if TYPE_CHECKING:
     from sqlalchemy.engine import CursorResult
 
+_ADDED_COLUMNS = ("reopened_at", "dismissed_at", "snoozed_until")
 _WEATHER = "weather"  # a forecast replaced every day is not an item that "disappeared"
 
 
@@ -56,19 +57,21 @@ class Seen:
 
 
 def ensure_ledger_schema(engine: Engine) -> None:
-    """Create the ledger tables, or bring tables from before 0130 and 0131 up to date.
+    """Create the ledger tables, or bring tables from before 0130, 0131 and 0398 up to date.
 
-    `reopened_at` is added to an `item_ledger` made before decision 0130 (existing rows get NULL,
-    which reads as "not reopened"). `item_completions` is created, and filled once from the old
-    `done_at` and `done_by` columns, in the same transaction (decision 0131).
+    `reopened_at` (decision 0130), `dismissed_at` and `snoozed_until` (0398) are added to an
+    `item_ledger` made before them; existing rows get NULL, which reads as "not so". Each ALTER is
+    its own transaction. `item_completions` is created, and filled once from the old `done_at` and
+    `done_by` columns, in the same transaction (decision 0131).
     """
     LedgerBase.metadata.create_all(engine, tables=[LedgerBase.metadata.tables["item_ledger"]])
-    _add_reopened_at(engine)
+    for column in _ADDED_COLUMNS:
+        _add_column(engine, column)
     ensure_completions_table(engine)
 
 
-def _add_reopened_at(engine: Engine) -> None:
-    if _has_reopened_at(engine):
+def _add_column(engine: Engine, name: str) -> None:
+    if _has_column(engine, name):
         return
     try:
         with engine.begin() as connection:
@@ -76,20 +79,18 @@ def _add_reopened_at(engine: Engine) -> None:
                 # pysqlite does not open a transaction before DDL (see ensure_state_schema).
                 connection.exec_driver_sql("BEGIN")
             # The type comes from the mapped column so a migrated table matches a fresh one
-            # (TIMESTAMP WITH TIME ZONE on Postgres).
-            column_type = LedgerRow.__table__.c.reopened_at.type.compile(dialect=connection.dialect)
-            connection.execute(
-                text(f"ALTER TABLE item_ledger ADD COLUMN reopened_at {column_type}")
-            )
+            # (TIMESTAMP WITH TIME ZONE on Postgres). `name` is one of _ADDED_COLUMNS, never input.
+            column_type = LedgerRow.__table__.c[name].type.compile(dialect=connection.dialect)
+            connection.execute(text(f"ALTER TABLE item_ledger ADD COLUMN {name} {column_type}"))
     except DBAPIError:
         # If the column is there, another process added it between our check and our ALTER.
-        if not _has_reopened_at(engine):
+        if not _has_column(engine, name):
             raise
 
 
-def _has_reopened_at(engine: Engine) -> bool:
+def _has_column(engine: Engine, name: str) -> bool:
     columns = inspect(engine).get_columns("item_ledger")
-    return any(column["name"] == "reopened_at" for column in columns)
+    return any(column["name"] == name for column in columns)
 
 
 def row_from(
@@ -142,6 +143,8 @@ def is_empty(session: Session, row: LedgerRow) -> bool:
     return (
         row.note is None
         and row.gone_at is None
+        and row.dismissed_at is None
+        and row.snoozed_until is None
         and not has_completion(session, row.user_id, row.item_id)
     )
 
@@ -192,8 +195,8 @@ def _mark_gone(session: Session, user_id: str, source: str, seen: Seen, at: date
         if seen.status == DONE_STATUS:
             return  # done before the ledger saw it: leaving the source is not a removal
         row = insert_or_get(session, row_from(user_id, seen.id, seen, source=source))
-    if has_completion(session, user_id, seen.id):
-        return  # also a check-off that committed the row first
+    if has_completion(session, user_id, seen.id) or row.dismissed_at is not None:
+        return  # also a check-off that committed the row first; a dismissal is not a vanishing
     row.title = seen.title
     row.gone_at = at
 

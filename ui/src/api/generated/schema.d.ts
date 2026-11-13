@@ -384,6 +384,26 @@ export interface paths {
         patch: operations["update_item_v1_items__item_id__patch"];
         trace?: never;
     };
+    "/v1/items/{item_id}/dismiss": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Dismiss an item
+         * @description Dismiss: the item leaves every list and shows in History. Repeating it changes nothing.
+         */
+        post: operations["dismiss_v1_items__item_id__dismiss_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/items/{item_id}/done": {
         parameters: {
             query?: never;
@@ -427,6 +447,49 @@ export interface paths {
          * @description Delete the note; an item with none is returned unchanged.
          */
         delete: operations["delete_note_v1_items__item_id__notes_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/items/{item_id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Restore an item
+         * @description Undo done, dismissed or snoozed; an item the source marks done stays done. Idempotent.
+         */
+        post: operations["restore_v1_items__item_id__restore_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/items/{item_id}/snooze": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Snooze an item
+         * @description Hide the item until `later_today`, `tomorrow_morning` or `next_week` (local day).
+         *
+         *     The reply carries `snoozed_until`. Snoozing again replaces the time; the item comes back by
+         *     itself and is not in History.
+         */
+        post: operations["snooze_v1_items__item_id__snooze_post"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -898,6 +961,8 @@ export interface components {
          * @description One normalised item (calendar event, assignment, email, weather). Immutable.
          */
         Event: {
+            /** Dismissed At */
+            dismissed_at?: string | null;
             /** Due */
             due?: string | null;
             /** End */
@@ -930,6 +995,8 @@ export interface components {
             raw?: {
                 [key: string]: unknown;
             };
+            /** Snoozed Until */
+            snoozed_until?: string | null;
             /** Source */
             source: string;
             /** Start */
@@ -977,6 +1044,8 @@ export interface components {
              * Format: date
              */
             day: string;
+            /** Dismissed */
+            dismissed?: components["schemas"]["LedgerEntry"][];
             /** Done By Source */
             done_by_source?: components["schemas"]["LedgerEntry"][];
             /** Done By You */
@@ -1039,7 +1108,7 @@ export interface components {
              * Group
              * @enum {string}
              */
-            group: "done_by_you" | "done_by_source" | "gone";
+            group: "done_by_you" | "done_by_source" | "gone" | "dismissed";
             /** Item Id */
             item_id: string;
             /** Kind */
@@ -1048,6 +1117,12 @@ export interface components {
             link?: string | null;
             /** Note */
             note?: string | null;
+            /**
+             * Outcome
+             * @description How the item left the lists: "done", "dismissed" or "gone". Not stored.
+             * @enum {string}
+             */
+            readonly outcome: "done" | "dismissed" | "gone";
             /**
              * Reopened
              * @default false
@@ -1129,6 +1204,17 @@ export interface components {
             last4?: string | null;
             /** Set */
             set: boolean;
+        };
+        /**
+         * SnoozeRequest
+         * @description How long to hide an item: a preset, worked out on the server in the local day.
+         */
+        SnoozeRequest: {
+            /**
+             * Preset
+             * @enum {string}
+             */
+            preset: "later_today" | "tomorrow_morning" | "next_week";
         };
         /**
          * SourceSettings
@@ -2269,6 +2355,46 @@ export interface operations {
             };
         };
     };
+    dismiss_v1_items__item_id__dismiss_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Event"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationErrorBody"];
+                };
+            };
+        };
+    };
     check_off_v1_items__item_id__done_post: {
         parameters: {
             query?: never;
@@ -2403,6 +2529,90 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Event"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationErrorBody"];
+                };
+            };
+        };
+    };
+    restore_v1_items__item_id__restore_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Event"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationErrorBody"];
+                };
+            };
+        };
+    };
+    snooze_v1_items__item_id__snooze_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SnoozeRequest"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {

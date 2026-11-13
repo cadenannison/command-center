@@ -31,6 +31,9 @@ class Event(BaseModel):
     fetched_at: AwareDatetime
     # True when the user attached a note; set by the agenda service, never stored on the event row.
     has_note: bool = False
+    # Set by the agenda service from the ledger (decision 0398); a snooze shows only while it holds.
+    dismissed_at: AwareDatetime | None = None
+    snoozed_until: AwareDatetime | None = None
 
     @computed_field  # type: ignore[prop-decorator]
     @property

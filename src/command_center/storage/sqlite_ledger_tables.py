@@ -44,6 +44,8 @@ class LedgerRow(LedgerBase):
     done_by: Mapped[str | None] = mapped_column(String, nullable=True)  # read-only since 0131
     gone_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
     reopened_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    dismissed_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)  # 0398
+    snoozed_until: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)  # 0398
 
 
 class CompletionRow(LedgerBase):

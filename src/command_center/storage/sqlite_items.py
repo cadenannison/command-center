@@ -41,6 +41,7 @@ from command_center.storage.sqlite_completions import (
     current_completions,
     delete_item_completions,
     has_completion,
+    latest_source_completion,
     remove_user_completions,
 )
 from command_center.storage.sqlite_ledger import delete_source_ledger, is_empty, row_from
@@ -109,7 +110,7 @@ class SqliteItemLedger:
                     LedgerRow.user_id == user_id, LedgerRow.item_id.in_(chunk)
                 )
                 for row in session.scalars(statement):
-                    if row.note is not None or row.item_id in done:
+                    if _marked(row) or row.item_id in done:
                         found[row.item_id] = _mark(row, done.get(row.item_id))
         return found
 
@@ -120,6 +121,8 @@ class SqliteItemLedger:
             if row is None:
                 return False
             _lock_row(session, row)  # a disconnect that deleted the row must not leave an entry
+            row.dismissed_at = None  # the latest action wins (decision 0398)
+            row.snoozed_until = None
             if not has_completion(session, user_id, item_id, USER):
                 add_completion(session, user_id, item_id, at, USER)
             return True
@@ -130,6 +133,43 @@ class SqliteItemLedger:
             row = session.get(LedgerRow, (user_id, item_id))
             if row is None:
                 return read_event(session, item_id, user_id) is not None
+            remove_user_completions(session, user_id, item_id)
+            _drop_if_empty(session, row)
+            return True
+
+    @_tolerating_concurrent_writes
+    def dismiss(self, item_id: str, at: datetime, *, user_id: str = "local") -> bool:
+        with self._sessions.begin() as session:
+            row = _known_row(session, item_id, user_id)
+            if row is None:
+                return False
+            _lock_row(session, row)
+            if row.dismissed_at is None:  # repeating it keeps the first time
+                row.dismissed_at = at
+            row.snoozed_until = None
+            remove_user_completions(session, user_id, item_id)
+            return True
+
+    @_tolerating_concurrent_writes
+    def snooze(self, item_id: str, until: datetime, *, user_id: str = "local") -> bool:
+        with self._sessions.begin() as session:
+            row = _known_row(session, item_id, user_id)
+            if row is None:
+                return False
+            _lock_row(session, row)
+            row.snoozed_until = until
+            row.dismissed_at = None
+            return True
+
+    @_tolerating_concurrent_writes
+    def restore(self, item_id: str, *, user_id: str = "local") -> bool:
+        with self._sessions.begin() as session:
+            event = read_event(session, item_id, user_id, lock=True)  # as the writes do (0398)
+            row = _fresh_row(session, item_id, user_id)
+            if row is None:
+                return event is not None
+            row.dismissed_at = None
+            row.snoozed_until = None
             remove_user_completions(session, user_id, item_id)
             _drop_if_empty(session, row)
             return True
@@ -176,9 +216,16 @@ class SqliteItemLedger:
         gone = select(LedgerRow).where(
             LedgerRow.user_id == user_id, LedgerRow.gone_at >= start, LedgerRow.gone_at < end
         )
+        dismissed = select(LedgerRow).where(
+            LedgerRow.user_id == user_id,
+            LedgerRow.dismissed_at >= start,
+            LedgerRow.dismissed_at < end,
+        )
         entries: list[LedgerEntry] = []
         with self._sessions() as session:
             for completion, row in session.execute(completed):
+                if _superseded_by_dismissal(row, completion.completed_at):
+                    continue
                 by_you = completion.completed_by == USER
                 reopened = (
                     not by_you
@@ -189,6 +236,11 @@ class SqliteItemLedger:
                 entries.append(_entry(row, completion.completed_at, group, reopened=reopened))
             entries.extend(
                 _entry(row, row.gone_at, "gone") for row in session.scalars(gone) if row.gone_at
+            )
+            entries.extend(
+                _entry(row, row.dismissed_at, "dismissed")
+                for row in session.scalars(dismissed)
+                if row.dismissed_at and not _completed_after(session, row)
             )
         return sorted(entries, key=lambda e: (e.at, e.item_id, e.group))
 
@@ -222,9 +274,14 @@ class SqliteItemLedger:
 
 
 def _known_row(session: Session, item_id: str, user_id: str) -> LedgerRow | None:
-    """The item's row, made from its stored event when it has none; None for an unknown item."""
-    row = session.get(LedgerRow, (user_id, item_id))
+    """The item's row, made from its stored event when it has none; None for an unknown item.
+
+    The event is locked first and the row read after it, always fresh (`populate_existing`): a
+    write that waited on the lock must decide on what the one before it committed, or "the latest
+    action wins" (decision 0398) would act on a stale copy.
+    """
     event = read_event(session, item_id, user_id, lock=True)
+    row = _fresh_row(session, item_id, user_id)
     if event is None:
         return row
     if row is None:
@@ -238,6 +295,10 @@ def _known_row(session: Session, item_id: str, user_id: str) -> LedgerRow | None
     else:
         row.title = event.title
     return row
+
+
+def _fresh_row(session: Session, item_id: str, user_id: str) -> LedgerRow | None:
+    return session.get(LedgerRow, (user_id, item_id), populate_existing=True)
 
 
 def _lock_row(session: Session, row: LedgerRow) -> None:
@@ -257,6 +318,21 @@ def _drop_if_empty(session: Session, row: LedgerRow) -> None:
         session.delete(row)
 
 
+def _superseded_by_dismissal(row: LedgerRow, completed_at: datetime) -> bool:
+    """A completion the user then dismissed is shown once, as the dismissal (decision 0398)."""
+    return row.dismissed_at is not None and completed_at <= row.dismissed_at
+
+
+def _completed_after(session: Session, row: LedgerRow) -> bool:
+    """True when the source completed the item after it was dismissed: that is the latest action."""
+    latest = latest_source_completion(session, row.user_id, row.item_id)
+    return latest is not None and row.dismissed_at is not None and latest > row.dismissed_at
+
+
+def _marked(row: LedgerRow) -> bool:
+    return row.note is not None or row.dismissed_at is not None or row.snoozed_until is not None
+
+
 def _mark(row: LedgerRow, completion: tuple[str, datetime] | None) -> ItemMark:
     by, at = completion if completion is not None else (None, None)
     return ItemMark(
@@ -265,6 +341,8 @@ def _mark(row: LedgerRow, completion: tuple[str, datetime] | None) -> ItemMark:
         note=row.note,
         done_by="user" if by == USER else ("source" if by else None),
         done_at=at,
+        dismissed_at=row.dismissed_at,
+        snoozed_until=row.snoozed_until,
     )
 
 

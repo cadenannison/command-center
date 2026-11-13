@@ -20,7 +20,8 @@ MAX_LABEL = 80
 MAX_NOTE = 4000
 
 DoneBy = Literal["user", "source"]
-HistoryGroup = Literal["done_by_you", "done_by_source", "gone"]
+HistoryGroup = Literal["done_by_you", "done_by_source", "gone", "dismissed"]
+Outcome = Literal["done", "dismissed", "gone"]
 
 # Fixed texts: a validation error must say what failed without echoing the submitted value.
 _INPUT = ConfigDict(frozen=True, extra="forbid", hide_input_in_errors=True)
@@ -124,6 +125,8 @@ class ItemMark(BaseModel):
     note: str | None
     done_by: DoneBy | None
     done_at: AwareDatetime | None
+    dismissed_at: AwareDatetime | None = None
+    snoozed_until: AwareDatetime | None = None
 
 
 class LedgerEntry(BaseModel):
@@ -152,6 +155,14 @@ class LedgerEntry(BaseModel):
             return "source"
         return None
 
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def outcome(self) -> Outcome:
+        """How the item left the lists: "done", "dismissed" or "gone". Not stored."""
+        if self.group == "dismissed":
+            return "dismissed"
+        return "gone" if self.group == "gone" else "done"
+
 
 class HistoryDay(BaseModel):
     """One day of history, split by how an item left the agenda."""
@@ -162,6 +173,7 @@ class HistoryDay(BaseModel):
     done_by_you: list[LedgerEntry] = Field(default_factory=list[LedgerEntry])
     done_by_source: list[LedgerEntry] = Field(default_factory=list[LedgerEntry])
     gone: list[LedgerEntry] = Field(default_factory=list[LedgerEntry])
+    dismissed: list[LedgerEntry] = Field(default_factory=list[LedgerEntry])
 
 
 def _require_aware(now: datetime) -> None:
@@ -217,6 +229,7 @@ def group_history(day: date, entries: Sequence[LedgerEntry]) -> HistoryDay:
         done_by_you=[entry for entry in ordered if entry.group == "done_by_you"],
         done_by_source=[entry for entry in ordered if entry.group == "done_by_source"],
         gone=[entry for entry in ordered if entry.group == "gone"],
+        dismissed=[entry for entry in ordered if entry.group == "dismissed"],
     )
 
 
@@ -228,10 +241,11 @@ def group_history_range(entries: Sequence[LedgerEntry], tz: tzinfo) -> list[Hist
     return [group_history(day, by_day[day]) for day in sorted(by_day)]
 
 
-def overlay_marks(event: Event, mark: ItemMark | None) -> Event:
-    """Show the ledger on event: has_note when it has a note, status done for a user check-off.
+def overlay_marks(event: Event, mark: ItemMark | None, now: datetime | None = None) -> Event:
+    """Show the ledger on event: has_note, status done for a user check-off, dismissal, snooze.
 
     A source completion never forces the status; the event's own status is the source's word.
+    A snooze is shown only when `now` is given and the snooze has not run out.
     """
     if mark is None:
         return event
@@ -240,4 +254,18 @@ def overlay_marks(event: Event, mark: ItemMark | None) -> Event:
         changes["has_note"] = True
     if mark.done_by == "user" and event.status != DONE_STATUS:
         changes["status"] = DONE_STATUS
+    if mark.dismissed_at is not None:
+        changes["dismissed_at"] = mark.dismissed_at
+    if now is not None and is_snoozed(mark.snoozed_until, now):
+        changes["snoozed_until"] = mark.snoozed_until
     return event.model_copy(update=changes) if changes else event
+
+
+def is_snoozed(until: datetime | None, now: datetime) -> bool:
+    """True while the snooze holds: it ends at `until`, which is the first instant it is back."""
+    return until is not None and until.astimezone(UTC) > now.astimezone(UTC)
+
+
+def is_hidden(event: Event, now: datetime) -> bool:
+    """True for an item the lists leave out: dismissed, or snoozed and not yet back."""
+    return event.dismissed_at is not None or is_snoozed(event.snoozed_until, now)

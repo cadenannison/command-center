@@ -10,11 +10,13 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, HTTPException, Query, Response
 from fastapi.exceptions import RequestValidationError
+from pydantic import BaseModel, ConfigDict
 
 from command_center.api.deps import ContainerDep
 from command_center.api.errors import INVALID_REQUEST, NOT_FOUND, ErrorBody
 from command_center.core.ledger import HistoryDay, NoteInput, TaskInput, TaskPatch
 from command_center.core.schema import Event
+from command_center.core.snooze import SnoozePreset
 from command_center.services.container import Container
 from command_center.services.items import ItemNotFoundError, ItemService, NotLocalItemError
 
@@ -116,6 +118,45 @@ async def undo_check_off(container: ContainerDep, item_id: str) -> Event:
     """Undo your own check-off; an item the source marks done stays done."""
     try:
         return await _service(container).undo(item_id)
+    except ItemNotFoundError:
+        raise HTTPException(status_code=404, detail=NO_SUCH_ITEM) from None
+
+
+class SnoozeRequest(BaseModel):
+    """How long to hide an item: a preset, worked out on the server in the local day."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    preset: SnoozePreset
+
+
+@router.post("/items/{item_id}/dismiss", summary="Dismiss an item", responses=_BAD_ITEM)
+async def dismiss(container: ContainerDep, item_id: str) -> Event:
+    """Dismiss: the item leaves every list and shows in History. Repeating it changes nothing."""
+    try:
+        return await _service(container).dismiss(item_id)
+    except ItemNotFoundError:
+        raise HTTPException(status_code=404, detail=NO_SUCH_ITEM) from None
+
+
+@router.post("/items/{item_id}/snooze", summary="Snooze an item", responses=_BAD_ITEM)
+async def snooze(container: ContainerDep, item_id: str, body: SnoozeRequest) -> Event:
+    """Hide the item until `later_today`, `tomorrow_morning` or `next_week` (local day).
+
+    The reply carries `snoozed_until`. Snoozing again replaces the time; the item comes back by
+    itself and is not in History.
+    """
+    try:
+        return await _service(container).snooze(item_id, body.preset)
+    except ItemNotFoundError:
+        raise HTTPException(status_code=404, detail=NO_SUCH_ITEM) from None
+
+
+@router.post("/items/{item_id}/restore", summary="Restore an item", responses=_BAD_ITEM)
+async def restore(container: ContainerDep, item_id: str) -> Event:
+    """Undo done, dismissed or snoozed; an item the source marks done stays done. Idempotent."""
+    try:
+        return await _service(container).restore(item_id)
     except ItemNotFoundError:
         raise HTTPException(status_code=404, detail=NO_SUCH_ITEM) from None
 

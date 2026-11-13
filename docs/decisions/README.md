@@ -76,3 +76,7 @@ Reserved gaps between those blocks: 0059, 0061-0069, 0096-0099, 0107-0109, 0117-
 The table is read from the files, so it shows where numbers were used, not how wide each card's
 allocation was: a block may have been given more numbers than it used. If you need a number and
 your card gave you none, ask the project manager.
+| 0398 | 0398 (task A1a: dismiss, snooze and restore semantics, storage columns, latest action wins) |
+| 0399 | 0399 (task A1a: snooze presets are computed on the server in the user's local day) |
+| 0400 | 0400 (task A1a: hidden items leave every list, History gains a dismissed bucket and an outcome field) |
+| 0401 | 0401 (task A1a: the undated cap counts only visible tasks; ledger writes read the row after the lock) |

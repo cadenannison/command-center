@@ -3,7 +3,7 @@
 import asyncio
 from datetime import UTC, date, datetime, tzinfo
 
-from command_center.core.ledger import overlay_marks
+from command_center.core.ledger import is_hidden, overlay_marks
 from command_center.core.needs_me import NeedsMeItem, needs_me
 from command_center.core.ports import Clock, EventStore, ItemLedger
 from command_center.core.schema import Event, EventKind
@@ -15,6 +15,7 @@ from command_center.services.horizon import horizon_window
 ATTENTION_URGENCY = 70
 _ATTENTION_EMAIL_STATUSES = frozenset({"owed", "overdue"})
 UNDATED_TASK_CAP = 200
+_UNDATED_WIDENINGS = 4
 _UNDATED_KINDS: tuple[EventKind, ...] = ("task", "assignment")
 
 
@@ -53,7 +54,7 @@ class AgendaService:
         stored = await asyncio.to_thread(self._ledger.find, item_id)
         if stored is None:
             return None
-        (marked,) = await self._marked([stored])
+        (marked,) = await self._marked([stored])  # not filtered: the actions answer with it
         return marked.model_copy(update={"urgency": urgency(marked, self._now())})
 
     async def between(self, window: TimeWindow) -> list[Event]:
@@ -94,28 +95,47 @@ class AgendaService:
 
     async def _task_rows(self, now: datetime) -> list[Event]:
         stored = await asyncio.to_thread(self._events.query, horizon_window(now))
-        undated = await asyncio.to_thread(
-            self._events.undated_open, _UNDATED_KINDS, UNDATED_TASK_CAP
-        )
+        undated = await self._undated_visible(now)
         # Marks apply after the cap, so a task the user checked off is dropped here (0372).
-        open_undated = [e for e in await self._marked(undated) if e.status != "done"]
-        return [*await self._marked(stored), *open_undated]
+        open_undated = [e for e in undated if e.status != "done"]
+        rows = [*await self._marked(stored), *open_undated]
+        return [event for event in rows if not is_hidden(event, now)]
+
+    async def _undated_visible(self, now: datetime) -> list[Event]:
+        """Marked undated tasks, newest first, the cap counted after dismissed and snoozed ones.
+
+        Dismissals are permanent, so they must not use up the cap and push open tasks out of the
+        lists (decision 0401). The store applies the cap, so ask for as many more as were hidden,
+        a few times at most; a store that returns fewer rows than asked has nothing left.
+        """
+        limit = UNDATED_TASK_CAP
+        shown: list[Event] = []
+        for _ in range(_UNDATED_WIDENINGS + 1):
+            rows = await self._marked(
+                await asyncio.to_thread(self._events.undated_open, _UNDATED_KINDS, limit)
+            )
+            shown = [e for e in rows if not is_hidden(e, now)]
+            if len(rows) < limit or len(rows) == len(shown):
+                break
+            limit += len(rows) - len(shown)
+        return shown[:UNDATED_TASK_CAP]
 
     def _now(self) -> datetime:
         return self._clock.now().astimezone(self._tz)
 
     async def _scored(self, window: TimeWindow) -> list[Event]:
         stored = await asyncio.to_thread(self._events.query, window)
-        marked = await self._marked(stored)
         now = self._now()
-        scored = [event.model_copy(update={"urgency": urgency(event, now)}) for event in marked]
+        shown = [e for e in await self._marked(stored) if not is_hidden(e, now)]
+        scored = [event.model_copy(update={"urgency": urgency(event, now)}) for event in shown]
         return sorted(scored, key=lambda e: (_anchor(e), e.id))
 
     async def _marked(self, events: list[Event]) -> list[Event]:
         if self._ledger is None or not events:
             return events
         marks = await asyncio.to_thread(self._ledger.marks, [event.id for event in events])
-        return [overlay_marks(event, marks.get(event.id)) for event in events]
+        now = self._now()
+        return [overlay_marks(event, marks.get(event.id), now) for event in events]
 
 
 def _needs_attention(event: Event) -> bool:
