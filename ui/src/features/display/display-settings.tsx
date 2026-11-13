@@ -81,13 +81,15 @@ export function DisplaySettingsProvider({ children }: { children: ReactNode }) {
     if (stored) saver.adopt(stored);
   }, [stored, saver]);
 
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    saver.attach();
+    return () => {
+      // The owner is going: the last change is still written, but nothing may reach setState afterwards.
+      saver.detach();
       saver.dispose();
       void saver.flush();
-    },
-    [saver],
-  );
+    };
+  }, [saver]);
 
   useEffect(() => {
     setDisplayRef.current = setDisplay;

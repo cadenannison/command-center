@@ -41,6 +41,7 @@ export class DisplaySaver {
   private timer: ReturnType<typeof setTimeout> | null = null;
   private inFlight: Promise<void> | null = null;
   private stopped = false;
+  private detached = false;
 
   constructor(private readonly options: DisplaySaverOptions) {}
 
@@ -52,13 +53,13 @@ export class DisplaySaver {
   adopt(stored: StoredDocument): void {
     if (this.base && stored.revision < this.base.revision) return;
     this.base = stored;
-    this.options.onDocument(this.merged(stored.document));
+    this.emitDocument(this.merged(stored.document));
   }
 
   change(patch: Partial<DisplayDocument>): void {
     this.pending = { ...this.pending, ...patch };
     this.stopped = false;
-    this.options.onStatus({ kind: "pending" });
+    this.emitStatus({ kind: "pending" });
     this.clearTimer();
     this.timer = setTimeout(() => void this.flush(), this.options.delayMs ?? DISPLAY_SAVE_DELAY_MS);
   }
@@ -78,6 +79,27 @@ export class DisplaySaver {
     this.clearTimer();
   }
 
+  /**
+   * The owner is gone: stop calling onStatus and onDocument (they end in React setState). Nothing is cancelled,
+   * so a pending or in-flight write still completes; call flush() after to send a waiting change now.
+   */
+  detach(): void {
+    this.detached = true;
+  }
+
+  /** Undo detach (an effect that cleans up and sets up again on the same saver, as StrictMode does). */
+  attach(): void {
+    this.detached = false;
+  }
+
+  private emitStatus(status: DisplaySaveStatus): void {
+    if (!this.detached) this.options.onStatus(status);
+  }
+
+  private emitDocument(document: DisplayDocument): void {
+    if (!this.detached) this.options.onDocument(document);
+  }
+
   private merged(base: DisplayDocument): DisplayDocument {
     return toDocument({ ...base, ...this.pending });
   }
@@ -88,7 +110,7 @@ export class DisplaySaver {
   }
 
   private async execute(): Promise<void> {
-    this.options.onStatus({ kind: "saving" });
+    this.emitStatus({ kind: "saving" });
     let merged = false;
     try {
       this.base ??= await this.options.read();
@@ -102,21 +124,21 @@ export class DisplaySaver {
           if (!(error instanceof ApiError && error.status === 409) || merged) throw error;
           merged = true;
           this.base = await this.options.read();
-          this.options.onDocument(this.merged(this.base.document));
+          this.emitDocument(this.merged(this.base.document));
           continue;
         }
         break;
       }
     } catch {
       this.stopped = true;
-      this.options.onStatus({ kind: "error" });
+      this.emitStatus({ kind: "error" });
       return;
     }
-    this.options.onDocument(this.merged(this.base.document));
+    this.emitDocument(this.merged(this.base.document));
     if (Object.keys(this.pending).length > 0) {
       await this.execute();
       return;
     }
-    this.options.onStatus({ kind: merged ? "merged" : "saved" });
+    this.emitStatus({ kind: merged ? "merged" : "saved" });
   }
 }
