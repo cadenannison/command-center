@@ -44,11 +44,13 @@ export function forecastDays(events: readonly ApiEvent[], now: number): Forecast
     const temps = readTemps(event);
     if (temps === null) continue;
     const key = dayKey(dayStart);
-    const fetched = Date.parse(event.fetched_at);
+    const parsed = Date.parse(event.fetched_at);
+    // An unreadable fetched_at counts as the oldest possible, so it never replaces a good entry.
+    const fetched = Number.isNaN(parsed) ? 0 : parsed;
     const label = dayStart === today ? "Today" : dayStart === tomorrow ? "Tomorrow" : (WEEKDAYS[new Date(dayStart).getDay()] ?? "");
     const existing = byKey.get(key);
     if (existing && existing.fetchedAtMs >= fetched) continue;
-    byKey.set(key, { key, startMs: dayStart, label, ...temps, fetchedAtMs: Number.isNaN(fetched) ? 0 : fetched });
+    byKey.set(key, { key, startMs: dayStart, label, ...temps, fetchedAtMs: fetched });
   }
   return [...byKey.values()].sort((a, b) => a.startMs - b.startMs);
 }
@@ -81,4 +83,11 @@ export function outlookDays(days: readonly ForecastDay[], widthTier: Tier, heigh
   if (widthTier === 1) return [];
   if (widthTier === 2) return heightTier >= 2 ? after.slice(0, 1) : [];
   return after.slice(0, heightTier === 1 ? 2 : heightTier === 2 ? 4 : after.length);
+}
+
+/** One line under the big number: "High 58° · Low 39°", and at width tier 2 and up " · 20% rain" when the forecast has a chance. */
+export function summaryLine(day: ForecastDay, widthTier: Tier): string {
+  const parts = [`High ${degrees(day.high)}`, `Low ${degrees(day.low)}`];
+  if (widthTier >= 2 && day.rain !== null) parts.push(`${String(day.rain)}% rain`);
+  return parts.join(" · ");
 }

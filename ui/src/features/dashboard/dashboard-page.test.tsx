@@ -161,8 +161,9 @@ describe("DashboardPage saving", () => {
       ],
     });
     let gets = 0;
-    stubApi((call) => {
+    const calls = stubApi((call) => {
       if (call.method === "PUT") return json({ detail: "stale" }, 409);
+      if (call.path === "/v1/events") return json([]);
       gets += 1;
       return json([gets === 1 ? dashboardOf("main", "Main") : latest]);
     });
@@ -173,6 +174,13 @@ describe("DashboardPage saving", () => {
     expect(await screen.findByTestId("widget-events-9")).toBeInTheDocument();
     expect(screen.queryByTestId("widget-events-2")).not.toBeInTheDocument();
     expect(gets).toBe(2);
+    // The exact requests: the dashboards list twice (load, then the 409 refetch) and one events read for the Events widget.
+    expect(
+      calls
+        .filter((c) => c.method === "GET")
+        .map((c) => c.path)
+        .sort(),
+    ).toEqual(["/v1/dashboards", "/v1/dashboards", "/v1/events"]);
     expect(screen.getByText(/Showing the latest version/).closest("[role=status]")).toHaveFocus();
   });
 

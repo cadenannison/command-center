@@ -2,8 +2,6 @@ import { describe, expect, it } from "vitest";
 import type { ApiEvent } from "./use-events";
 import { degrees, forecastDays, isOutdated, newestFetch, outlookDays, readTemps, STALE_AFTER_MS, weatherWindow } from "./weather-model";
 
-process.env["TZ"] = "America/Denver";
-
 const at = (y: number, m: number, d: number, h = 0, min = 0) => new Date(y, m - 1, d, h, min).getTime();
 
 const wx = (day: number, extra: Partial<ApiEvent> = {}, raw: Record<string, unknown> | null = { high_f: 54.4, low_f: 38.2, rain_percent: 20 }): ApiEvent => ({

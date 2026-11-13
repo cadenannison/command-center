@@ -20,13 +20,13 @@ R3 (the /dashboard grid in `ui/src/features/dashboard/`, decisions 0360-0363) is
 tabs, grid, widget shell with its states, edit mode (pointer and keyboard, 12 columns only), debounced
 If-Match saving. Not run by the agent: `ui/e2e/dashboard.spec.ts` and anything in a real browser (CSSOM
 styles under the CSP, touch drag, a screen reader). Tasks (0373), Week (0377) and Weather (0376) widgets are
-built; other kinds are still placeholders. A failed dashboards refetch keeps the grid and edits (0375).
+built; other kinds are still placeholders. Events (0378) is on the grid too. A failed dashboards refetch keeps the grid and edits (0375).
 Weather shows high, low and outlook only: current conditions and hours need a backend card (0376).
-Not run by the agent: `ui/e2e/dashboard-widgets.spec.ts` (new, needs a browser).
+Not run by the agent: `ui/e2e/dashboard-widgets.spec.ts` and `dashboard-events.spec.ts` (need a browser).
 
 ## Gate state
 `mise run test:count` prints 5004; `.test-floor` is 4894 (the human raises it). The Python gates pass. `ui:test:count` prints
-381 (`ui:check` passes with the build; `ui/.test-floor` is 304, the human raises it). Not yet shown by test: that `minimumReleaseAge`
+572 (`ui:check` passes with the build; `ui/.test-floor` is 510, the human raises it). Not yet shown by test: that `minimumReleaseAge`
 rejects a too-new version, that `strictDepBuilds` fails an unreviewed build script (0315 Hedge), and the
 Playwright test.
 

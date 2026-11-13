@@ -192,7 +192,7 @@ export function DashboardView({ dashboard, flushRef, onConflict, onSaved }: Dash
           />
           <span className="tnum w-10">{`${String(zoom)}%`}</span>
         </label>
-        <span className="text-caption text-muted" data-testid="save-status">
+        <span role="status" className="text-caption text-muted" data-testid="save-status">
           {savedText}
         </span>
       </div>

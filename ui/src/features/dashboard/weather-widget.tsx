@@ -1,10 +1,10 @@
-import { useEffect, useState } from "react";
 import type { Tier } from "../../layout";
 import { formatClock } from "./tasks-model";
 import { useEvents } from "./use-events";
+import { useNow } from "./use-now";
 import { WidgetShell, type WidgetShellProps, type WidgetState } from "./widget-shell";
 import { deriveQueryState } from "./widget-state";
-import { degrees, forecastDays, isOutdated, newestFetch, outlookDays, weatherWindow, type ForecastDay } from "./weather-model";
+import { degrees, summaryLine, forecastDays, isOutdated, newestFetch, outlookDays, weatherWindow, type ForecastDay } from "./weather-model";
 
 /** Fixed text: the server's error text is never shown. */
 const ERROR_HINT = "Could not load the forecast. Try again.";
@@ -23,14 +23,10 @@ export function WeatherView({ days, widthTier, heightTier }: WeatherViewProps) {
   const outlook = outlookDays(days, widthTier, heightTier);
   return (
     <div className="flex flex-col gap-2 pb-1">
-      <p className="tnum font-display text-[2.4rem] font-medium leading-none" data-testid="weather-high">
+      <p aria-hidden="true" className="tnum font-display text-[2.4rem] font-medium leading-none" data-testid="weather-high">
         {degrees(today.high)}
-        <span className="sr-only"> high today</span>
       </p>
-      <p className="tnum text-muted">
-        {`High today. Low ${degrees(today.low)}`}
-        {widthTier >= 2 && today.rain !== null ? `. ${String(today.rain)}% chance of rain.` : ""}
-      </p>
+      <p className="tnum text-muted">{summaryLine(today, widthTier)}</p>
       {outlook.length > 0 && (
         <ul className="flex flex-col" aria-label="Outlook">
           {outlook.map((day) => (
@@ -49,19 +45,6 @@ export function WeatherView({ days, widthTier, heightTier }: WeatherViewProps) {
       )}
     </div>
   );
-}
-
-function useNow(): number {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setNow(Date.now());
-    }, 60_000);
-    return () => {
-      clearInterval(timer);
-    };
-  }, []);
-  return now;
 }
 
 export interface WeatherWidgetProps extends Omit<WidgetShellProps, "state" | "children" | "footerRight"> {

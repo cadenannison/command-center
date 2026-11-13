@@ -1,8 +1,15 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Layout } from "../../layout";
 import { DashboardGrid } from "./dashboard-grid";
-import { fireResize, installGridEnv, MINIMAL } from "./test-support";
+import { fireResize, installGridEnv, json, MINIMAL } from "./test-support";
+
+// The Events widget reads GET /v1/events, so the grid needs a query client and a stubbed fetch (empty calendar).
+const withQuery = (client: QueryClient, ui: ReactNode) => <QueryClientProvider client={client}>{ui}</QueryClientProvider>;
+const newClient = () => new QueryClient({ defaultOptions: { queries: { retry: false } } });
+const stubEvents = () => vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(json([]))));
 
 const COL = (1200 - 14 * 11) / 12 + 14; // pixel pitch of one column at 100 percent
 const ROW = 54;
@@ -15,14 +22,18 @@ afterEach(() => {
 function setup(props: { edit?: boolean; layout?: Layout } = {}) {
   const onChange = vi.fn();
   const onAnnounce = vi.fn();
+  stubEvents();
   render(
-    <DashboardGrid
-      layout={props.layout ?? MINIMAL}
-      zoom={100}
-      edit={props.edit ?? true}
-      onChange={onChange}
-      onAnnounce={onAnnounce}
-    />,
+    withQuery(
+      newClient(),
+      <DashboardGrid
+        layout={props.layout ?? MINIMAL}
+        zoom={100}
+        edit={props.edit ?? true}
+        onChange={onChange}
+        onAnnounce={onAnnounce}
+      />,
+    ),
   );
   return { onChange, onAnnounce };
 }
@@ -43,9 +54,12 @@ describe("DashboardGrid at 12 columns", () => {
     expect(screen.getByTestId("dashboard-grid")).toHaveAttribute("data-cols", "12");
   });
 
-  it("shows the tier in each placeholder body", () => {
+  it("shows the tier in each placeholder body, and the Events widget renders its own content", async () => {
     setup({ edit: false });
-    expect(within(screen.getByTestId("widget-events-2")).getAllByText(/^W\d · H\d · 5×10$/).length).toBeGreaterThan(0);
+    expect(within(screen.getByTestId(/^widget-needs/)).getAllByText(/^W\d · H\d · 7×10$/).length).toBeGreaterThan(0);
+    const events = screen.getByTestId("widget-events-2");
+    expect(await within(events).findByText("Nothing on your calendar.")).toBeInTheDocument();
+    expect(within(events).queryByText(/^W\d · H\d · 5×10$/)).not.toBeInTheDocument();
   });
 
   it("has no move or resize controls when not editing", () => {
@@ -296,13 +310,15 @@ describe("DashboardGrid when the window narrows mid-edit", () => {
     installGridEnv(1200, 1400);
     const onAnnounce = vi.fn();
     const props = { layout: MINIMAL, zoom: 100, edit: true, onChange: vi.fn(), onAnnounce };
-    const { rerender } = render(<DashboardGrid {...props} />);
+    stubEvents();
+    const client = newClient();
+    const { rerender } = render(withQuery(client, <DashboardGrid {...props} />));
     fireEvent.keyDown(screen.getByRole("button", { name: /^Move Events, W\d/ }), { key: "Enter" });
     installGridEnv(900, 1000);
     act(() => {
       fireResize();
     });
-    rerender(<DashboardGrid {...props} layout={{ ...MINIMAL }} />);
+    rerender(withQuery(client, <DashboardGrid {...props} layout={{ ...MINIMAL }} />));
     expect(onAnnounce).toHaveBeenLastCalledWith(expect.stringMatching(/too narrow to edit/));
   });
 });

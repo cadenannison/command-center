@@ -60,13 +60,13 @@ describe("WeatherWidget tiers", () => {
   it("W1 shows today's high and low and no outlook", async () => {
     mount(() => json(forecast()), { w: 1, h: 3 });
     expect(await screen.findByTestId("weather-high")).toHaveTextContent("58°");
-    expect(screen.getByText("High today. Low 39°")).toBeInTheDocument();
+    expect(screen.getByText("High 58° · Low 39°")).toBeInTheDocument();
     expect(screen.queryByTestId("weather-day")).not.toBeInTheDocument();
   });
 
   it("W2 adds the rain chance and tomorrow", async () => {
     mount(() => json(forecast()), { w: 2, h: 2 });
-    expect(await screen.findByText("High today. Low 39°. 20% chance of rain.")).toBeInTheDocument();
+    expect(await screen.findByText("High 58° · Low 39° · 20% rain")).toBeInTheDocument();
     const rows = screen.getAllByTestId("weather-day");
     expect(rows).toHaveLength(1);
     expect(rows[0]).toHaveTextContent("Tomorrow");

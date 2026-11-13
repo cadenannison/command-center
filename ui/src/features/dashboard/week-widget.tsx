@@ -1,10 +1,10 @@
-import { useEffect, useState } from "react";
 import { SourceDot } from "../../components/ui/source-dot";
 import type { SourceId } from "../../lib/sources";
 import type { Tier } from "../../layout";
 import { cn } from "../../lib/utils";
 import { formatClock, formatDue } from "./tasks-model";
 import { useEvents } from "./use-events";
+import { useNow } from "./use-now";
 import { WidgetShell, type WidgetShellProps, type WidgetState } from "./widget-shell";
 import { deriveQueryState } from "./widget-state";
 import {
@@ -102,19 +102,6 @@ export function WeekStrip({ week, now, widthTier, heightTier }: WeekStripProps) 
       )}
     </div>
   );
-}
-
-function useNow(): number {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setNow(Date.now());
-    }, 60_000);
-    return () => {
-      clearInterval(timer);
-    };
-  }, []);
-  return now;
 }
 
 export interface WeekWidgetProps extends Omit<WidgetShellProps, "state" | "children" | "footerRight"> {

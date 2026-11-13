@@ -16,8 +16,7 @@ import {
   type WeekItem,
 } from "./week-model";
 
-// Day boundaries and DST need a zone with DST. Set before any Date is built; the first test proves it took effect.
-process.env["TZ"] = "America/Denver";
+// Day boundaries and DST need a zone with DST: vitest.config.ts sets America/Denver; the first test proves it took effect.
 
 const at = (y: number, m: number, d: number, h = 0, min = 0) => new Date(y, m - 1, d, h, min).getTime();
 const HOUR = 3_600_000;
