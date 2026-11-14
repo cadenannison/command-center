@@ -278,6 +278,8 @@ Each line is a path and the decisions that name it. Look a number up with `grep 
 - tests/test_redact_urls_and_tokens.py: 0089
 - tests/test_remote_policy.py: 0060 0126 0182 0203 0211 0213 0357 0386
 - tests/test_report_stream_contract.py: 0071
+- tests/test_restore_today_only.py: 0404
+- tests/test_restore_today_only_api.py: 0404
 - tests/test_scheduler.py: 0053
 - tests/test_schema_guard.py: 0232 0247
 - tests/test_secret_storage_wording.py: 0192

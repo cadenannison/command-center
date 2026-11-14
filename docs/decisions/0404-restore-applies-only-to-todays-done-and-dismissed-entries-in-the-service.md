@@ -1,0 +1,11 @@
+# 0404. Restore applies only to today's done and dismissed entries, enforced in the service
+
+Status: accepted
+
+Context: 0334 calls "Restore only for today's items" a service rule, but A1a's restore accepted any day and 0403 left the limit to the History UI, so a direct `POST /v1/items/{id}/restore` was not limited. Card A1c enforces it.
+Decision: `ItemService.restore` reads the item's ledger mark. When the user's check-off (`done_by` user, `done_at`) or the dismissal (`dismissed_at`) is on an earlier local day than now, it raises `RestoreTooOldError` and changes nothing. "Same local day" is `instant.astimezone(tz).date()` equal for the action and the injected clock's now, in the configured timezone, the same day logic as the snooze presets and History grouping; so a 23 or 25 hour day is one day. The API maps it to 409 `{"detail": "Only items done or dismissed today can be restored"}`, the code the routes already use for a rule violation (`NOT_LOCAL`), with the existing `ErrorBody`. Clearing a snooze is allowed at any time, as is restoring an item with no check-off or dismissal; a source-done item behaves as in A1a (restore leaves it done). Idempotency is unchanged. Accepted edge case: an Undo clicked after local midnight for an action taken just before midnight is rejected; the toast lasts seconds.
+Alternative: 422 (rejected: the request is well formed; 422 means a bad parameter in this API, 409 is how a state rule surfaces). 403 (rejected: it means a phone or cross-site refusal here). A rolling 24 hours (rejected: 0334 says today, and History groups by local day). Hiding the rule in the ledger/storage (rejected: it needs the clock and timezone, which services own).
+Reason: the rule is a product rule, so it belongs in the service where the clock and timezone are, not in a button.
+Consequences: openapi.json gains a 409 response on restore (additive, 0302; a client that did not expect it already handles 409). Supersedes the last bullet of 0403 (the UI-only enforcement); the UI hides the button as before.
+Where: `services/items.py` (`RestoreTooOldError`, `ItemService.restore`), `api/items.py`. Tests: `tests/test_restore_today_only.py`, `tests/test_restore_today_only_api.py`.
+Revisit when: restore should reach older days (0334), or the UI's Undo toast needs to cross midnight.

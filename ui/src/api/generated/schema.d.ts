@@ -464,6 +464,8 @@ export interface paths {
         /**
          * Restore an item
          * @description Undo done, dismissed or snoozed; an item the source marks done stays done. Idempotent.
+         *
+         *     A check-off or dismissal from an earlier local day is 409; clearing a snooze always works.
          */
         post: operations["restore_v1_items__item_id__restore_post"];
         delete?: never;
@@ -2581,6 +2583,15 @@ export interface operations {
             };
             /** @description Not Found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Conflict */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

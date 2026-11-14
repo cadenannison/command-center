@@ -18,13 +18,19 @@ from command_center.core.ledger import HistoryDay, NoteInput, TaskInput, TaskPat
 from command_center.core.schema import Event
 from command_center.core.snooze import SnoozePreset
 from command_center.services.container import Container
-from command_center.services.items import ItemNotFoundError, ItemService, NotLocalItemError
+from command_center.services.items import (
+    ItemNotFoundError,
+    ItemService,
+    NotLocalItemError,
+    RestoreTooOldError,
+)
 
 router = APIRouter(prefix="/v1", tags=["items"])
 
 ITEMS_OFF = "Items are not enabled"
 NOT_LOCAL = "Only local tasks can be changed or deleted"
 NO_SUCH_ITEM = "No such item"
+RESTORE_TOO_OLD = "Only items done or dismissed today can be restored"
 MAX_HISTORY_DAYS = 366
 
 _CONFLICT: dict[int | str, dict[str, Any]] = {409: {"model": ErrorBody}}
@@ -152,13 +158,22 @@ async def snooze(container: ContainerDep, item_id: str, body: SnoozeRequest) -> 
         raise HTTPException(status_code=404, detail=NO_SUCH_ITEM) from None
 
 
-@router.post("/items/{item_id}/restore", summary="Restore an item", responses=_BAD_ITEM)
+@router.post(
+    "/items/{item_id}/restore",
+    summary="Restore an item",
+    responses={**_BAD_ITEM, **_CONFLICT},
+)
 async def restore(container: ContainerDep, item_id: str) -> Event:
-    """Undo done, dismissed or snoozed; an item the source marks done stays done. Idempotent."""
+    """Undo done, dismissed or snoozed; an item the source marks done stays done. Idempotent.
+
+    A check-off or dismissal from an earlier local day is 409; clearing a snooze always works.
+    """
     try:
         return await _service(container).restore(item_id)
     except ItemNotFoundError:
         raise HTTPException(status_code=404, detail=NO_SUCH_ITEM) from None
+    except RestoreTooOldError:
+        raise HTTPException(status_code=409, detail=RESTORE_TOO_OLD) from None
 
 
 @router.put("/items/{item_id}/notes", summary="Set an item's note", responses=_BAD_ITEM)

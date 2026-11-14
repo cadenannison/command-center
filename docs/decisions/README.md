@@ -82,3 +82,4 @@ your card gave you none, ask the project manager.
 | 0401 | 0401 (task A1a: the undated cap counts only visible tasks; ledger writes read the row after the lock) |
 | 0402 | 0402 (task A1b: row actions and one Undo toast on the Tasks and Needs me widgets) |
 | 0403 | 0403 (task A1b: the History page shows 30 days and offers Restore on today's own entries) |
+| 0404 | 0404 (task A1c: Restore applies only to today's done and dismissed entries, enforced in the service) |

@@ -3245,7 +3245,7 @@
     },
     "/v1/items/{item_id}/restore": {
       "post": {
-        "description": "Undo done, dismissed or snoozed; an item the source marks done stays done. Idempotent.",
+        "description": "Undo done, dismissed or snoozed; an item the source marks done stays done. Idempotent.\n\nA check-off or dismissal from an earlier local day is 409; clearing a snooze always works.",
         "operationId": "restore_v1_items__item_id__restore_post",
         "parameters": [
           {
@@ -3278,6 +3278,16 @@
               }
             },
             "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
           },
           "422": {
             "content": {

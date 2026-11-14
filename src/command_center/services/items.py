@@ -6,7 +6,7 @@ through `asyncio.to_thread`, like every service.
 """
 
 import asyncio
-from datetime import date
+from datetime import date, datetime
 
 from command_center.core.ledger import (
     HistoryDay,
@@ -39,6 +39,14 @@ class NotLocalItemError(Exception):
 
     def __init__(self, item_id: str) -> None:
         super().__init__(f"Item {item_id} comes from a source; only local tasks can be changed")
+        self.item_id = item_id
+
+
+class RestoreTooOldError(Exception):
+    """A done or dismissed entry from an earlier local day cannot be restored (decision 0334)."""
+
+    def __init__(self, item_id: str) -> None:
+        super().__init__(f"Item {item_id} was done or dismissed on an earlier day")
         self.item_id = item_id
 
 
@@ -86,8 +94,17 @@ class ItemService:
         return await self.get(item_id)
 
     async def restore(self, item_id: str) -> Event:
-        """Undo a dismissal, a snooze and the user's check-off; a source-done item stays done."""
+        """Undo a dismissal, a snooze and the user's check-off; a source-done item stays done.
+
+        A check-off or dismissal is restorable only on the local day it happened (RestoreTooOldError
+        otherwise, decision 0404); clearing a snooze is allowed at any time.
+        """
         await self.get(item_id)
+        mark = (await asyncio.to_thread(self._ledger.marks, [item_id])).get(item_id)
+        if mark is not None:
+            acted = mark.dismissed_at or (mark.done_at if mark.done_by == "user" else None)
+            if acted is not None and not self._is_today(acted):
+                raise RestoreTooOldError(item_id)
         await asyncio.to_thread(self._ledger.restore, item_id)
         return await self.get(item_id)
 
@@ -144,6 +161,10 @@ class ItemService:
         window = TimeWindow(start=day_window(first, tz).start, end=day_window(last, tz).end)
         entries = await asyncio.to_thread(self._ledger.history, window)
         return group_history_range(entries, tz)
+
+    def _is_today(self, instant: datetime) -> bool:
+        tz = self._agenda.tz
+        return instant.astimezone(tz).date() == self._clock.now().astimezone(tz).date()
 
     async def _local(self, item_id: str) -> Event:
         stored = await asyncio.to_thread(self._ledger.find, item_id)
