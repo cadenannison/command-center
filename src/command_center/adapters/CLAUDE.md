@@ -16,5 +16,7 @@ section for the adapter you edit). Rules that load here: `.claude/rules/style.md
   - `trust_env=False` (no proxy from the environment): `chat_http.post_json`, `summary_ollama.py`,
     `weather_geocode.py` (its own client) and the Gemini SDK clients (decisions 0225, 0246).
 - Nothing secret is logged or put in a URL (AGENTS.md rule 5). Test credentials start with `fake-`.
+  Request URLs can be secrets (iCal feeds): `configure_json_logging` holds `httpx` and `httpcore` at
+  WARNING; never lower these loggers (decision 0405).
 - Tests mock HTTP with respx at the httpx boundary. Never hit a real service.
 - A new adapter file needs a line in `docs/MAP.md` and the contract.

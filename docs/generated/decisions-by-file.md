@@ -244,6 +244,7 @@ Each line is a path and the decisions that name it. Look a number up with `grep 
 - tests/test_gmail_adapter.py: 0044
 - tests/test_gmail_auth.py: 0044
 - tests/test_hermetic_keyring.py: 0055
+- tests/test_httpx_log_quiet.py: 0405
 - tests/test_ical_diagnose.py: 0140 0141
 - tests/test_ical_events.py: 0030 0031
 - tests/test_ical_feed.py: 0030 0031

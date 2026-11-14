@@ -64,6 +64,9 @@ def _json_safe(value: object) -> object:
     return trim(str(value), MAX_REASON_LENGTH)
 
 
+_QUIET_LOGGERS = ("httpx", "httpcore")
+
+
 def configure_json_logging(
     level: int = logging.INFO, stream: TextIO | None = None
 ) -> logging.Handler:
@@ -80,4 +83,7 @@ def configure_json_logging(
     setattr(handler, _HANDLER_MARK, True)
     root.addHandler(handler)
     root.setLevel(level)
+    # httpx logs every request URL at INFO and a feed URL is a secret (decision 0405).
+    for name in _QUIET_LOGGERS:
+        logging.getLogger(name).setLevel(logging.WARNING)
     return handler
