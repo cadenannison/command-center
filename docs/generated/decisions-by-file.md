@@ -302,6 +302,7 @@ Each line is a path and the decisions that name it. Look a number up with `grep 
 - tests/test_summary_provider_hardening.py: 0245 0246
 - tests/test_summary_store_delete.py: 0115
 - tests/test_sync_enqueuer.py: 0070
+- tests/test_sync_failure_modes.py: 0406
 - tests/test_sync_log_redaction.py: 0056
 - tests/test_sync_message_redaction.py: 0052
 - tests/test_sync_service_state_store.py: 0074

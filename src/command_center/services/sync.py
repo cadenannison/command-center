@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 MAX_RETRIES = 3
 BACKOFF_BASE_SECONDS = 1.0
 UNEXPECTED_MESSAGE = "Sync failed unexpectedly"
+INTERRUPTED_MESSAGE = "Sync was interrupted"
 STORE_UNAVAILABLE_MESSAGE = "secret store unavailable"  # fixed text: the cause may name a source
 
 type Sleep = Callable[[float], Awaitable[None]]
@@ -151,6 +152,18 @@ class SyncService:
                         extra={"source": source},
                     )
                 raise
+            except asyncio.CancelledError:
+                # Shutdown or a scheduler stop must not leave the source "syncing" (decision 0406).
+                # The cancellation is re-raised unchanged, whatever the reset itself does.
+                try:
+                    self._remember(source, "error", INTERRUPTED_MESSAGE)
+                except Exception:
+                    logger.exception(
+                        "could not reset %s after a cancelled sync",
+                        source,
+                        extra={"source": source},
+                    )
+                raise
             await self._discard_if_forgotten(source, forgotten)
             return state
 
@@ -163,8 +176,24 @@ class SyncService:
             await self._purge_ledger(source)
 
     async def sync_all(self) -> list[SyncState]:
-        """Sync every source concurrently; one source's failure does not affect the others."""
-        return list(await asyncio.gather(*(self.sync(source) for source in self._adapters)))
+        """Sync every source concurrently; one source's failure does not affect the others.
+
+        A source whose sync raises unexpectedly gets an error state (already remembered by
+        `sync`), the rest keep their own; a cancellation propagates (decision 0406).
+        """
+        return list(await asyncio.gather(*(self._sync_isolated(s) for s in self._adapters)))
+
+    async def _sync_isolated(self, source: str) -> SyncState:
+        try:
+            return await self.sync(source)
+        except Exception as exc:  # noqa: BLE001 - isolation is the point
+            logger.error(  # noqa: TRY400 - class only: the text may carry a secret
+                "sync of %s raised %s",
+                source,
+                type(exc).__name__,
+                extra={"source": source},
+            )
+            return self._states.get(source) or self.error_state(source, UNEXPECTED_MESSAGE)
 
     async def _sync_locked(self, source: str, adapter: SourceAdapter) -> SyncState:
         try:
