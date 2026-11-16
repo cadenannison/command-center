@@ -3,7 +3,7 @@
 import asyncio
 import logging
 from collections.abc import Awaitable, Callable, Mapping
-from datetime import UTC
+from zoneinfo import ZoneInfo
 
 from command_center.core.errors import AuthExpired, FatalError, SecretStoreError, TransientError
 from command_center.core.ports import (
@@ -28,6 +28,8 @@ UNEXPECTED_MESSAGE = "Sync failed unexpectedly"
 INTERRUPTED_MESSAGE = "Sync was interrupted"
 STORE_UNAVAILABLE_MESSAGE = "secret store unavailable"  # fixed text: the cause may name a source
 
+_UTC_ZONE = ZoneInfo("UTC")
+
 type Sleep = Callable[[float], Awaitable[None]]
 
 
@@ -37,6 +39,10 @@ class SyncService:
     With a `states` store every state is also written to it, so it survives a restart and is the
     one place a reader looks in either mode (decision 0074). The in-memory copy stays the first
     answer and the fallback when the store is down: a store failure never fails a sync.
+
+    The window is built from local now in `zone`, so it is the window the views use (decision
+    0408). The default UTC is for tests and tools only; production roots must pass the configured
+    zone.
     """
 
     def __init__(  # noqa: PLR0913
@@ -49,7 +55,9 @@ class SyncService:
         sleep: Sleep = asyncio.sleep,
         states: SyncStateStore | None = None,
         ledger: ItemLedger | None = None,
+        zone: ZoneInfo = _UTC_ZONE,
     ) -> None:
+        self._zone = zone
         self._ledger = ledger
         self._adapters = adapters
         self._store = states
@@ -205,7 +213,7 @@ class SyncService:
             return self._remember(source, "error", STORE_UNAVAILABLE_MESSAGE)
         if not creds:
             return self._remember(source, "reconnect", "Not connected: no credentials stored")
-        window = horizon_window(self._clock.now().astimezone(UTC))
+        window = horizon_window(self._clock.now().astimezone(self._zone))
         try:
             fetched = await self._fetch_with_retry(source, adapter, creds, window)
         except AuthExpired:

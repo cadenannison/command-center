@@ -3,7 +3,6 @@
 import asyncio
 import sys
 from collections.abc import Awaitable, Callable, Sequence
-from datetime import UTC
 from typing import TYPE_CHECKING, TextIO
 from zoneinfo import ZoneInfo
 
@@ -152,6 +151,8 @@ def build_queued_sync(  # noqa: PLR0913, PLR0917
     states: SyncStateStore,
     clock: Clock,
     ledger: ItemLedger | None = None,
+    *,
+    tz: ZoneInfo,
 ) -> tuple[QueuedSyncService, Callable[[], Awaitable[None]]]:
     """The distributed api's sync: one Redis queue per source, and a function that closes them.
 
@@ -172,7 +173,7 @@ def build_queued_sync(  # noqa: PLR0913, PLR0917
         for source in sources
     }
     enqueuer = SyncEnqueuer(
-        sources, secrets, queues, clock, UuidIdSource(), generations=generations
+        sources, secrets, queues, clock, UuidIdSource(), generations=generations, zone=tz
     )
 
     async def close() -> None:
@@ -206,10 +207,10 @@ def build_container(settings: Settings | None = None) -> Container:
     close: Callable[[], Awaitable[None]] | None = None
     if settings.mode == "distributed":
         sync, close = build_queued_sync(
-            settings, list(adapters), secrets, events, states, clock, ledger
+            settings, list(adapters), secrets, events, states, clock, ledger, tz=tz
         )
     else:
-        sync = SyncService(adapters, secrets, events, clock, states=states, ledger=ledger)
+        sync = SyncService(adapters, secrets, events, clock, states=states, ledger=ledger, zone=tz)
     agenda = AgendaService(events, clock, tz, ledger)
     summary_store = create_summary_store(settings.database_url)
 
@@ -299,7 +300,8 @@ def diagnose_learningsuite(settings: Settings, out: TextIO, clock: Clock | None 
     """Print counts and categories for the stored LearningSuite feeds; exit code 0 or 1.
 
     The URLs come from the normal secret store and go nowhere but the feed requests. The window is
-    the sync's own (UTC midnights, as in SyncService), so "inside the window" matches a sync.
+    the sync's own (local midnights in the configured zone, as in SyncService), so "inside the
+    window" matches a sync.
     """
     try:
         creds = build_secret_store(settings.secret_backend, settings.data_dir).get(LEARNINGSUITE)
@@ -307,7 +309,7 @@ def diagnose_learningsuite(settings: Settings, out: TextIO, clock: Clock | None 
         out.write("secret store unavailable\n")
         return 1
     urls = feed_urls(creds)
-    window = horizon_window((clock or SystemClock()).now().astimezone(UTC))
+    window = horizon_window((clock or SystemClock()).now().astimezone(ZoneInfo(settings.tz)))
     reports = asyncio.run(diagnose_feeds(urls, ZoneInfo(settings.tz), window))
     out.write(render(reports, window) + "\n")
     return 0

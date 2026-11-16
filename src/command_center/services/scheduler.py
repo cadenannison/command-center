@@ -9,7 +9,7 @@ import contextlib
 import logging
 from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass
-from datetime import UTC
+from zoneinfo import ZoneInfo
 
 from command_center.core.jobs import Job
 from command_center.core.ports import Clock, GenerationStore, IdSource, JobQueue, SecretStore
@@ -19,6 +19,8 @@ from command_center.services.sync_control import SyncControl
 logger = logging.getLogger(__name__)
 
 type Sleep = Callable[[float], Awaitable[None]]
+
+_UTC_ZONE = ZoneInfo("UTC")
 
 
 SYNC_JOB_KIND = "sync"
@@ -39,7 +41,9 @@ class SyncEnqueuer:
     horizon window and ids, never a credential: the worker reads those itself. One queue per
     source is what lets one worker consume one source (decision 0070). With `generations` each
     job carries the source's generation as it is when the job is published, so work queued before
-    a disconnect is told apart from work queued after it (decision 0074).
+    a disconnect is told apart from work queued after it (decision 0074). The window is built from
+    local now in `zone` (decision 0408); the default UTC is for tests and tools only, production
+    roots must pass the configured zone.
     """
 
     def __init__(  # noqa: PLR0913
@@ -51,7 +55,9 @@ class SyncEnqueuer:
         ids: IdSource,
         *,
         generations: GenerationStore | None = None,
+        zone: ZoneInfo = _UTC_ZONE,
     ) -> None:
+        self._zone = zone
         self._sources = tuple(sources)
         self._generations = generations
         self._secrets = secrets
@@ -116,7 +122,7 @@ class SyncEnqueuer:
         return await asyncio.to_thread(self._generations.current, source)
 
     def _job(self, source: str, generation: int = 0) -> Job:
-        window = horizon_window(self._clock.now().astimezone(UTC))
+        window = horizon_window(self._clock.now().astimezone(self._zone))
         return Job(
             id=self._ids.new_id(),
             kind=SYNC_JOB_KIND,

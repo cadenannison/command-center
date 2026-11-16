@@ -95,7 +95,7 @@ Each line is a path and the decisions that name it. Look a number up with `grep 
 - src/command_center/api/settings.py: 0020 0023 0025
 - src/command_center/api/summary_routes.py: 0037
 - src/command_center/api/tasks.py: 0371
-- src/command_center/app.py: 0021 0053 0057 0058 0072 0073 0074 0105 0112 0115 0140 0161 0170 0181 0358 0407
+- src/command_center/app.py: 0021 0053 0057 0058 0072 0073 0074 0105 0112 0115 0140 0161 0170 0181 0358 0407 0408
 - src/command_center/config.py: 0036 0057 0070 0072 0073 0161 0407
 - src/command_center/core/CLAUDE.md: 0250
 - src/command_center/core/chat.py: 0164 0258 0270 0290 0291
@@ -309,6 +309,7 @@ Each line is a path and the decisions that name it. Look a number up with `grep 
 - tests/test_sync_message_redaction.py: 0052
 - tests/test_sync_service_state_store.py: 0074
 - tests/test_sync_state_store.py: 0071
+- tests/test_sync_window_local.py: 0408
 - tests/test_sync_worker.py: 0070
 - tests/test_task_form.py: 0153
 - tests/test_tests_for.py: 0252

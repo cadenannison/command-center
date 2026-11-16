@@ -144,6 +144,7 @@ async def _run_scheduler(settings: Settings) -> None:
         clock,
         UuidIdSource(),
         generations=generations,
+        zone=ZoneInfo(settings.tz),
     )
     scheduler = SyncScheduler(None, settings.sync_interval_minutes, enqueue=enqueuer)
     try:

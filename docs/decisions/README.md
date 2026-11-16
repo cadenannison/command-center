@@ -86,3 +86,4 @@ your card gave you none, ask the project manager.
 | 0405 | 0405 (audit card 01: request lines from the HTTP client libraries are not logged at INFO) |
 | 0406 | 0406 (audit card 02: a cancelled sync leaves an error state, and sync_all isolates unexpected errors) |
 | 0407 | 0407 (audit card 07: under CC_BIND_ALL a loopback Host is the local user only from a trusted socket peer) |
+| 0408 | 0408 (audit card 03: sync and views share one local-day window; zone is a keyword argument defaulting to UTC) |
