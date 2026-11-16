@@ -10,6 +10,7 @@ from urllib.parse import urlsplit
 import httpx
 from icalendar import Calendar
 
+from command_center.adapters.http_cap import ReplyTooLarge, read_capped
 from command_center.adapters.ical_events import events_in_window, parse_calendar
 from command_center.adapters.net_guard import ensure_public_host
 from command_center.core.errors import AuthExpired, FatalError, TransientError
@@ -104,7 +105,7 @@ class IcalFeedAdapter:
         await check_feed_url(number, url)
         key = hashlib.sha256(url.encode()).hexdigest()
         cached = self._cache.get(key)
-        headers = {"Accept": "text/calendar, */*;q=0.1"}
+        headers = {"Accept": "text/calendar, */*;q=0.1", "Accept-Encoding": "identity"}
         if cached is not None:
             headers["If-None-Match"] = cached[0]
         failure: str | None = None
@@ -202,14 +203,8 @@ def _raise_for_status(number: int, status: int, *, has_cache: bool) -> None:
 
 
 async def read_feed_capped(number: int, response: httpx.Response) -> bytes:
-    declared = response.headers.get("content-length", "")
-    if declared.isdigit() and int(declared) > MAX_FEED_BYTES:
+    try:
+        return await read_capped(response, limit=MAX_FEED_BYTES)
+    except ReplyTooLarge:
         msg = f"Feed {number}: larger than {MAX_FEED_BYTES // (1024 * 1024)} MB"
-        raise FatalError(msg)
-    body = bytearray()
-    async for chunk in response.aiter_bytes():
-        body.extend(chunk)
-        if len(body) > MAX_FEED_BYTES:
-            msg = f"Feed {number}: larger than {MAX_FEED_BYTES // (1024 * 1024)} MB"
-            raise FatalError(msg)
-    return bytes(body)
+        raise FatalError(msg) from None

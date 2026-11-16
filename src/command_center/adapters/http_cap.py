@@ -20,13 +20,14 @@ async def read_capped(response: httpx.Response, limit: int = MAX_REPLY_BYTES) ->
     The count is of decoded bytes, so a compressed reply is stopped at the cap too, give or take
     one network read: a read is decoded whole before it is counted, so a hostile gzip can overshoot
     by that read's expansion (about 1000 to 1, from 64 KiB), not by the reply's (decision 0222).
+    The length is checked before a chunk is added, so the buffer never holds more than `limit`.
     """
     declared = response.headers.get("content-length", "")
     if declared.isdigit() and int(declared) > limit:
         raise ReplyTooLarge
     body = bytearray()
     async for chunk in response.aiter_bytes():
-        body.extend(chunk)
-        if len(body) > limit:
+        if len(body) + len(chunk) > limit:
             raise ReplyTooLarge
+        body.extend(chunk)
     return bytes(body)

@@ -10,6 +10,7 @@ from urllib.parse import urlsplit
 
 import httpx
 
+from command_center.adapters.http_cap import ReplyTooLarge, read_capped
 from command_center.adapters.net_guard import ensure_public_host
 from command_center.core.errors import AuthExpired, FatalError, TransientError
 from command_center.core.urlcheck import require_https_public
@@ -20,6 +21,7 @@ type Sleep = Callable[[float], Awaitable[None]]
 type Params = Mapping[str, str | list[str]]
 
 PER_PAGE = 100
+MAX_PAGE_BYTES = 2 * 1024 * 1024
 REQUEST_TIMEOUT = httpx.Timeout(15.0)
 MAX_RATE_LIMIT_RETRIES = 3
 BACKOFF_BASE_SECONDS = 2.0
@@ -27,6 +29,7 @@ MAX_BACKOFF_SECONDS = 30.0
 LOW_QUOTA_REMAINING = 50.0
 LOW_QUOTA_PAUSE_SECONDS = 2.0
 MAX_PAGES = 200
+RATE_LIMIT_MARKER = b"rate limit exceeded"
 _HTTPS_PORT = 443
 
 
@@ -81,7 +84,7 @@ class CanvasClient:
         attempt = 0
         while True:
             response = await self._send(url, params)
-            if response.status_code in (403, 429):
+            if _is_throttle(response):
                 if attempt >= MAX_RATE_LIMIT_RETRIES:
                     msg = (
                         f"Failed to fetch Canvas data: rate limited ({response.status_code}) "
@@ -115,7 +118,12 @@ class CanvasClient:
 
     async def _send(self, url: str, params: Params | None) -> httpx.Response:
         try:
-            return await self._http.get(url, params=params)
+            async with self._http.stream("GET", url, params=params) as streamed:
+                body = await read_capped(streamed, limit=MAX_PAGE_BYTES)
+                return _buffered(streamed, body)
+        except ReplyTooLarge as exc:
+            msg = "Failed to fetch Canvas data: a response was larger than 2 MB"
+            raise FatalError(msg) from exc
         except httpx.TimeoutException as exc:
             msg = "Failed to reach Canvas: the request timed out"
             raise TransientError(msg) from exc
@@ -150,7 +158,11 @@ async def open_canvas(creds: Mapping[str, str], sleep: Sleep) -> AsyncGenerator[
     async with httpx.AsyncClient(
         timeout=REQUEST_TIMEOUT,
         follow_redirects=False,
-        headers={"Authorization": f"Bearer {creds['token']}", "Accept": "application/json"},
+        headers={
+            "Authorization": f"Bearer {creds['token']}",
+            "Accept": "application/json",
+            "Accept-Encoding": "identity",
+        },
     ) as http:
         yield CanvasClient(http, origin, sleep)
 
@@ -170,6 +182,25 @@ async def _checked_origin(base_url: str) -> str:
 def _origin_key(url: str) -> tuple[str, str | None, int]:
     parts = urlsplit(url)
     return parts.scheme.lower(), parts.hostname, parts.port or _HTTPS_PORT
+
+
+def _buffered(streamed: httpx.Response, body: bytes) -> httpx.Response:
+    """A plain response holding the already decoded, capped body (its encoding headers dropped)."""
+    headers = httpx.Headers(streamed.headers)
+    for name in ("content-encoding", "content-length", "transfer-encoding"):
+        headers.pop(name, None)
+    return httpx.Response(
+        streamed.status_code, headers=headers, content=body, request=streamed.request
+    )
+
+
+def _is_throttle(response: httpx.Response) -> bool:
+    """429, or a 403 whose body carries Canvas's rate-limit marker (decision 0410)."""
+    if response.status_code == HTTPStatus.TOO_MANY_REQUESTS:
+        return True
+    if response.status_code != HTTPStatus.FORBIDDEN:
+        return False
+    return RATE_LIMIT_MARKER in response.content.lower()
 
 
 def _retry_delay(response: httpx.Response, attempt: int) -> float:
@@ -192,6 +223,9 @@ def _raise_for_status(response: httpx.Response) -> None:
     if status == HTTPStatus.UNAUTHORIZED:
         msg = "Failed to fetch Canvas data: token rejected (401)"
         raise AuthExpired(msg)
+    if status == HTTPStatus.FORBIDDEN:
+        msg = "Canvas refused this request"
+        raise FatalError(msg)
     if status >= HTTPStatus.INTERNAL_SERVER_ERROR:
         msg = f"Failed to fetch Canvas data: Canvas server error ({status})"
         raise TransientError(msg)

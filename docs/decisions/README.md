@@ -87,3 +87,5 @@ your card gave you none, ask the project manager.
 | 0406 | 0406 (audit card 02: a cancelled sync leaves an error state, and sync_all isolates unexpected errors) |
 | 0407 | 0407 (audit card 07: under CC_BIND_ALL a loopback Host is the local user only from a trusted socket peer) |
 | 0408 | 0408 (audit card 03: sync and views share one local-day window; zone is a keyword argument defaulting to UTC) |
+| 0409 | 0409 (audit card 04: every adapter response body goes through one capped reader) |
+| 0410 | 0410 (audit card 05: which Canvas 403 is a throttle, and CalDAV permanent errors) |

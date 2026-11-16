@@ -1,19 +1,22 @@
 """iCloud calendars over CalDAV with an app-specific password (the only importer of `caldav`)."""
 
 import asyncio
+import logging
 from collections.abc import Callable, Mapping, Sequence
 from datetime import datetime, tzinfo
 from typing import Protocol, cast
 
 from caldav.collection import Calendar
 from caldav.davclient import DAVClient
-from caldav.lib.error import AuthorizationError, DAVError
+from caldav.lib.error import AuthorizationError, DAVError, NotFoundError
 
 from command_center.adapters.ical_events import EXPANSION_PAD, events_in_window, parse_calendar
 from command_center.core.errors import AuthExpired, FatalError, TransientError
 from command_center.core.ports import Clock
 from command_center.core.schema import Event, ValidationResult
 from command_center.core.windows import TimeWindow
+
+logger = logging.getLogger(__name__)
 
 SOURCE_NAME = "apple_calendar"
 ICLOUD_URL = "https://caldav.icloud.com/"
@@ -188,10 +191,25 @@ class AppleCalendarAdapter:
         )
 
 
+_NOT_FOUND = 404
+_FORBIDDEN = 403
+
+
 def _translate(exc: Exception) -> Exception:
-    """Map a CalDAV/network failure to ours; nothing from exc is kept (it may quote the login)."""
+    """Map a CalDAV/network failure to ours; nothing from exc is kept (it may quote the login).
+
+    A sign-in failure is AuthExpired; a not-found or forbidden answer will not change on a retry,
+    so it is FatalError; anything else stays transient and only its class is logged (decision 0410).
+    """
     if isinstance(exc, AuthorizationError):
         return AuthExpired("iCloud rejected the Apple ID or app-specific password")
+    status = exc.status if isinstance(exc, DAVError) else None
+    if isinstance(exc, NotFoundError) or status in (_NOT_FOUND, _FORBIDDEN):
+        return FatalError("iCloud refused or could not find the calendar request")
+    logger.warning(
+        "icloud request failed with a transient error",
+        extra={"source": SOURCE_NAME, "reason": type(exc).__name__},
+    )
     return TransientError(
         f"iCloud could not be reached or answered with an error ({type(exc).__name__})"
     )

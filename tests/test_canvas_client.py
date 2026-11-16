@@ -258,7 +258,7 @@ async def test_a_403_on_one_course_is_still_throttling_not_a_skip(
     router: respx.MockRouter,
 ) -> None:
     serve(router, courses=[course(7)])
-    router.get(ASSIGNMENTS_7).respond(403)
+    router.get(ASSIGNMENTS_7).respond(403, text="403 Forbidden (Rate Limit Exceeded)")
     with pytest.raises(TransientError, match="rate limited"):
         await make_adapter().fetch(CREDS, WINDOW)
 
@@ -280,7 +280,12 @@ async def test_a_throttled_request_is_retried_after_a_backoff(
     router: respx.MockRouter, status: int
 ) -> None:
     serve(router, courses=[course()], assignments={7: [assignment()]})
-    replies = iter([httpx.Response(status), httpx.Response(200, json=[course()])])
+    replies = iter(
+        [
+            httpx.Response(status, text="403 Forbidden (Rate Limit Exceeded)"),
+            httpx.Response(200, json=[course()]),
+        ]
+    )
 
     def answer(_request: httpx.Request) -> httpx.Response:
         return next(replies)
@@ -296,7 +301,7 @@ async def test_a_throttled_request_is_retried_after_a_backoff(
 async def test_a_request_throttled_past_the_cap_raises_transient_error(
     router: respx.MockRouter, status: int
 ) -> None:
-    route = router.get(COURSES).respond(status)
+    route = router.get(COURSES).respond(status, text="403 Forbidden (Rate Limit Exceeded)")
     sleep = RecordingSleep()
     with pytest.raises(TransientError, match=rf"rate limited \({status}\) after 3 retries"):
         await make_adapter(sleep).fetch(CREDS, WINDOW)

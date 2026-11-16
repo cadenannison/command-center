@@ -61,7 +61,7 @@ Each line is a path and the decisions that name it. Look a number up with `grep 
 - src/command_center/adapters/CLAUDE.md: 0250 0288
 - src/command_center/adapters/caldav_apple.py: 0031
 - src/command_center/adapters/canvas.py: 0032 0041 0042 0046 0081
-- src/command_center/adapters/canvas_client.py: 0033
+- src/command_center/adapters/canvas_client.py: 0033 0409
 - src/command_center/adapters/canvas_fetch.py: 0081 0095
 - src/command_center/adapters/canvas_models.py: 0081
 - src/command_center/adapters/chat_http.py: 0221 0222 0225 0246
@@ -72,7 +72,7 @@ Each line is a path and the decisions that name it. Look a number up with `grep 
 - src/command_center/adapters/ical_diagnose.py: 0140
 - src/command_center/adapters/ical_diagnose_report.py: 0140
 - src/command_center/adapters/ical_events.py: 0030 0031
-- src/command_center/adapters/ical_feed.py: 0031 0141
+- src/command_center/adapters/ical_feed.py: 0031 0141 0409
 - src/command_center/adapters/json_log.py: 0051
 - src/command_center/adapters/keyring_store.py: 0024
 - src/command_center/adapters/log_redaction.py: 0181
@@ -80,7 +80,7 @@ Each line is a path and the decisions that name it. Look a number up with `grep 
 - src/command_center/adapters/queue_redis.py: 0050
 - src/command_center/adapters/summary_gemini.py: 0036 0167 0223 0245 0246
 - src/command_center/adapters/summary_ollama.py: 0036 0245 0246 0288
-- src/command_center/adapters/weather.py: 0045
+- src/command_center/adapters/weather.py: 0045 0409
 - src/command_center/adapters/weather_geocode.py: 0181 0246
 - src/command_center/api/CLAUDE.md: 0250
 - src/command_center/api/auth.py: 0106
@@ -178,6 +178,8 @@ Each line is a path and the decisions that name it. Look a number up with `grep 
 - tests/generation_support.py: 0080
 - tests/keyring_support.py: 0055
 - tests/route_support.py: 0060
+- tests/test_adapter_body_caps.py: 0409
+- tests/test_adapter_failure_classes.py: 0410
 - tests/test_agenda_today.py: 0038
 - tests/test_api.py: 0100
 - tests/test_api_settings_usability.py: 0100

@@ -12,6 +12,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 import httpx
 from pydantic import BaseModel, ConfigDict, ValidationError
 
+from command_center.adapters.http_cap import ReplyTooLarge, read_capped
 from command_center.core.errors import FatalError, SourceError, TransientError
 from command_center.core.ports import Clock
 from command_center.core.schema import Event, ValidationResult, event_id
@@ -23,6 +24,7 @@ FORECAST_DAYS = 7
 CACHE_TTL = timedelta(minutes=20)
 TIMEOUT_SECONDS = 10.0
 _DAILY = "temperature_2m_max,temperature_2m_min,precipitation_probability_max"
+MAX_FORECAST_BYTES = 1024 * 1024
 _OK = 200
 _TOO_MANY = 429
 _SERVER_ERROR = 500
@@ -93,14 +95,32 @@ class WeatherAdapter:
         }
         try:
             if self._client is not None:
-                response = await self._client.get(URL, params=params, timeout=TIMEOUT_SECONDS)
+                status, body = await _get_capped(
+                    self._client, params, per_call_seconds=TIMEOUT_SECONDS
+                )
             else:
                 async with httpx.AsyncClient(timeout=TIMEOUT_SECONDS) as client:
-                    response = await client.get(URL, params=params)
+                    status, body = await _get_capped(client, params)
+        except ReplyTooLarge:
+            msg = "Open-Meteo reply is larger than 1 MB"
+            raise FatalError(msg) from None
         except httpx.HTTPError:
             msg = "Open-Meteo is unreachable"
             raise TransientError(msg) from None
-        return _parse(response)
+        return _parse(status, body)
+
+
+async def _get_capped(
+    client: httpx.AsyncClient,
+    params: Mapping[str, str | int | float],
+    *,
+    per_call_seconds: float | None = None,
+) -> tuple[int, bytes]:
+    timeout = (
+        httpx.USE_CLIENT_DEFAULT if per_call_seconds is None else httpx.Timeout(per_call_seconds)
+    )
+    async with client.stream("GET", URL, params=params, timeout=timeout) as response:
+        return response.status_code, await read_capped(response, limit=MAX_FORECAST_BYTES)
 
 
 def _coordinates(creds: Mapping[str, str]) -> tuple[float, float]:
@@ -116,8 +136,7 @@ def _coordinates(creds: Mapping[str, str]) -> tuple[float, float]:
     return latitude, longitude
 
 
-def _parse(response: httpx.Response) -> _Forecast:
-    status = response.status_code
+def _parse(status: int, body: bytes) -> _Forecast:
     if status == _TOO_MANY or status >= _SERVER_ERROR:
         msg = f"Open-Meteo is unavailable ({status})"
         raise TransientError(msg)
@@ -125,7 +144,7 @@ def _parse(response: httpx.Response) -> _Forecast:
         msg = f"Open-Meteo rejected the request ({status})"
         raise FatalError(msg)
     try:
-        return _Forecast.model_validate_json(response.content)
+        return _Forecast.model_validate_json(body)
     except ValidationError:
         msg = "Open-Meteo returned an unexpected response"
         raise FatalError(msg) from None
