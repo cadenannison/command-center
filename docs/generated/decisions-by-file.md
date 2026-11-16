@@ -11,7 +11,7 @@ Each line is a path and the decisions that name it. Look a number up with `grep 
 - .claude/agents/storage-engineer.md: 0254 0286
 - .claude/agents/web-engineer.md: 0254 0286
 - .claude/allow-test-edits: 0183
-- .github/workflows/ci.yml: 0083 0091 0301 0303 0323
+- .github/workflows/ci.yml: 0083 0091 0301 0303 0323 0413
 - .gitleaks.toml: 0014
 - AGENTS.md: 0250 0285
 - CLAUDE.md: 0254
@@ -194,6 +194,7 @@ Each line is a path and the decisions that name it. Look a number up with `grep 
 - tests/test_auth.py: 0057
 - tests/test_auth_peer.py: 0407
 - tests/test_auth_rig.py: 0248
+- tests/test_backend_ci_list.py: 0413
 - tests/test_caldav_apple.py: 0031
 - tests/test_canvas_adapter.py: 0032 0042 0095
 - tests/test_canvas_client.py: 0033 0041 0046

@@ -157,7 +157,12 @@ jobs:
           tests/test_report_stream_contract.py tests/test_chaos_disconnect.py
           tests/test_chaos_disconnect_sink.py tests/test_chaos_distributed.py
           tests/test_normalizer_atomic.py tests/test_report_sink.py
-          tests/test_state_generation_column.py
+          tests/test_state_generation_column.py tests/test_dashboard_store.py
+          tests/test_dismiss_snooze.py tests/test_dismiss_snooze_followups.py
+          tests/test_display_zoom_shortcuts.py tests/test_ledger_completions.py
+          tests/test_ledger_history.py tests/test_ledger_migration.py
+          tests/test_ledger_races.py tests/test_ledger_sink.py tests/test_ledger_sync.py
+          tests/test_restore_today_only.py tests/test_undated_store_backends.py
 
   # The single required status check: mark only "gate" as required in branch protection.
   gate:
