@@ -58,7 +58,7 @@ def test_the_real_app_pairs_a_phone_end_to_end(
             "/v1/pair", json={"pairing_token": token, "device_name": "Pixel"}
         ).json()
         headers = {"Authorization": f"Bearer {paired['access_token']}"}
-        assert remote.get("/v1/settings", headers=headers).status_code == 200
+        assert remote.get("/v1/tasks", headers=headers).status_code == 200
         assert [d["name"] for d in local.get("/v1/devices").json()] == ["Pixel"]
 
 

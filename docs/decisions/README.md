@@ -90,3 +90,4 @@ your card gave you none, ask the project manager.
 | 0409 | 0409 (audit card 04: every adapter response body goes through one capped reader) |
 | 0410 | 0410 (audit card 05: which Canvas 403 is a throttle, and CalDAV permanent errors) |
 | 0411 | 0411 (audit card 06: SQLite runs in WAL with a busy timeout, through one engine factory) |
+| 0412 | 0412 (audit card 08: a paired phone reads only what is on an allowlist) |

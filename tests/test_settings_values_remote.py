@@ -23,17 +23,16 @@ def test_loopback_gets_the_plain_values() -> None:
     assert item["values"] == {"base_url": URL}
 
 
-def test_a_paired_phone_gets_no_values_but_keeps_the_key_status() -> None:
+def test_a_paired_phone_gets_neither_values_nor_key_status() -> None:
     rig = connected_rig()
     phone = rig.pair_phone()
 
     response = rig.remote.get("/v1/settings", headers=rig.bearer(phone.access_token))
 
-    (item,) = response.json()
-    assert item["values"] == {}
-    assert item["keys"]["base_url"]["set"] is True
-    assert item["keys"]["token"] == {"set": True, "last4": "1234"}
+    assert response.status_code == 403  # off the phone allowlist (decision 0412)
+    assert response.json() == {"detail": "A paired phone may not do this"}
     assert URL not in response.text
+    assert "1234" not in response.text
 
 
 def test_a_loopback_host_with_a_proxy_header_is_treated_as_a_phone() -> None:
@@ -43,5 +42,5 @@ def test_a_loopback_host_with_a_proxy_header_is_treated_as_a_phone() -> None:
 
     response = rig.local.get("/v1/settings", headers=headers)
 
-    assert response.status_code == 200
-    assert response.json()[0]["values"] == {}
+    assert response.status_code == 403  # a phone: off the allowlist (decision 0412)
+    assert URL not in response.text

@@ -37,7 +37,7 @@ def test_a_tailnet_host_without_a_token_is_refused(rig: AuthRig) -> None:
 
 def test_a_tailnet_host_with_a_valid_token_is_served(rig: AuthRig) -> None:
     phone = rig.pair_phone()
-    response = rig.remote.get("/v1/settings", headers=rig.bearer(phone.access_token))
+    response = rig.remote.get("/v1/tasks", headers=rig.bearer(phone.access_token))
     assert response.status_code == 200
 
 
@@ -48,7 +48,7 @@ def test_health_needs_no_token_from_the_tailnet(rig: AuthRig) -> None:
 def test_the_bearer_scheme_name_is_case_insensitive(rig: AuthRig) -> None:
     phone = rig.pair_phone()
     headers = {"Authorization": f"bearer {phone.access_token}"}
-    assert rig.remote.get("/v1/settings", headers=headers).status_code == 200
+    assert rig.remote.get("/v1/tasks", headers=headers).status_code == 200
 
 
 @pytest.mark.parametrize(
@@ -140,7 +140,7 @@ def test_a_loopback_host_behind_a_proxy_still_needs_a_token(
 def test_a_loopback_host_behind_a_proxy_is_served_with_a_token(rig: AuthRig) -> None:
     phone = rig.pair_phone()
     headers = {**rig.bearer(phone.access_token), "X-Forwarded-For": "100.64.0.9"}
-    assert rig.local.get("/v1/settings", headers=headers).status_code == 200
+    assert rig.local.get("/v1/tasks", headers=headers).status_code == 200
 
 
 def test_the_web_ui_is_closed_to_a_loopback_host_behind_a_proxy(rig: AuthRig) -> None:

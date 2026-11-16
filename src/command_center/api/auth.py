@@ -11,7 +11,7 @@ carries the tailnet name. So:
 - any other host listed in `CC_ALLOWED_HOSTS` needs a valid device access token on every route
   except the open paths below;
 - any other Host is refused with 400, whatever else the request carries (DNS rebinding);
-- a remote caller (a paired phone) is held to the scope in `api.policy`: reads and
+- a remote caller (a paired phone) is held to the scope in `api.policy`: the listed reads and
   `POST /v1/sync`; every other route is refused, 403 on /v1 and 404 on the web UI's own routes
   (decision 0060);
 - a write under /v1 that a browser marks cross-site (`Sec-Fetch-Site`, or an `Origin` that is not

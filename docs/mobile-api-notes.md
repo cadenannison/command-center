@@ -36,11 +36,14 @@ The API is reached through the Mac's tailnet name over HTTPS (Tailscale Serve). 
 Mac's `CC_ALLOWED_HOSTS` is refused before anything else. A sleeping Mac is unreachable.
 
 ## What a paired phone may do (decision 0060)
-Scoped by default deny on the method:
-- **Allowed:** every GET except the two below (`/v1/events`, `/v1/agenda/{period}`, `/v1/attention`,
-  `/v1/summary`, `/v1/history`, `/v1/settings`, `/v1/devices`), `POST /v1/sync`, and the pairing calls.
-- **Refused, 403, though they are GETs:** `GET /v1/geocode` (the Mac's city search, decision 0182) and
-  `GET /v1/chat/context-preview` (it returns the user's agenda text, decision 0165).
+Default deny, on reads as well as writes (decision 0412; **breaking change for this app**):
+- **Allowed reads (GET, HEAD):** `/v1/tasks`, `/v1/dashboards`, `/v1/dashboards/{dashboard_id}`,
+  `/v1/display-settings`, `/v1/agenda/{period}`, `/v1/events`, `/v1/attention`, `/v1/summary`,
+  `/v1/needs-me`. Plus `POST /v1/sync` and the pairing calls.
+- **Refused, 403, though they are GETs:** every other `/v1` read, in particular `/v1/history`,
+  `/v1/settings`, `/v1/devices`, `/v1/geocode` and `/v1/chat/context-preview`, and any route added
+  later until it is listed. The web pages, `/static`, `/docs`, `/redoc` and `/openapi.json` answer 404.
+  Stop calling the denied reads; read `docs/generated/openapi.json` offline instead of `/openapi.json`.
 - **Refused, 403:** `PUT /v1/settings/{source}` and `DELETE /v1/settings/{source}` (connecting or
   disconnecting a source) and `DELETE /v1/devices/{id}` (revoking a device). The user does those on the Mac.
 - A request with no valid token is 401 whatever the route (except the three open routes above), so the
@@ -57,7 +60,7 @@ app does not by default): one that is not the server's own Host is refused with 
 ## Items, notes and history (additive; decisions 0120-0127, 0130, 0131)
 - **Ignore unknown event kinds.** `EventKind` gained `task` (a task the user made on the Mac, source `local`). A client that does not know a kind must skip the event, not fail. Decision 0124.
 - Every event has `has_note` (bool, default false). It says an item has a note; the text is only in `GET /v1/history`.
-- `GET /v1/history?from=YYYY-MM-DD&to=YYYY-MM-DD` is a read, so a paired phone may call it. Days are in the Mac's configured timezone; a day with a note shows the note, which is plain text (render it as text, never as markup). At most 366 days per call.
+- `GET /v1/history?from=YYYY-MM-DD&to=YYYY-MM-DD` is **not on the phone's read allowlist since decision 0412**: a paired phone gets 403. On the Mac: days are in the Mac's configured timezone; a day with a note shows the note, which is plain text (render it as text, never as markup). At most 366 days per call.
 - The writes (`POST /v1/items`, `PATCH`/`DELETE /v1/items/{id}`, `POST`/`DELETE .../done`, `PUT`/`DELETE .../notes`) are loopback-only: a paired phone gets 403 (decision 0126). Do not build check-off on the phone yet.
 - Each history entry has `reopened` (bool, default false; additive, decision 0130): true on a source entry when the source later reported the item open again. The entry stays on the day it was completed, so show it as "later reopened"; the agenda shows that item as open. One item can have several entries (decision 0131): the source completing it twice gives two source entries on their own days, and your check-off plus the source's completion give one entry in `done_by_you` and one in `done_by_source`. Do not assume `item_id` is unique in a history response. Ignore unknown fields.
 - History is not forever: disconnecting a source deletes that source's history and notes (decision 0127), like its events. A removed item (it left its source without being done) is listed as `gone`, never as done.
@@ -80,7 +83,7 @@ with the next sync, not instantly: `PUT` returns `sync.status` `syncing` and the
 |---|---|---|
 | 400 | plain text `Invalid host header` (not JSON) | the Host is neither loopback nor in `CC_ALLOWED_HOSTS` |
 | 401 | `{"detail": "A valid device token is required"}` plus `WWW-Authenticate: Bearer` | missing, malformed, expired or revoked access token; same body for every cause. On `/v1/pair*` the `detail` is the refusal reason, still a 401 |
-| 403 | `{"detail": "A paired phone may not do this"}` | a write outside the phone's scope |
+| 403 | `{"detail": "A paired phone may not do this"}` | a route outside the phone's scope (a write, or a read not on the allowlist, decision 0412) |
 | 403 | `{"detail": "Cross-site requests are not allowed"}` | a write with a foreign `Origin` or `Sec-Fetch-Site: cross-site` |
 | 404 | `{"detail": "..."}` (`ErrorBody`) | unknown source, unknown device, `Summaries are off`, `Pairing is not available` |
 | 409 | `ErrorBody` | `POST /v1/chat` and `GET /v1/chat/context-preview`: the chat provider setting is unusable; `PATCH`/`DELETE /v1/items/{id}`: the item is not a local task |

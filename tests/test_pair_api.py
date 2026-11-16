@@ -39,7 +39,7 @@ def test_a_pairing_token_is_exchanged_for_credentials(rig: AuthRig) -> None:
 
 def test_the_access_token_from_pairing_opens_the_api(rig: AuthRig) -> None:
     body = pair(rig, rig.service.start_pairing().token).json()
-    response = rig.remote.get("/v1/settings", headers=rig.bearer(body["access_token"]))
+    response = rig.remote.get("/v1/tasks", headers=rig.bearer(body["access_token"]))
     assert response.status_code == 200
 
 
@@ -137,9 +137,9 @@ def test_refresh_returns_a_new_pair_and_retires_the_old(rig: AuthRig) -> None:
     assert set(second) == TOKEN_FIELDS
     assert second["refresh_token"] != first["refresh_token"]
     assert second["device_id"] == first["device_id"]
-    old = rig.remote.get("/v1/settings", headers=rig.bearer(first["access_token"]))
+    old = rig.remote.get("/v1/tasks", headers=rig.bearer(first["access_token"]))
     assert old.status_code == 401
-    new = rig.remote.get("/v1/settings", headers=rig.bearer(second["access_token"]))
+    new = rig.remote.get("/v1/tasks", headers=rig.bearer(second["access_token"]))
     assert new.status_code == 200
 
 
@@ -180,7 +180,8 @@ def test_devices_lists_each_phone_without_any_secret(rig: AuthRig) -> None:
 def test_devices_needs_a_token_from_the_tailnet(rig: AuthRig) -> None:
     phone = rig.pair_phone()
     assert rig.remote.get("/v1/devices").status_code == 401
-    assert rig.remote.get("/v1/devices", headers=rig.bearer(phone.access_token)).status_code == 200
+    # a valid token gets past the token check, then the allowlist refuses the route (decision 0412)
+    assert rig.remote.get("/v1/devices", headers=rig.bearer(phone.access_token)).status_code == 403
 
 
 def test_deleting_a_device_ends_its_tokens_at_once(rig: AuthRig) -> None:

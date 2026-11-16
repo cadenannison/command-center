@@ -20,7 +20,7 @@ from sink_support import open_engine
 READ = "read"  # a GET that changes nothing: served
 SYNC = "sync"  # the one write a phone is allowed: served
 OPEN = "open"  # reachable with no token at all (how a phone gets one)
-HIDDEN = "hidden"  # the policy lets it through; the page's own check answers a phone 404
+HIDDEN = "hidden"  # off the list, so the policy refuses it; the page's own check also says 404
 DENIED = "denied"  # 403, and the handler never runs
 
 POLICY: dict[tuple[str, str], str] = {
@@ -32,21 +32,21 @@ POLICY: dict[tuple[str, str], str] = {
     ("GET", "/v1/events"): READ,
     ("GET", "/v1/agenda/{period}"): READ,
     ("GET", "/v1/attention"): READ,
-    ("GET", "/v1/settings"): READ,
+    ("GET", "/v1/settings"): DENIED,  # key status and the security set-up: off the list (0412)
     ("GET", "/v1/summary"): READ,
-    ("GET", "/"): READ,
-    ("GET", "/week"): READ,
-    ("GET", "/month"): READ,
-    ("GET", "/history"): READ,  # the page of what /v1/history already serves a phone (0153)
+    ("GET", "/"): DENIED,  # the web pages are the Mac's own: off the list (0412)
+    ("GET", "/week"): DENIED,
+    ("GET", "/month"): DENIED,
+    ("GET", "/history"): DENIED,
     ("GET", "/settings"): HIDDEN,  # prefilled non-secret values: the page's own check (0211)
     ("GET", "/settings/{source}/status"): HIDDEN,
     ("GET", "/pair"): HIDDEN,
     ("GET", "/chat"): HIDDEN,  # the Mac's own chat page: the page's own check answers 404 (0203)
-    ("GET", "/static"): READ,
-    ("GET", "/openapi.json"): READ,
-    ("GET", "/docs"): READ,
-    ("GET", "/docs/oauth2-redirect"): READ,
-    ("GET", "/redoc"): READ,
+    ("GET", "/static"): DENIED,
+    ("GET", "/openapi.json"): DENIED,
+    ("GET", "/docs"): DENIED,
+    ("GET", "/docs/oauth2-redirect"): DENIED,
+    ("GET", "/redoc"): DENIED,
     # the one write
     ("POST", "/v1/sync"): SYNC,
     # everything else is refused for a phone
@@ -54,7 +54,7 @@ POLICY: dict[tuple[str, str], str] = {
     ("GET", "/v1/chat/context-preview"): DENIED,
     ("DELETE", "/v1/chat/{conversation_id}"): DENIED,
     ("GET", "/v1/geocode"): DENIED,  # a read, but only the Mac's own web UI may use it (0180)
-    ("GET", "/v1/history"): READ,  # what was done and when, with notes (0123, 0126)
+    ("GET", "/v1/history"): DENIED,  # what was done and when, with notes: off the list (0412)
     ("POST", "/v1/items"): DENIED,  # the item writes are loopback-only (0126)
     ("PATCH", "/v1/items/{item_id}"): DENIED,
     ("DELETE", "/v1/items/{item_id}"): DENIED,
@@ -75,7 +75,7 @@ POLICY: dict[tuple[str, str], str] = {
     ("PUT", "/v1/display-settings"): DENIED,
     ("GET", "/v1/tasks"): READ,  # the ranked list with reasons: a read (0371)
     ("GET", "/v1/needs-me"): READ,  # what needs attention across kinds: a read (0386)
-    ("GET", "/v1/devices"): READ,
+    ("GET", "/v1/devices"): DENIED,  # describes the security set-up: off the list (0412)
     ("DELETE", "/v1/devices/{device_id}"): DENIED,
     ("PUT", "/v1/settings/{source}"): DENIED,
     ("DELETE", "/v1/settings/{source}"): DENIED,
@@ -140,9 +140,7 @@ def test_the_table_agrees_with_the_policy_function_for_every_route(
         row = POLICY[(endpoint.method, endpoint.template)]
         if row == OPEN:
             continue
-        assert remote_may_call(endpoint.method, endpoint.path) is (row in {READ, SYNC, HIDDEN}), (
-            endpoint
-        )
+        assert remote_may_call(endpoint.method, endpoint.path) is (row in {READ, SYNC}), endpoint
 
 
 def _call(client: Any, endpoint: Endpoint, headers: dict[str, str]) -> Any:  # noqa: ANN401
@@ -205,15 +203,19 @@ def test_a_phone_may_read_and_sync(rig: AuthRig, endpoints: list[Endpoint]) -> N
     assert rig.remote.post("/v1/sync", headers=headers).status_code == 200
 
 
-def test_a_paired_phone_gets_the_history_page_when_the_item_service_is_present(
+def test_a_paired_phone_is_refused_the_history_page_even_when_the_item_service_is_present(
     rig: AuthRig,
 ) -> None:
     headers = rig.bearer(rig.pair_phone().access_token)
 
     phone = rig.remote.get("/history", headers=headers)
+    mac = rig.local.get("/history")
 
-    assert phone.status_code == 200
-    assert "Completed by you" in phone.text  # the page itself, not the middleware's JSON 404
+    assert phone.status_code == 404  # off the allowlist (0412): the middleware's JSON 404
+    assert phone.json() == {"detail": "Not Found"}
+    assert "Completed by you" not in phone.text
+    assert mac.status_code == 200
+    assert "Completed by you" in mac.text  # the page itself is unchanged on loopback
 
 
 def test_the_settings_pages_are_hidden_from_a_phone_by_the_page_itself(rig: AuthRig) -> None:
@@ -249,7 +251,8 @@ def test_loopback_is_unchanged_for_every_route(rig: AuthRig, endpoints: list[End
             continue
         response = _call(rig.local, endpoint, {})
         # a web write may still be 403 for its CSRF token; what must be absent is the phone rule
-        assert "paired phone" not in response.text, (endpoint, response.text)
+        # the phone refusal's own sentence (api/auth.py), not a wording the OpenAPI text may share
+        assert "A paired phone may not do this" not in response.text, (endpoint, response.text)
         assert response.status_code != 401, (endpoint, response.text)
 
 
@@ -265,7 +268,9 @@ def test_a_loopback_host_behind_a_proxy_is_a_phone_too(rig: AuthRig) -> None:
     phone = rig.pair_phone()
     headers = {**rig.bearer(phone.access_token), "X-Forwarded-For": "100.64.0.9"}
     assert rig.local.delete("/v1/devices/no-such-device", headers=headers).status_code == 403
-    assert rig.local.get("/v1/settings", headers=headers).status_code == 200
+    # a phone for the policy too: a read off the allowlist is refused, one on it is served
+    assert rig.local.get("/v1/settings", headers=headers).status_code == 403
+    assert rig.local.get("/v1/tasks", headers=headers).status_code == 200
 
 
 def test_a_websocket_from_a_phone_is_closed_by_default(rig: AuthRig) -> None:
@@ -285,12 +290,12 @@ def test_a_websocket_from_a_phone_is_closed_by_default(rig: AuthRig) -> None:
 @pytest.mark.parametrize(
     ("method", "path", "expected"),
     [
-        ("GET", "/v1/settings", True),
-        ("HEAD", "/v1/settings", True),
-        ("OPTIONS", "/v1/settings", True),
+        ("GET", "/v1/settings", False),  # off the read allowlist (0412)
+        ("HEAD", "/v1/settings", False),
+        ("OPTIONS", "/v1/settings", False),
         ("POST", "/v1/sync", True),
-        ("GET", "/v1/devices", True),
-        ("GET", "/v1/devices/abc", True),
+        ("GET", "/v1/devices", False),
+        ("GET", "/v1/devices/abc", False),
         ("DELETE", "/v1/devices/abc", False),
         ("PUT", "/v1/settings/canvas", False),
         ("DELETE", "/v1/settings/canvas", False),

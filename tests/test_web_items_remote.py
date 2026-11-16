@@ -81,7 +81,8 @@ def test_the_history_page_needs_a_token_from_a_phone(rig: AuthRig) -> None:
     assert rig.remote.get("/history").status_code == 401
 
 
-def test_a_paired_phone_may_read_the_history_page_like_the_other_pages(rig: AuthRig) -> None:
+def test_a_paired_phone_is_refused_the_history_page(rig: AuthRig) -> None:
     headers = rig.bearer(rig.pair_phone().access_token)
 
-    assert rig.remote.get("/history", headers=headers).status_code == 200
+    # the web pages are off the phone allowlist (decision 0412): 404, as for the other web writes
+    assert rig.remote.get("/history", headers=headers).status_code == 404

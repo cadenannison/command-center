@@ -281,7 +281,8 @@ Each line is a path and the decisions that name it. Look a number up with `grep 
 - tests/test_redact_agenda.py: 0280 0281 0283 0284
 - tests/test_redact_gaps.py: 0240 0241 0242 0243 0244 0255 0260 0261 0310
 - tests/test_redact_urls_and_tokens.py: 0089
-- tests/test_remote_policy.py: 0060 0126 0182 0203 0211 0213 0357 0386
+- tests/test_remote_policy.py: 0060 0126 0182 0203 0211 0213 0357 0386 0412
+- tests/test_remote_policy_allowlist.py: 0412
 - tests/test_report_stream_contract.py: 0071
 - tests/test_restore_today_only.py: 0404
 - tests/test_restore_today_only_api.py: 0404

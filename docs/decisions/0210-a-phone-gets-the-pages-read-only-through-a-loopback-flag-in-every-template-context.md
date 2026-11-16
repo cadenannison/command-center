@@ -1,6 +1,6 @@
 # 0210. A phone gets Today, Week, Month and History read-only, through a loopback flag in every template context
 
-Status: accepted; narrows 0150 to 0153
+Status: accepted; narrows 0150 to 0153; the phone's page access is superseded by 0412
 
 Context: A paired phone may read the web pages (0153) but every web item write is refused with 404 (0060, 0126, 0153). The pages still drew Done, Undo, the details panel with the note box and Edit/Delete, and the New task panel for it, so every control on a phone was a dead button.
 Decision: `Renderer.render` adds `loopback` to every template context, from `web/loopback.is_loopback(request)`: a loopback Host with no proxy header (decision 0057), false for everything else, so a request nobody classified fails closed. Templates draw the controls only when it is true: the Done and Undo buttons, the whole details panel (note box, Edit task, Delete task, "Why this priority" text) and the New task panel. A phone still sees the rows, the priority badge (its reason stays in the badge tooltip), a "note" chip when the item has a note (not the note's text, which only History shows) and a "done" chip on a checked-off item. The check is made once per render, not per route, so a new page cannot forget it. The macros are imported `with context` so they can read the flag.

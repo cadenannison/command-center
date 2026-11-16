@@ -2,7 +2,7 @@
 
 Concrete ids, so this holds without the route table's sample values: every item write is
 refused for a phone before the handler runs, while the Mac's own browser can make it, and
-GET /v1/history is a read like the agenda.
+GET /v1/history is not on the phone's read allowlist (decision 0412), notes included.
 """
 
 from collections.abc import Iterator
@@ -74,7 +74,9 @@ def test_a_phone_without_a_token_is_refused_the_history(rig: AuthRig) -> None:
     assert response.status_code == 401
 
 
-def test_a_paired_phone_can_read_history_with_notes(rig: AuthRig, ledger_rig: LedgerRig) -> None:
+def test_a_paired_phone_is_refused_the_history_and_its_notes(
+    rig: AuthRig, ledger_rig: LedgerRig
+) -> None:
     ledger_rig.events.upsert([assignment("a", hours=1)])
     ledger_rig.ledger.set_note("a", "fake-note-for-the-phone", NOW)
     ledger_rig.ledger.check_off("a", NOW)
@@ -82,11 +84,9 @@ def test_a_paired_phone_can_read_history_with_notes(rig: AuthRig, ledger_rig: Le
 
     response = rig.remote.get("/v1/history", params={"from": TODAY, "to": TODAY}, headers=headers)
 
-    assert response.status_code == 200
-    (day,) = response.json()
-    assert [(e["item_id"], e["note"]) for e in day["done_by_you"]] == [
-        ("a", "fake-note-for-the-phone")
-    ]
+    assert response.status_code == 403  # off the phone allowlist (decision 0412)
+    assert response.json() == {"detail": "A paired phone may not do this"}
+    assert "fake-note-for-the-phone" not in response.text
 
 
 @pytest.mark.parametrize(("method", "path", "body"), ITEM_WRITES[3:])

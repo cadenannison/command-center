@@ -1,8 +1,9 @@
 """Pure request rules for `DeviceAuthMiddleware`: what a paired phone may call, and the JSON check.
 
 No I/O. A phone is any non-loopback request (decision 0057, item 5; decision 0060). It may read
-and may `POST /v1/sync`. Everything else is refused, so a route added tomorrow is denied for a
-phone until someone lists it here (`tests/test_remote_policy.py` fails until it is classified).
+the routes in `REMOTE_READS` and may `POST /v1/sync`. Everything else is refused, so a route added
+tomorrow, read or write, is denied for a phone until someone lists it here
+(`tests/test_remote_policy.py` fails until it is classified; decision 0412).
 The item writes (`POST /v1/items`, `PATCH`/`DELETE /v1/items/{id}`, the `done` and `notes`
 routes; decision 0126) are therefore loopback-only: they are not in `REMOTE_WRITES`. So are the
 chat routes (`POST /v1/chat`, `DELETE /v1/chat/{id}`; the context preview is a denied read).
@@ -23,17 +24,59 @@ JSON_ONLY_PREFIX = "/v1/"
 JSON_ONLY_EXEMPT = frozenset({"/v1/pair", "/v1/pair/refresh"})
 
 
-# Reads a phone may not make: the Mac's own web UI uses them (decision 0180), or they show what
-# would be sent to an AI provider (the chat context, decision 0165). Any safe method.
+# The only reads a phone may make (decision 0412). Default deny: a route not listed here is refused
+# for a phone, so a route added tomorrow is not phone-readable until someone lists it and adds its
+# row to `tests/test_remote_policy.py`. `{name}` stands for exactly one whole path segment.
+REMOTE_READS = frozenset(
+    {
+        "/v1/tasks",
+        "/v1/dashboards",
+        "/v1/dashboards/{dashboard_id}",
+        "/v1/display-settings",
+        "/v1/agenda/{period}",
+        "/v1/events",
+        "/v1/attention",
+        "/v1/summary",
+        "/v1/needs-me",
+    }
+)
+
+# Reads that stay named as denied, though the allowlist already refuses them: the Mac's own web UI
+# uses them (decision 0180), or they show what would be sent to an AI provider (decision 0165).
+# Kept because `tests/test_chat_remote_policy.py` imports it; checked first, so a bad edit of
+# `REMOTE_READS` cannot open them.
 REMOTE_DENIED_READS = frozenset({"/v1/geocode", "/v1/chat/context-preview"})
+
+_READS_BY_SEGMENTS = tuple(tuple(entry.split("/")) for entry in sorted(REMOTE_READS))
+
+
+def _is_param(segment: str) -> bool:
+    return segment.startswith("{") and segment.endswith("}")
+
+
+def _on_read_list(path: str) -> bool:
+    """Whether the path matches a `REMOTE_READS` entry segment by segment, never by prefix.
+
+    A trailing slash, an empty segment, a `.` or `..` segment, or an extra segment never matches.
+    """
+    parts = tuple(path.split("/"))
+    for template in _READS_BY_SEGMENTS:
+        if len(template) != len(parts):
+            continue
+        if all(
+            (_is_param(want) and got not in {"", ".", ".."}) or want == got
+            for want, got in zip(template, parts, strict=True)
+        ):
+            return True
+    return False
 
 
 def remote_may_call(method: str, path: str) -> bool:
-    """Whether a paired phone may make this request. Default deny for anything but a read."""
+    """Whether a paired phone may make this request. Default deny: only listed routes pass."""
     if path in REMOTE_DENIED_READS:
         return False
     if method in SAFE_METHODS:
-        return True
+        return _on_read_list(path)
     return (method, path) in REMOTE_WRITES
 
 
