@@ -110,8 +110,47 @@ exclude_also = ["if __name__ == .__main__.:"]
 
 # ---------------------------------------------------------------- mutation testing (core only; run by hand)
 [tool.mutmut]
-paths_to_mutate = ["src/command_center/core/"]
-tests_dir = ["tests/"]
+# The mutant tree must hold the whole package (tests import adapters and services); only core is mutated.
+source_paths = ["src/command_center/"]
+only_mutate = ["src/command_center/core/*"]
+# addopts carries --cov-fail-under=80, which a narrow selection cannot meet.
+pytest_add_cli_args = ["--no-cov"]
+# Core tests that import nothing outside core and read no repo-root file (decision 0414).
+pytest_add_cli_args_test_selection = [
+    "tests/test_core_chat.py",
+    "tests/test_core_hosts.py",
+    "tests/test_core_hosts_peer.py",
+    "tests/test_core_ledger.py",
+    "tests/test_core_ledger_range.py",
+    "tests/test_core_pairing.py",
+    "tests/test_dashboards_core.py",
+    "tests/test_errors.py",
+    "tests/test_explain.py",
+    "tests/test_fakes.py",
+    "tests/test_jobs.py",
+    "tests/test_needs_me.py",
+    "tests/test_pairing_support.py",
+    "tests/test_priority.py",
+    "tests/test_redact.py",
+    "tests/test_redact_agenda.py",
+    "tests/test_redact_gaps.py",
+    "tests/test_redact_urls_and_tokens.py",
+    "tests/test_resilience.py",
+    "tests/test_schema.py",
+    "tests/test_scoring.py",
+    "tests/test_secret_store_error.py",
+    "tests/test_snooze_presets.py",
+    "tests/test_summary.py",
+    "tests/test_summary_errors.py",
+    "tests/test_summary_fakes.py",
+    "tests/test_task_scoring.py",
+    "tests/test_urgency.py",
+    "tests/test_urlcheck.py",
+    "tests/test_urlcheck_chat.py",
+    "tests/test_urlcheck_key_transport.py",
+    "tests/test_window_dst_strategy.py",
+    "tests/test_windows.py",
+]
 
 # ---------------------------------------------------------------- import-linter (mirrors docs/MAP.md)
 # Keep this file and docs/MAP.md in sync: this is the enforcing copy, MAP.md the readable one.

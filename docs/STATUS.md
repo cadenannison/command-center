@@ -27,6 +27,7 @@ E1 (edit tools, 0383-0384) and E2 (the Display popover, persisted settings, undo
 U6a (`GET /v1/needs-me`, 0385-0386) is committed; U6b (the Needs me widget, 0387; a stale delayed live-region announcement fixed, 0388) is uncommitted. Not run: `ui/e2e/dashboard-needs-me.spec.ts`. The other e2e specs that show the default layout do not stub `/v1/needs-me` yet (the human or a card adds it).
 
 ## Gate state
+Mutation baseline for `core` (2026-11-16, scratch copy; the config patch is the human's to apply, decision 0414): 1781 killed, 217 survived, 213 with no selected test; `core/windows.py` 66 killed, 6 survived.
 `mise run test:count` prints 5107; `.test-floor` is 4894 (the human raises it). The Python gates pass. `ui:test:count` prints
 720 (`ui:check` passes with the build; `ui/.test-floor` is 683, the human raises it). Not yet shown by test: that `minimumReleaseAge`
 rejects a too-new version, that `strictDepBuilds` fails an unreviewed build script (0315 Hedge), and the Playwright test.

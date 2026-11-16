@@ -92,3 +92,4 @@ your card gave you none, ask the project manager.
 | 0411 | 0411 (audit card 06: SQLite runs in WAL with a busy timeout, through one engine factory) |
 | 0412 | 0412 (audit card 08: a paired phone reads only what is on an allowlist) |
 | 0413 | 0413 (audit card 12: the CI integration list is checked against the gated test files) |
+| 0414 | 0414 (audit card 13: mutation testing on core, configuration, test selection and baseline) |

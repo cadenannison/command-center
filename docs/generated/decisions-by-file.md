@@ -20,6 +20,7 @@ Each line is a path and the decisions that name it. Look a number up with `grep 
 - docs/MAP.md: 0024 0043 0081 0087
 - docs/STATUS.md: 0250 0287
 - docs/approved-dependencies.md: 0301
+- docs/audits/guard-patches/: 0414
 - docs/backlog.md: 0336
 - docs/contracts/adapters.md: 0015 0024 0028 0036 0041 0046 0081 0095 0140 0225 0288
 - docs/contracts/api.md: 0020 0023 0025 0037 0052 0085 0086 0171 0389
@@ -46,7 +47,7 @@ Each line is a path and the decisions that name it. Look a number up with `grep 
 - docs/runbook.md: 0192
 - docs/sources.md: 0191 0192
 - mise.toml: 0252 0301 0303 0315 0320 0323
-- pyproject.toml: 0043 0050 0092
+- pyproject.toml: 0043 0050 0092 0414
 - scripts/gen-decision-index: 0082
 - scripts/gen_decision_index.py: 0087 0251 0287
 - scripts/gen_docs.py: 0082 0087 0251
