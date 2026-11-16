@@ -39,6 +39,11 @@ instants = st.datetimes(
 texts = st.text(min_size=1, max_size=40)
 
 
+def window_after(start: datetime, span: timedelta) -> TimeWindow:
+    """A window `span` long in elapsed time, added in UTC so a fold or DST gap cannot reverse it."""
+    return TimeWindow(start=start, end=(start.astimezone(UTC) + span).astimezone(start.tzinfo))
+
+
 @st.composite
 def jobs(draw: st.DrawFn) -> Job:
     start = draw(instants)
@@ -49,7 +54,7 @@ def jobs(draw: st.DrawFn) -> Job:
         source=draw(texts),
         correlation_id=draw(texts),
         attempt=draw(st.integers(min_value=1, max_value=1000)),
-        window=TimeWindow(start=start, end=start + span),
+        window=window_after(start, span),
     )
 
 
