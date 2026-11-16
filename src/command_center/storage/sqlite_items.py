@@ -14,7 +14,7 @@ from functools import wraps
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Concatenate, cast
 
-from sqlalchemy import Engine, and_, create_engine, select, update
+from sqlalchemy import Engine, and_, select, update
 from sqlalchemy.engine import make_url
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
@@ -28,6 +28,7 @@ from command_center.core.ledger import (
 )
 from command_center.core.schema import Event
 from command_center.core.windows import TimeWindow
+from command_center.storage.engine import make_engine
 from command_center.storage.sqlite import (
     delete_local_event,
     ensure_event_schema,
@@ -368,7 +369,7 @@ def create_item_ledger(database_url: str) -> SqliteItemLedger:
     if url.get_backend_name() == "sqlite" and url.database not in (None, "", ":memory:"):
         Path(str(url.database)).parent.mkdir(parents=True, exist_ok=True)
     # Hidden parameters keep titles and note text out of error messages and logs (decision 0027).
-    engine = create_engine(url, hide_parameters=True)
+    engine = make_engine(database_url)
     ensure_event_schema(engine)
     return SqliteItemLedger(engine)
 

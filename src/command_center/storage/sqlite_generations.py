@@ -2,11 +2,13 @@
 
 from pathlib import Path
 
-from sqlalchemy import Engine, Integer, String, create_engine, select, update
+from sqlalchemy import Engine, Integer, String, select, update
 from sqlalchemy.dialects import postgresql, sqlite
 from sqlalchemy.engine import make_url
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
+
+from command_center.storage.engine import make_engine
 
 
 class _Base(DeclarativeBase):
@@ -102,7 +104,7 @@ def create_generation_store(database_url: str) -> SqliteGenerationStore:
     url = make_url(database_url)
     if url.get_backend_name() == "sqlite" and url.database not in (None, "", ":memory:"):
         Path(str(url.database)).parent.mkdir(parents=True, exist_ok=True)
-    engine = create_engine(url, hide_parameters=True)
+    engine = make_engine(database_url)
     ensure_generation_schema(engine)
     return SqliteGenerationStore(engine)
 

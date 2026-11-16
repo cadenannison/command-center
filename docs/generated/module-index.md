@@ -119,6 +119,7 @@ One line per module: its first docstring sentence. Use it to find the file you n
 - `sync_control.py`: What the settings service, the routes and the scheduler need from "the sync" (decision 0074).
 
 ## storage/
+- `engine.py`: The one place a storage engine is built (decision 0411).
 - `sqlite.py`: SQLAlchemy EventStore.
 - `sqlite_app_settings.py`: SQLAlchemy AppSettingStore: a small key-value table, one row per user and key.
 - `sqlite_completions.py`: The completions table: append-only entries, one per completion (decision 0131).

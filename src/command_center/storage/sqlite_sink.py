@@ -9,7 +9,7 @@ per source; on SQLite writers are serialised by the database. Decision 0075.
 from collections.abc import Sequence
 from pathlib import Path
 
-from sqlalchemy import Engine, create_engine
+from sqlalchemy import Engine
 from sqlalchemy.engine import make_url
 from sqlalchemy.orm import sessionmaker
 
@@ -17,6 +17,7 @@ from command_center.core.ports import ApplyOutcome
 from command_center.core.schema import Event
 from command_center.core.sync_state import SyncState
 from command_center.core.windows import TimeWindow
+from command_center.storage.engine import make_engine
 from command_center.storage.sqlite import (
     delete_source_events,
     ensure_event_schema,
@@ -92,7 +93,7 @@ def create_report_sink(database_url: str) -> SqliteReportSink:
     if url.get_backend_name() == "sqlite" and url.database not in (None, "", ":memory:"):
         Path(str(url.database)).parent.mkdir(parents=True, exist_ok=True)
     # Hidden parameters keep event and message text out of error messages and logs (decision 0027).
-    engine = create_engine(url, hide_parameters=True)
+    engine = make_engine(database_url)
     ensure_schema(engine)
     return SqliteReportSink(engine)
 

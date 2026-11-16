@@ -17,6 +17,6 @@
 - [ ] Every secret in the secret store (keychain or protected file), none in the repo; settings API write-only; `mise run secrets` clean
 - [ ] Summaries OFF by default; redaction property-tested; email excluded unless opted in
 - [ ] Every outbound call has a timeout; every source shows per-source health in the UI
-- [ ] Backup/restore of the SQLite file tested; schema migrations tested on a copy
+- [ ] Backup/restore of the SQLite file tested (WAL: run `PRAGMA wal_checkpoint(TRUNCATE)` first, or copy the `.db`, `-wal` and `-shm` files together; decision 0411); schema migrations tested on a copy
 - [ ] `docs/generated/openapi.json` current; breaking /v1 changes have a decision record
 - [ ] Dependency audit reviewed (weekly CI job); Dependabot PRs not older than a month

@@ -11,7 +11,6 @@ from sqlalchemy import (
     Index,
     String,
     and_,
-    create_engine,
     delete,
     or_,
     select,
@@ -24,6 +23,7 @@ from sqlalchemy.sql.elements import ColumnElement
 from command_center.core.ports import Clock
 from command_center.core.schema import Event, EventKind
 from command_center.core.windows import TimeWindow
+from command_center.storage.engine import make_engine
 from command_center.storage.sqlite_ledger import (
     Seen,
     ensure_ledger_schema,
@@ -255,7 +255,7 @@ def create_event_store(database_url: str, clock: Clock | None = None) -> SqliteE
     url = make_url(database_url)
     if url.get_backend_name() == "sqlite" and url.database not in (None, "", ":memory:"):
         Path(str(url.database)).parent.mkdir(parents=True, exist_ok=True)
-    engine = create_engine(url, hide_parameters=True)  # error text must not carry event content
+    engine = make_engine(database_url)  # error text must not carry event content
     ensure_event_schema(engine)
     return SqliteEventStore(engine, clock)
 

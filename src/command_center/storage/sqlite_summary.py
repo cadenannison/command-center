@@ -4,11 +4,12 @@ from datetime import date
 from pathlib import Path
 
 from pydantic import ValidationError
-from sqlalchemy import Date, Engine, String, create_engine, delete, select
+from sqlalchemy import Date, Engine, String, delete, select
 from sqlalchemy.engine import make_url
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 
 from command_center.core.summary import DailySummary
+from command_center.storage.engine import make_engine
 
 
 class _Base(DeclarativeBase):
@@ -80,6 +81,6 @@ def create_summary_store(database_url: str) -> SqliteSummaryStore:
     if url.get_backend_name() == "sqlite" and url.database not in (None, "", ":memory:"):
         Path(str(url.database)).parent.mkdir(parents=True, exist_ok=True)
     # Hidden parameters keep summary text out of error messages and logs (decision 0027).
-    engine = create_engine(url, hide_parameters=True)
+    engine = make_engine(database_url)
     _Base.metadata.create_all(engine)
     return SqliteSummaryStore(engine)

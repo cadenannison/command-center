@@ -9,11 +9,12 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, cast
 
-from sqlalchemy import Boolean, Engine, Index, String, create_engine, delete, insert, select, update
+from sqlalchemy import Boolean, Engine, Index, String, delete, insert, select, update
 from sqlalchemy.engine import CursorResult, make_url
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 
 from command_center.core.pairing import Device, RefreshRecord, hashes_match
+from command_center.storage.engine import make_engine
 
 _ACCESS = "access"
 _REFRESH = "refresh"
@@ -236,6 +237,6 @@ def create_device_store(database_url: str) -> SqliteDeviceStore:
     if url.get_backend_name() == "sqlite" and url.database not in (None, "", ":memory:"):
         Path(str(url.database)).parent.mkdir(parents=True, exist_ok=True)
     # Hidden parameters keep digests out of error messages and logs (decision 0027).
-    engine = create_engine(url, hide_parameters=True)
+    engine = make_engine(database_url)
     _Base.metadata.create_all(engine)
     return SqliteDeviceStore(engine)

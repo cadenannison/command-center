@@ -2,9 +2,11 @@
 
 from pathlib import Path
 
-from sqlalchemy import Engine, String, create_engine, select
+from sqlalchemy import Engine, String, select
 from sqlalchemy.engine import make_url
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
+
+from command_center.storage.engine import make_engine
 
 
 class _Base(DeclarativeBase):
@@ -47,6 +49,6 @@ def create_app_setting_store(database_url: str) -> SqliteAppSettingStore:
     url = make_url(database_url)
     if url.get_backend_name() == "sqlite" and url.database not in (None, "", ":memory:"):
         Path(str(url.database)).parent.mkdir(parents=True, exist_ok=True)
-    engine = create_engine(url, hide_parameters=True)
+    engine = make_engine(database_url)
     _Base.metadata.create_all(engine)
     return SqliteAppSettingStore(engine)

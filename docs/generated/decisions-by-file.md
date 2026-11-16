@@ -299,6 +299,7 @@ Each line is a path and the decisions that name it. Look a number up with `grep 
 - tests/test_sqlite_error_details.py: 0027
 - tests/test_stop_gate_hook.py: 0253
 - tests/test_stop_gate_hook_edges.py: 0289
+- tests/test_storage_engine.py: 0411
 - tests/test_summary_control.py: 0112
 - tests/test_summary_generate.py: 0113
 - tests/test_summary_nonblocking.py: 0115 0116

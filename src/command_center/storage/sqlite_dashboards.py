@@ -15,7 +15,6 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
-    create_engine,
     delete,
     func,
     select,
@@ -38,6 +37,7 @@ from command_center.core.dashboards import (
     layout_json,
     parse_layout,
 )
+from command_center.storage.engine import make_engine
 
 _TIME_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
 
@@ -281,7 +281,7 @@ def _engine(database_url: str) -> Engine:
     url = make_url(database_url)
     if url.get_backend_name() == "sqlite" and url.database not in (None, "", ":memory:"):
         Path(str(url.database)).parent.mkdir(parents=True, exist_ok=True)
-    engine = create_engine(url, hide_parameters=True)
+    engine = make_engine(database_url)
     ensure_dashboard_schema(engine)
     return engine
 

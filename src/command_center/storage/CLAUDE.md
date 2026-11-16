@@ -10,3 +10,4 @@ Contract: `docs/contracts/storage.md`. Rules that load here: `.claude/rules/styl
   Check-offs and removals ride in the events' own transaction (decisions 0120, 0121, 0131).
 - Column names are persisted identifiers: deprecate, never rename or delete (AGENTS.md).
 - Unit tests use SQLite in memory. Never touch the real database under `~/.command-center`.
+- Build every engine with `engine.make_engine(url)`, never `create_engine` (decision 0411; a test fails otherwise). It sets WAL, a 5 s busy timeout and foreign keys on for SQLite.
