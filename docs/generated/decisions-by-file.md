@@ -95,8 +95,8 @@ Each line is a path and the decisions that name it. Look a number up with `grep 
 - src/command_center/api/settings.py: 0020 0023 0025
 - src/command_center/api/summary_routes.py: 0037
 - src/command_center/api/tasks.py: 0371
-- src/command_center/app.py: 0021 0053 0057 0058 0072 0073 0074 0105 0112 0115 0140 0161 0170 0181 0358
-- src/command_center/config.py: 0036 0057 0070 0072 0073 0161
+- src/command_center/app.py: 0021 0053 0057 0058 0072 0073 0074 0105 0112 0115 0140 0161 0170 0181 0358 0407
+- src/command_center/config.py: 0036 0057 0070 0072 0073 0161 0407
 - src/command_center/core/CLAUDE.md: 0250
 - src/command_center/core/chat.py: 0164 0258 0270 0290 0291
 - src/command_center/core/dashboards.py: 0355 0389
@@ -190,6 +190,7 @@ Each line is a path and the decisions that name it. Look a number up with `grep 
 - tests/test_app_setting_store_contract.py: 0111
 - tests/test_app_wiring.py: 0100 0170
 - tests/test_auth.py: 0057
+- tests/test_auth_peer.py: 0407
 - tests/test_auth_rig.py: 0248
 - tests/test_caldav_apple.py: 0031
 - tests/test_canvas_adapter.py: 0032 0042 0095
@@ -215,6 +216,7 @@ Each line is a path and the decisions that name it. Look a number up with `grep 
 - tests/test_connect_message_redaction.py: 0052
 - tests/test_core_chat.py: 0163 0164 0166 0168
 - tests/test_core_hosts.py: 0057
+- tests/test_core_hosts_peer.py: 0407
 - tests/test_core_ledger.py: 0130
 - tests/test_core_ledger_range.py: 0123
 - tests/test_core_pairing.py: 0057

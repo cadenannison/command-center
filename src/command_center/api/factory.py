@@ -37,6 +37,8 @@ def create_app(
     *,
     sync_interval_minutes: int | None = None,
     remote_hosts: Sequence[str] = (),
+    bind_all: bool = False,
+    trusted_peers: Sequence[str] = (),
 ) -> FastAPI:
     """Build the app. A factory is called at startup, so importing the app never touches disk.
 
@@ -45,7 +47,8 @@ def create_app(
     scheduled, which is what tests want.
 
     `remote_hosts` are the tailnet names served besides loopback; a request to one of them needs a
-    device token (api/auth.py). Any other Host is refused.
+    device token (api/auth.py). Any other Host is refused. With `bind_all` a loopback Host is the
+    local user only from a socket peer in `trusted_peers` (decision 0407).
     """
 
     @asynccontextmanager
@@ -69,7 +72,7 @@ def create_app(
     if isinstance(container, Container):
         app.state.container = container
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=[*ALLOWED_HOSTS, *remote_hosts])
-    install_auth(app, remote_hosts=remote_hosts)
+    install_auth(app, remote_hosts=remote_hosts, bind_all=bind_all, trusted_peers=trusted_peers)
     install_error_handlers(app)
     app.include_router(health.router)
     app.include_router(pairing_routes.router)

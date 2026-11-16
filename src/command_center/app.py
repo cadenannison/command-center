@@ -282,6 +282,8 @@ def build_app(settings: Settings) -> FastAPI:
         lambda: build_container(settings),
         sync_interval_minutes=None if distributed else settings.sync_interval_minutes,
         remote_hosts=settings.allowed_hosts,
+        bind_all=settings.bind_all,
+        trusted_peers=settings.trusted_peers,
     )
 
 

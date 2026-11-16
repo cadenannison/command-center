@@ -65,6 +65,9 @@ services:
     environment:
       <<: *env
       CC_BIND_ALL: "1"
+      # CC_TRUSTED_PEERS is left unset on purpose (decision 0407): every request needs a
+      # device token, the Mac's browser included, until you set it to the peer address the api
+      # sees (docs/distributed-mode.md). Set it before first use: pairing itself needs a local peer.
     ports:
       - "127.0.0.1:8765:8765"
     healthcheck:

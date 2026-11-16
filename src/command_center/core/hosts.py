@@ -1,5 +1,6 @@
 """Host-header classification: loopback, an allowed remote name, or rejected."""
 
+import ipaddress
 import re
 from collections.abc import Collection, Iterable
 from enum import StrEnum
@@ -68,3 +69,28 @@ def classify_request(
     if name and name in {h.lower() for h in remote_hosts}:
         return Exposure.REMOTE
     return Exposure.REJECTED
+
+
+def peer_is_trusted(peer_host: str | None, trusted: Iterable[str]) -> bool:
+    """True when the socket peer address is one of `trusted` (exact addresses or CIDR ranges).
+
+    Fails closed: a missing or unparsable peer, an unparsable entry, an empty list and a peer of
+    another IP family are all untrusted. An IPv4-mapped IPv6 peer (`::ffff:a.b.c.d`) is compared as
+    the IPv4 address it carries. A bare address in the list means that one host.
+    """
+    if not peer_host:
+        return False
+    try:
+        peer = ipaddress.ip_address(peer_host)
+    except ValueError:
+        return False
+    if isinstance(peer, ipaddress.IPv6Address) and peer.ipv4_mapped is not None:
+        peer = peer.ipv4_mapped
+    for entry in trusted:
+        try:
+            network = ipaddress.ip_network(entry.strip(), strict=False)
+        except ValueError:
+            continue
+        if peer.version == network.version and peer in network:
+            return True
+    return False

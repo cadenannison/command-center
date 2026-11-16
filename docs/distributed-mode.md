@@ -95,7 +95,7 @@ docker compose --env-file ~/.config/command-center/compose.env down             
 docker compose --env-file ~/.config/command-center/compose.env down -v                             # also deletes data and credentials
 ```
 
-Settings that matter (all `CC_`-prefixed; compose sets the first four): `CC_MODE=distributed`, `CC_REDIS_URL`, `DATABASE_URL`, `CC_SECRET_BACKEND=file`, `CC_TZ`, `CC_SYNC_INTERVAL_MINUTES` (default 30, used by the scheduler role).
+Settings that matter (all `CC_`-prefixed; compose sets the first four): `CC_MODE=distributed`, `CC_REDIS_URL`, `DATABASE_URL`, `CC_SECRET_BACKEND=file`, `CC_TZ`, `CC_SYNC_INTERVAL_MINUTES` (default 30, used by the scheduler role). `CC_TRUSTED_PEERS` (decision 0407) is not set by compose: until you set it on the api service the Mac's browser and `scripts/smoke-distributed.sh` get 401.
 
 ### Smoke test
 
@@ -127,14 +127,14 @@ Workaround: connect Gmail once on a machine with a browser, then hand the result
 
 ## Trust boundary
 
-`CC_BIND_ALL=1` makes the api listen on every interface of its container, and the api treats a request with a loopback `Host` (`localhost`, `127.0.0.1`) as the local user, with no token (`api/auth.py`). The api does not look at the peer address, and could not usefully: Docker delivers a published port's traffic from the bridge gateway, not from the host's loopback, so the peer of a legitimate browser request is not loopback either. The consequence is that **any container on the compose network that connects to the api can send `Host: 127.0.0.1` and is treated as the local user**. That includes redis and postgres.
+`CC_BIND_ALL=1` makes the api listen on every interface of its container, and, since decision 0407, the api treats a request with a loopback `Host` (`localhost`, `127.0.0.1`) as the local user, with no token, only when its socket peer is listed in `CC_TRUSTED_PEERS` (IP addresses or CIDR ranges; empty by default, so every request needs a device token, the Mac's own browser included, and the web UI and the local-only pairing page answer 401 until you set it). Docker delivers a published port's traffic from the bridge gateway or a VM address, not from the host's loopback, so the value depends on your Docker runtime and is not set in `docker-compose.yml`. **A listed range lets every container in it send `Host: 127.0.0.1` and be treated as the local user, so list the narrowest address you can measure, never the whole bridge network.**
 
-The boundary is therefore the compose network, not the api:
-- The compose network is trusted. Every service on it is code from this repo or an official image configured in `docker-compose.yml`; nothing else may be attached to it.
+The boundary is the compose network only for whatever you list:
+- The compose network is trusted for any peer you list in `CC_TRUSTED_PEERS`; with the list empty it is not. Every service on it is code from this repo or an official image configured in `docker-compose.yml`; nothing else may be attached to it.
 - Only the api publishes a port, and only as `127.0.0.1:8765:8765` (`tests/test_compose_file.py` checks only that each quoted `host:port:port` mapping starts with `127.0.0.1:`; that only the api publishes one is a rule for whoever edits the file, not a tested guarantee), so nothing outside this machine reaches it directly. The phone arrives through Tailscale Serve, which adds proxy headers and a tailnet `Host` and so is held to a device token (`api/auth.py`).
 - This is a single trusted host. Anyone who can run a container on it, or join the compose network, already has the credentials volume and the database. Do not attach other containers to this network, do not publish redis or postgres, and do not run the stack on a shared machine.
 
-Decision 0090.
+Decisions 0090 and 0407.
 
 ## Known gaps
 

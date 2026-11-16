@@ -1,5 +1,6 @@
 """Runtime settings from the environment (CC_ prefix). Imported by composition roots only."""
 
+import ipaddress
 import re
 from pathlib import Path
 from typing import Annotated, Any, Literal, Self, cast
@@ -64,6 +65,10 @@ class Settings(BaseSettings):
     # Hosts other than loopback that may reach the API (the tailnet name Tailscale Serve answers
     # on). Each one needs a device token (decision 0057). Comma separated in CC_ALLOWED_HOSTS.
     allowed_hosts: Annotated[tuple[str, ...], NoDecode] = ()
+    # Under CC_BIND_ALL, the socket peers (addresses or CIDR ranges, comma separated in
+    # CC_TRUSTED_PEERS) whose loopback Host counts as the local user (decision 0407). Empty means
+    # nobody does: every request needs a device token. Ignored when the server binds loopback.
+    trusted_peers: Annotated[tuple[str, ...], NoDecode] = ()
 
     @property
     def listen_host(self) -> str:
@@ -97,6 +102,25 @@ class Settings(BaseSettings):
                 raise ValueError(msg)
             hosts.append(host)
         return tuple(hosts)
+
+    @field_validator("trusted_peers", mode="before")
+    @classmethod
+    def _ip_addresses_or_ranges(cls, value: object) -> object:
+        if isinstance(value, str):
+            value = value.split(",")
+        if not isinstance(value, (list, tuple)):
+            return value
+        peers: list[str] = []
+        for item in cast("list[object] | tuple[object, ...]", value):
+            if not isinstance(item, str) or not item.strip():
+                continue
+            try:
+                ipaddress.ip_network(item.strip(), strict=False)
+            except ValueError:
+                msg = "trusted_peers takes IP addresses or CIDR ranges, e.g. 172.18.0.1 or 10/8"
+                raise ValueError(msg) from None
+            peers.append(item.strip())
+        return tuple(peers)
 
     @field_validator("tz")
     @classmethod

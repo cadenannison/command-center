@@ -40,7 +40,7 @@ from command_center.api.policy import (
     refusal_status,
     remote_may_call,
 )
-from command_center.core.hosts import Exposure, classify_request
+from command_center.core.hosts import Exposure, classify_request, peer_is_trusted
 from command_center.services.container import Container
 
 _POLICY_VIOLATION = 1008
@@ -76,13 +76,27 @@ def _bearer_token(headers: list[tuple[bytes, bytes]]) -> str | None:
 class DeviceAuthMiddleware:
     """Refuses requests per the module docstring. Fails closed when pairing is not wired."""
 
-    def __init__(self, app: ASGIApp, fastapi_app: FastAPI, remote_hosts: Sequence[str]) -> None:
+    def __init__(
+        self,
+        app: ASGIApp,
+        fastapi_app: FastAPI,
+        remote_hosts: Sequence[str],
+        *,
+        bind_all: bool = False,
+        trusted_peers: Sequence[str] = (),
+    ) -> None:
         self._app = app
         self._fastapi_app = fastapi_app
         self._remote_hosts = frozenset(host.lower() for host in remote_hosts)
+        self._bind_all = bind_all
+        self._trusted_peers = tuple(trusted_peers)
 
     def _container(self) -> Container | None:
         return cast("Container | None", getattr(self._fastapi_app.state, "container", None))
+
+    def _peer_trusted(self, scope: Scope) -> bool:
+        client = cast("tuple[str, int] | None", scope.get("client"))
+        return peer_is_trusted(client[0] if client else None, self._trusted_peers)
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] not in ("http", "websocket"):
@@ -92,6 +106,10 @@ class DeviceAuthMiddleware:
         host = next((v.decode("latin-1") for n, v in headers if n.lower() == b"host"), None)
         names = [name.decode("latin-1") for name, _ in headers]
         exposure = classify_request(host, names, self._remote_hosts)
+        if self._bind_all and exposure is Exposure.LOOPBACK and not self._peer_trusted(scope):
+            # The listener is reachable from other containers, and the Host header is the caller's
+            # to choose: only a peer the operator named may pass as the local user (decision 0407).
+            exposure = Exposure.REMOTE
         if exposure is Exposure.REJECTED:
             await _refuse(
                 PlainTextResponse("Invalid host header", status_code=400), scope, receive, send
@@ -166,14 +184,26 @@ async def _refuse(response: Response, scope: Scope, receive: Receive, send: Send
 
 
 def install_auth(
-    app: FastAPI, container: Container | None = None, *, remote_hosts: Sequence[str] = ()
+    app: FastAPI,
+    container: Container | None = None,
+    *,
+    remote_hosts: Sequence[str] = (),
+    bind_all: bool = False,
+    trusted_peers: Sequence[str] = (),
 ) -> None:
     """Put the Host-and-token check in front of every route of `app`.
 
     `remote_hosts` are the non-loopback names to serve (the tailnet name). The container is read
     from `app.state.container` when the request arrives, so a factory-built container works; pass
-    `container` to set it now.
+    `container` to set it now. With `bind_all` (the server listens beyond loopback) a loopback Host
+    counts as the local user only from a socket peer in `trusted_peers`; otherwise it is remote.
     """
     if container is not None:
         app.state.container = container
-    app.add_middleware(DeviceAuthMiddleware, fastapi_app=app, remote_hosts=tuple(remote_hosts))
+    app.add_middleware(
+        DeviceAuthMiddleware,
+        fastapi_app=app,
+        remote_hosts=tuple(remote_hosts),
+        bind_all=bind_all,
+        trusted_peers=tuple(trusted_peers),
+    )

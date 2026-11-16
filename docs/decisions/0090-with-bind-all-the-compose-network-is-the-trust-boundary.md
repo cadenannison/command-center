@@ -1,6 +1,6 @@
 # 0090. With `CC_BIND_ALL` set, the compose network is the trust boundary
 
-Status: accepted; qualifies 0072
+Status: accepted; qualifies 0072; its loopback-Host claim (any container on the compose network passes the check) is superseded by 0407
 
 Context: Task 4d, closing the last open decision of 0085. 0072 made `CC_BIND_ALL=1` the one way to listen beyond loopback and said every published port is `127.0.0.1:<port>:<port>`, "so the host's loopback is still the only reachable address". That holds for the host. It does not hold inside the compose network: the api's auth middleware lets a request through with no token when its `Host` is loopback (`localhost`, `127.0.0.1`) and it carries no proxy headers (`api/auth.py`, `core.hosts`), and it never looks at the peer address. With the api listening on `0.0.0.0` in its container, any container on the compose network, redis and postgres included, can send `Host: 127.0.0.1` and is treated as the local user.
 Decision: document it as the boundary; change no code. A peer-address check is not an option: Docker delivers traffic for a published port from the bridge gateway, so the peer of a legitimate browser request is not loopback either, and a check that rejected non-loopback peers would reject the web UI. The statement, in `docs/distributed-mode.md` (Trust boundary) and the README security model:
