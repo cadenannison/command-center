@@ -30,6 +30,7 @@ export class LayoutSaver {
   private timer: ReturnType<typeof setTimeout> | null = null;
   private stopped = false;
   private current: Promise<void> | null = null;
+  private detached = false;
 
   constructor(
     private revision: number,
@@ -57,7 +58,7 @@ export class LayoutSaver {
   schedule(layout: Layout): void {
     this.latest = layout;
     this.stopped = false;
-    this.options.onStatus({ kind: "pending" });
+    this.emit({ kind: "pending" });
     this.clearTimer();
     this.timer = setTimeout(() => void this.run(), this.options.delayMs ?? SAVE_DELAY_MS);
   }
@@ -80,13 +81,30 @@ export class LayoutSaver {
     this.latest = null;
     this.stopped = false;
     this.revision = revision;
-    this.options.onStatus({ kind: "idle" });
+    this.emit({ kind: "idle" });
   }
 
   /** The owner is going away: send a waiting change now (best effort; a failure can no longer be shown). */
   dispose(): void {
     this.clearTimer();
     void this.run();
+  }
+
+  /**
+   * The owner is gone: stop calling onStatus (it ends in React setState). Nothing is cancelled, so a pending or
+   * in-flight write still completes.
+   */
+  detach(): void {
+    this.detached = true;
+  }
+
+  /** Undo detach (an effect that cleans up and sets up again on the same saver, as StrictMode does). */
+  attach(): void {
+    this.detached = false;
+  }
+
+  private emit(status: SaveStatus): void {
+    if (!this.detached) this.options.onStatus(status);
   }
 
   private clearTimer(): void {
@@ -107,7 +125,7 @@ export class LayoutSaver {
     if (layout === null) return;
     this.latest = null;
     this.inFlight = true;
-    this.options.onStatus({ kind: "saving" });
+    this.emit({ kind: "saving" });
     try {
       this.revision = await this.options.send(layout, this.revision);
     } catch (error) {
@@ -115,7 +133,7 @@ export class LayoutSaver {
       this.stopped = true;
       this.latest ??= layout;
       const conflict = error instanceof ApiError && error.status === 409;
-      this.options.onStatus(
+      this.emit(
         conflict
           ? { kind: "conflict" }
           : {
@@ -130,6 +148,6 @@ export class LayoutSaver {
       await this.run();
       return;
     }
-    this.options.onStatus({ kind: "saved" });
+    this.emit({ kind: "saved" });
   }
 }

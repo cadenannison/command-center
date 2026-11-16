@@ -97,12 +97,14 @@ export function DashboardView({ dashboard, flushRef, onConflict, onSaved }: Dash
     saver.schedule(history.present);
   }, [history.present, saver]);
 
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    saver.attach();
+    return () => {
+      // The owner is going: a waiting change is still written, but nothing may reach setState afterwards.
+      saver.detach();
       saver.dispose();
-    },
-    [saver],
-  );
+    };
+  }, [saver]);
 
   useEffect(() => {
     flushRef.current = async () => {
