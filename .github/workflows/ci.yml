@@ -22,7 +22,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { persist-credentials: false }
-      - uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
+      - uses: jdx/mise-action@d5574b52816a478f9d4e6529a3f6ff17a8a36785 # v5.2.8
       - run: uv sync --all-extras
       - run: mise run fmt:check
       - run: mise run lint
@@ -46,7 +46,7 @@ jobs:
         run: |
           if [ -f ui/package.json ]; then echo "found=true" >> "$GITHUB_OUTPUT"; else echo "ui/ not scaffolded yet; nothing to check"; fi
       - if: steps.present.outputs.found == 'true'
-        uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
+        uses: jdx/mise-action@d5574b52816a478f9d4e6529a3f6ff17a8a36785 # v5.2.8
       - if: steps.present.outputs.found == 'true'
         run: bash scripts/ui.sh guard
       - if: steps.present.outputs.found == 'true'
@@ -85,7 +85,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { persist-credentials: false, fetch-depth: 0 }   # full history for the scan
-      - uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
+      - uses: jdx/mise-action@d5574b52816a478f9d4e6529a3f6ff17a8a36785 # v5.2.8
       - run: mise run secrets
 
   # Advisories are a separate job and not part of the gate: a newly published CVE must not block
@@ -97,7 +97,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { persist-credentials: false }
-      - uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
+      - uses: jdx/mise-action@d5574b52816a478f9d4e6529a3f6ff17a8a36785 # v5.2.8
       - run: uv sync --all-extras
       # pip-audit, then `pnpm audit` for the UI when ui/ exists (scripts/ui.sh audit, decision 0301)
       - run: mise run audit
@@ -148,7 +148,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { persist-credentials: false }
-      - uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
+      - uses: jdx/mise-action@d5574b52816a478f9d4e6529a3f6ff17a8a36785 # v5.2.8
       - run: uv sync --all-extras
       # Exactly the files whose cases are skipped without CC_TEST_REDIS_URL or CC_TEST_POSTGRES_URL.
       - run: >-
